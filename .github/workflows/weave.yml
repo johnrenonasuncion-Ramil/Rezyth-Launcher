@@ -27,6 +27,9 @@ env:
   # The registry snapshot every bundle is verified against: one commit of
   # horizon-rust/horizon-mods, fetched whole.
   REGISTRY_REV: 63daa89bcbdcb80282c29970d743d6d00918a6ce
+  # The newest consumer pin among the registry set (Fast Items): one
+  # horizon-mixins pass all 33 bundles go through, as the head weaves.
+  MIXINS_REV_OVERRIDE: e8cd0aa38cffef49cb2e088ef716baa107148c02
   # Every probe-green registry mod, as id=file. The release tag is the file
   # name without .hnmod.
   DEFAULT_SET: |
