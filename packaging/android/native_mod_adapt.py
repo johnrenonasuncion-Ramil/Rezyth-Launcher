@@ -64,7 +64,8 @@ CHANGED = (
     ),
     (
         r"d\.custom_name = Some\(bc::ITEM_NAME\.to_owned\(\)\);",
-        "d.custom_name = Some(horizon_world::nbt::Tag::String(bc::ITEM_NAME.to_owned().into()));",
+        # JavaString takes &str, not String (From<&str> is implemented).
+        "d.custom_name = Some(horizon_world::nbt::Tag::String(bc::ITEM_NAME.into()));",
     ),
 )
 
