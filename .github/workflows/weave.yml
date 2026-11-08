@@ -31,7 +31,9 @@ env:
   # horizon-mixins pass all 33 bundles go through, as the head weaves.
   MIXINS_REV_OVERRIDE: 5a64af938ec86b00d53d16a408aabc0038fb3e57
   # Every probe-green registry mod, as id=file. The release tag is the file
-  # name without .hnmod.
+  # name without .hnmod. .weave-set, when present, is the set a run uses:
+  # the 30 that weave against this tree (three need engine features the
+  # harvest has not ported yet; their reasons are in the ledger).
   DEFAULT_SET: |
     jei=jei-0.1.0.hnmod
     horizon_physics=horizon_physics-0.15.1.hnmod

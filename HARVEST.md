@@ -127,13 +127,26 @@ CI: `android.yml` run **42457716326** built the APK green at `a848813fc`.
    entry; the main menu gets a Volt Settings button that opens the same hub (in the game and
    the startup menu alike). The profile applies at once and the thread tuning follows the
    switch. The hub has room for the Waypoints and Minimap pages when their engines’ UI lands.
-4. **The native-mod weave**: port `tools/native_mods/` (compat.py, build_set.py, tests), the
-   pinned registry snapshot, and `bundled_native.rs` (compiled-in registration on the in-game
-   Mods page), then add a `weave` job to `android.yml` for the 33-mod `WEAVE_SET` (arm64-v8a).
-   Each run's report says which of the 33 weave against this tree; per-mod failures are fixed or
-   dropped from the set, as the head's registry policy (`probe_green`, `review_required`,
-   `excluded`) does.
-
+4. **The native-mod weave** — DONE: `tools/native_mods/compat.py` (registry verification:
+   SHA-256 against the pinned snapshot, revocations, minisign when published, a bounded safe
+   unzip, matching manifests) and `tools/native_mods/weave.py` (staging + the hook-API gate)
+   ported from the head; the dispatch-only `.github/workflows/weave.yml` fetches the pinned
+   registry, downloads the release bundles, verifies them and builds the APK through this
+   repository’s own weaver (`packaging/android/native_build.sh`, one horizon-mixins pass, with
+   `native_mod_adapt.py` bringing the mods’ calls up to date; the compiler runs at the newest
+   consumer pin, Skins 3D’s, and vendored crates propagate into horizon-android).
+   **30 of the 33 weave and build green** (CI run **42517109722**, artifact `woven-apk`,
+   33.1 MB): jei, jade, veinminer, appleskin, status_effect_hud, toggle_sprint,
+   inventory_profiles, shulker_peek, mousetricks, itemnew, eatinganimation, enchantmenthints,
+   light_overlay, right_click_crops, smartf3, armor_status, crosshair_indicator, hitbox_plus,
+   invisible_frames, freelook, voicechat, worldedit, horizonmatica, held_item_info, carryblock,
+   chatheads, fast_items, customhud, coords_hud, biomecompass.
+   Three stay out, each with its exact blocker (in `.weave-set`, reported every run):
+   `skins_3d` targets `remote::Game::skin_3d_model`, the hook point the head’s fork keeps for
+   it (with `Mob.skin_3d` and its render path); `visuality_horizon` and `horizon_physics`
+   inject the shader-packs code that needs the head fork’s built-in shader runtime
+   (`native_shaders.picked` / `NativeShaders::picking`). Each needs its engine feature ported
+   first, as follow-ups.
 ## Verify
 
 ```sh
