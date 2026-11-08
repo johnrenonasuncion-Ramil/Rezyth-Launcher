@@ -75,8 +75,26 @@ impl SortState {
         origin: [i32; 3],
         sorter: &'a mut Sorter,
     ) -> Option<&'a [u32]> {
-        let block = camera.map(|v| v.floor() as i32);
-        let pov = std::array::from_fn(|i| ((block[i] >> 4) - (origin[i] >> 4)).clamp(-1, 1));
+        self.update_adaptive(camera, origin, sorter, false)
+    }
+
+    /// `update` with Volt Boost's fast translucency: distant sections (those
+    /// whose point of view is straight on) re-sort on a 4-block grid instead
+    /// of every block, so a slide along a wall of glass costs no upload.
+    pub fn update_adaptive<'a>(
+        &mut self,
+        camera: [f64; 3],
+        origin: [i32; 3],
+        sorter: &'a mut Sorter,
+        coarse_grid: bool,
+    ) -> Option<&'a [u32]> {
+        let raw_block = camera.map(|v| v.floor() as i32);
+        let block = if coarse_grid {
+            raw_block.map(|b| b & !3)
+        } else {
+            raw_block
+        };
+        let pov = std::array::from_fn(|i| ((raw_block[i] >> 4) - (origin[i] >> 4)).clamp(-1, 1));
         if let Some((last_block, last_pov)) = self.last
             && last_pov == pov
             && (last_block == block || !pov.contains(&0))

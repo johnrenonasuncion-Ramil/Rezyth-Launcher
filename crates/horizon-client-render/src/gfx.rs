@@ -1195,6 +1195,17 @@ pub struct Renderer {
     oit: Option<oit::Oit>,
     /// Advance animated block textures (Horizon setting; vanilla always does).
     pub animated_textures: bool,
+    /// Volt Boost's animation throttle: animated sprites upload every second
+    /// tick instead of every tick (1 = vanilla 20 Hz).
+    pub animation_step_ticks: u64,
+    /// Volt Boost's active-animation cull off switch: the engine skips
+    /// animated sprites no resident section uses (on by default here).
+    pub active_anim_cull: bool,
+    /// Volt Boost's fast translucency: distant sections re-sort on a coarser
+    /// grid, with a smaller rotating budget and a nearer always-sorted ring.
+    pub fast_translucency: bool,
+    /// The animated-sprite tick last uploaded (`animation_step_ticks`' stride).
+    last_animated_tick: Option<u64>,
     present_modes: Vec<wgpu::PresentMode>,
 }
 /// Every layer's mip levels, layer major (`first` is the first layer's
@@ -4232,6 +4243,10 @@ impl Renderer {
             oit: None,
             fullbright: false,
             animated_textures: true,
+            animation_step_ticks: 1,
+            active_anim_cull: true,
+            fast_translucency: false,
+            last_animated_tick: None,
             present_modes,
         })
     }
@@ -6696,8 +6711,19 @@ impl Renderer {
             }
             // Visibility is collected before terrain draw commands are recorded,
             // so upload the current mask here and keep animation updates ahead
-            // of every draw in this command buffer.
-            self.animate(&mut encoder, frame.ticks, !frame.title);
+            // of every draw in this command buffer. Volt Boost's throttle
+            // uploads every second tick instead (a stride the anim tick is
+            // floored to, so all sprites stay in step).
+            let step = self.animation_step_ticks.max(1);
+            let anim_tick = frame.ticks / step * step;
+            if self.last_animated_tick != Some(anim_tick) {
+                self.last_animated_tick = Some(anim_tick);
+                self.animate(
+                    &mut encoder,
+                    anim_tick,
+                    !frame.title && self.active_anim_cull,
+                );
+            }
         }
         self.drawn_sections = visible.len() + visible_lods.len();
         let instances = self.drawn_sections + shadow_visible.len();
@@ -6899,16 +6925,24 @@ impl Renderer {
         laps.lap("r_section_groups");
         // LevelRenderer: nearby sections each frame, plus a rotating eighth
         // (at least 15) of the visible list. Cached views avoid needless sorts.
+        // Volt Boost's fast translucency: half the rotating budget, a ring one
+        // section nearer, and distant sections re-sort on a 4-block grid.
         self.translucent_draws.clear();
         let count = visible.len() + visible_lods.len();
-        let budget = (count / 8).max(15).min(count);
+        let fast_trans = self.fast_translucency;
+        let budget = if fast_trans {
+            (count / 16).max(6).min(count)
+        } else {
+            (count / 8).max(15).min(count)
+        };
+        let near_radius = if fast_trans { 1 } else { 2 };
         self.translucency_cursor %= count.max(1);
         for (i, v) in visible.iter().enumerate().rev() {
             let s = self.sections.get_mut(v.slot);
             if let Some((index_page, index_start)) = s.sorted_indices {
-                let nearby = (v.key.0 - camera_section.0).abs() <= 2
-                    && (v.key.1 - camera_section.1).abs() <= 2
-                    && (v.key.2 - camera_section.2).abs() <= 2;
+                let nearby = (v.key.0 - camera_section.0).abs() <= near_radius
+                    && (v.key.1 - camera_section.1).abs() <= near_radius
+                    && (v.key.2 - camera_section.2).abs() <= near_radius;
                 let scheduled = (i + count - self.translucency_cursor) % count < budget;
                 let origin = [
                     v.key.0 * 16,
@@ -6916,9 +6950,12 @@ impl Renderer {
                     v.key.2 * 16,
                 ];
                 if (!s.sort.is_sorted() || nearby || scheduled)
-                    && let Some(indices) =
-                        s.sort
-                            .update(camera.to_array(), origin, &mut self.translucent_sorter)
+                    && let Some(indices) = s.sort.update_adaptive(
+                        camera.to_array(),
+                        origin,
+                        &mut self.translucent_sorter,
+                        fast_trans && !nearby,
+                    )
                 {
                     self.uploads.buffer(
                         &mut encoder,

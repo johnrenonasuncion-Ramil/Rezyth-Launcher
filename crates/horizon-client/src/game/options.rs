@@ -568,6 +568,9 @@ impl Game<'_> {
             r.improved_transparency = s.improved_transparency;
             r.set_present_mode(s.vsync, s.horizon.present_mode);
             r.animated_textures = s.horizon.animated_textures;
+            r.animation_step_ticks = if s.extras.anim_throttle { 2 } else { 1 };
+            r.active_anim_cull = s.extras.active_anim_cull;
+            r.fast_translucency = s.extras.fast_translucency;
             r.screenshot_quality = s.horizon.screenshot_quality;
             r.set_mipmap_levels(s.mipmap_levels.max(0) as u32);
             r.set_texture_filtering(

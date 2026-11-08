@@ -182,6 +182,15 @@ pub struct Extras {
     /// Volt Boost's menu backdrop saver: FastDark skips the multi-pass menu
     /// blur for a plain dark backdrop (PanoramaBlur is the vanilla blur).
     pub menu_bg_mode: crate::volt_features::MenuBgMode,
+    /// Volt Boost's animation throttle: animated sprites upload every second
+    /// tick (10 Hz instead of vanilla's 20 Hz).
+    pub anim_throttle: bool,
+    /// Volt Boost's active-animation cull off switch: on, the engine skips
+    /// animated sprites no resident section uses (this engine's default).
+    pub active_anim_cull: bool,
+    /// Volt Boost's fast translucency: distant water and glass re-sort on a
+    /// coarser grid with a smaller rotating budget.
+    pub fast_translucency: bool,
     /// Volt Boost's entity render caps: past the cap only the nearest mobs,
     /// dropped items or block entities draw (rendering only), and past the
     /// mode's distance nothing does.
@@ -252,6 +261,9 @@ impl Default for Extras {
             item_render_cap: crate::volt_features::ItemRenderCap::Unlimited,
             block_entity_cap: crate::volt_features::BlockEntityCap::Unlimited,
             menu_bg_mode: crate::volt_features::MenuBgMode::PanoramaBlur,
+            anim_throttle: false,
+            active_anim_cull: true,
+            fast_translucency: false,
         }
     }
 }
@@ -408,6 +420,9 @@ impl Extras {
                         e.menu_bg_mode = m;
                     }
                 }
+                "animThrottle" => e.anim_throttle = flag(e.anim_throttle),
+                "activeAnimCull" => e.active_anim_cull = flag(e.active_anim_cull),
+                "fastTranslucency" => e.fast_translucency = flag(e.fast_translucency),
                 _ => {}
             }
         }
@@ -415,7 +430,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\nanimThrottle:{}\nactiveAnimCull:{}\nfastTranslucency:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -478,6 +493,9 @@ impl Extras {
             self.item_render_cap.as_str(),
             self.block_entity_cap.as_str(),
             self.menu_bg_mode.as_str(),
+            bool_text(self.anim_throttle),
+            bool_text(self.active_anim_cull),
+            bool_text(self.fast_translucency),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -577,6 +595,15 @@ impl Extras {
             VoltBoostPreset::Off => crate::volt_features::MenuBgMode::PanoramaBlur,
             _ => crate::volt_features::MenuBgMode::FastDark,
         };
+        // The Tier 2 switches: the throttle and the translucency savings are
+        // on in every profile, and the animation cull stays this engine's
+        // default (on) under all of them.
+        let (anim_throttle, fast_translucency) = match preset {
+            VoltBoostPreset::Off => (false, false),
+            _ => (true, true),
+        };
+        self.anim_throttle = anim_throttle;
+        self.fast_translucency = fast_translucency;
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for
