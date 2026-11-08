@@ -2298,10 +2298,19 @@ fn glfw_button(button: MouseButton) -> i32 {
 /// crafting grid and its result it adds to the inventory's.
 const BEDROCK_SHIFT: f32 = 100.0;
 const BEDROCK_CRAFT: [usize; 5] = [100, 101, 102, 103, 200];
-thread_local! {
-    /// Where the creative window is from the middle of the screen (`creative_origin`).
-    static CREATIVE_SHIFT: std::cell::Cell<f32> = const { std::cell::Cell::new(0.0) };
+// In a module of its own: horizon-mixins reads a file's top-level items to
+// resolve the macros of a function a native mod injects into, and an item
+// macro at the top level (this one) makes every bare `matches!` in the file
+// ambiguous to it (E_UNSUPPORTED_MACRO). Nested content is only read when
+// the injection's own target lives there.
+mod creative_shift {
+    thread_local! {
+        /// Where the creative window is from the middle of the screen (`creative_origin`).
+        pub(super) static CREATIVE_SHIFT: std::cell::Cell<f32> =
+            const { std::cell::Cell::new(0.0) };
+    }
 }
+use creative_shift::CREATIVE_SHIFT;
 
 fn select_creative_tab(
     creative: &mut Creative,
