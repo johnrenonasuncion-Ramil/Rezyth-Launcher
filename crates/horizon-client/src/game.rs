@@ -16087,7 +16087,23 @@ impl Game<'_> {
         if !title {
             self.end_geometry(camera, &mut entities);
         }
-        let weather = if !title && self.dim == Dim::Overworld && self.settings.horizon.weather {
+        // Volt Boost's cave sky cull: sealed under an overhang in the
+        // Overworld, the sky's weather draw is skipped for the whole frame.
+        let cave_sealed = !title
+            && self.settings.extras.cave_sky_cull
+            && self.dim == Dim::Overworld
+            && camera.y < 52.0
+            && (self.world.light(
+                camera.x.floor() as i32,
+                camera.y.floor() as i32,
+                camera.z.floor() as i32,
+            ) >> 4)
+                == 0;
+        let weather = if !title
+            && !cave_sealed
+            && self.dim == Dim::Overworld
+            && self.settings.horizon.weather
+        {
             horizon_client::spans::time("weather", || self.weather_geometry(camera, alpha))
         } else {
             Vec::new()
@@ -16910,6 +16926,19 @@ impl Game<'_> {
                 (p.position.x.floor() as i32) >> 4,
                 (p.position.z.floor() as i32) >> 4,
             );
+            // Volt Boost's lookahead: the movement blended with the look, so
+            // the ring in front of a running player generates first.
+            if self.settings.extras.lookahead_stream {
+                let yaw = p.yaw.to_radians();
+                let vx = (p.velocity.x as f32) * 4.0 - yaw.sin();
+                let vz = (p.velocity.z as f32) * 4.0 + yaw.cos();
+                let len = (vx * vx + vz * vz).sqrt();
+                self.streaming.lookahead_dir = (len > 1e-3).then_some([vx / len, vz / len]);
+            } else {
+                self.streaming.lookahead_dir = None;
+            }
+        } else {
+            self.streaming.lookahead_dir = None;
         }
         self.tick_pregen();
         // A headless game has nothing to draw sections with: like a server's, they aren't
@@ -16977,6 +17006,9 @@ impl Game<'_> {
             log::warn!("Horizon: failed to save unloaded chunks: {e}");
         }
         let (far_distance, far_reduced) = self.far_terrain_choice();
+        // Volt Boost's frustum-priority meshing reads the view direction
+        // before the renderer is borrowed below.
+        let look_dir = self.forward();
         // Terrain still on its way from the server (single player's integrated one
         // too): the view's outermost columns not all in, or its events not all handled.
         let radius = match &self.remote {
@@ -17021,8 +17053,29 @@ impl Game<'_> {
                     }
                 }
                 let centre = self.streaming.center;
-                let far = |k: &(i32, i32, i32)| (k.0 - centre.0).pow(2) + (k.2 - centre.1).pow(2);
-                pending.sort_unstable_by_key(|(k, _)| std::cmp::Reverse(far(k)));
+                let cam_pos = self.player.as_ref().map(|p| p.position);
+                let frustum_prio = self.settings.extras.frustum_priority_mesh;
+                // Volt Boost's frustum-priority meshing: sections behind the
+                // view wait behind every visible one (nearest first either
+                // way), so a turn shows finished terrain first.
+                let score = |k: &(i32, i32, i32)| -> i64 {
+                    let dist2 = i64::from((k.0 - centre.0).pow(2) + (k.2 - centre.1).pow(2));
+                    if !frustum_prio {
+                        return dist2;
+                    }
+                    if let Some(p) = cam_pos {
+                        let sx = f64::from(k.0 * 16 + 8) - p.x;
+                        let sy = f64::from(k.1 * 16 + 8) - p.y;
+                        let sz = f64::from(k.2 * 16 + 8) - p.z;
+                        let len = (sx * sx + sy * sy + sz * sz).sqrt().max(1.0);
+                        let dot = (sx * look_dir[0] + sy * look_dir[1] + sz * look_dir[2]) / len;
+                        if dot < -0.25 && dist2 > 4 {
+                            return dist2 + 10_000;
+                        }
+                    }
+                    dist2
+                };
+                pending.sort_unstable_by_key(|(k, _)| std::cmp::Reverse(score(k)));
                 let (limit, budget) = if budgeted {
                     (
                         g.chunk_updates as usize,

@@ -496,6 +496,10 @@ pub struct Streaming {
     deferred: Vec<Done>,
     sequence: u64,
     pub center: (i32, i32),
+    /// Volt Boost's streaming lookahead: a normalized XZ direction (the
+    /// player's movement blended with the look) that pushes the chunks
+    /// behind it later in the job order; None keeps the plain ring order.
+    pub lookahead_dir: Option<[f32; 2]>,
     /// The view distance around `center`; below 0, no area there (a dedicated
     /// server nobody is on).
     pub radius: i32,
@@ -735,6 +739,7 @@ impl GenerationScan {
             }
             let ranges = Ranges {
                 center: input.ranges.center,
+                lookahead: input.ranges.lookahead,
                 radius: input.ranges.radius,
                 extra: input.ranges.extra,
                 forced: input.ranges.forced,
@@ -1039,6 +1044,7 @@ impl Streaming {
             deferred: Vec::new(),
             sequence: 0,
             center: (0, 0),
+            lookahead_dir: None,
             radius: 8,
             forced: HashSet::new(),
             paused: false,
@@ -1775,6 +1781,7 @@ impl Streaming {
             self.order_area = Some((self.center, self.radius));
             let ranges = Ranges {
                 center: self.center,
+                lookahead: self.lookahead_dir,
                 radius: self.radius,
                 extra: &self.extra,
                 forced: &self.forced,
@@ -1949,6 +1956,7 @@ impl Streaming {
             self.waiting_area = area;
             let ranges = Ranges {
                 center: self.center,
+                lookahead: self.lookahead_dir,
                 radius: self.radius,
                 extra: &self.extra,
                 forced: &self.forced,
@@ -2044,6 +2052,7 @@ impl Streaming {
         let input = GenerationInputs {
             ranges: Ranges {
                 center: self.center,
+                lookahead: self.lookahead_dir,
                 radius: self.radius,
                 extra: &self.extra,
                 forced: &self.forced,
@@ -2177,6 +2186,7 @@ impl Streaming {
     fn ranges(&self) -> Ranges<'_> {
         Ranges {
             center: self.center,
+            lookahead: self.lookahead_dir,
             radius: self.radius,
             extra: &self.extra,
             forced: &self.forced,
@@ -2423,6 +2433,7 @@ const FORCED_TERRAIN_RING: i32 = 4;
 /// The areas kept loaded: circles around the player and `extra`, and forced chunks.
 struct Ranges<'a> {
     center: (i32, i32),
+    lookahead: Option<[f32; 2]>,
     radius: i32,
     extra: &'a [((i32, i32), i32)],
     forced: &'a HashSet<(i32, i32)>,
@@ -2569,9 +2580,26 @@ impl ExtraCover {
     }
 }
 impl Ranges<'_> {
-    /// `distance`, or the band's nearer priority close to it.
+    /// `distance`, or the band's nearer priority close to it. Volt Boost's
+    /// lookahead pushes the chunks behind the movement and the look back
+    /// (never the ones already wanted), so a player running forward meets
+    /// fewer holes.
     fn priority(&self, x: i32, z: i32) -> i64 {
         let own = self.distance(x, z);
+        let own = match self.lookahead {
+            Some([fx, fz]) => {
+                let dx = (x - self.center.0) as f32;
+                let dz = (z - self.center.1) as f32;
+                let len = (dx * dx + dz * dz).sqrt();
+                if len > 1.5 && (dx * fx + dz * fz) / len < -0.15 {
+                    let dot = (dx * fx + dz * fz) / len;
+                    own.saturating_add((own as f32 * -dot * 1.5) as i64)
+                } else {
+                    own
+                }
+            }
+            None => own,
+        };
         match self.band {
             Some(band) if band.within(x, z, 4) => own.min(band.priority(x, z)),
             _ => own,
@@ -3087,6 +3115,7 @@ mod tests {
             extra: &[],
             forced: &forced,
             cover: None,
+            lookahead: None,
             band: None,
         };
         let generate = |x, z, priority, order| Queued {
@@ -3304,6 +3333,7 @@ mod tests {
                     extra: &self.extra,
                     forced: &self.forced,
                     cover: None,
+                    lookahead: None,
                     band: None,
                 },
                 world: &self.world,
@@ -3686,6 +3716,7 @@ mod tests {
                     extra: &[],
                     forced: &forced,
                     cover: None,
+                    lookahead: None,
                     band: None,
                 };
                 let square = |x: i32, z: i32, n: i32| {
@@ -3742,6 +3773,7 @@ mod tests {
                     extra: &[((radius * 2 + 9, 3), 4)],
                     forced: &forced,
                     cover: None,
+                    lookahead: None,
                     band: None,
                 };
                 let span = radius * 3 + 20;
@@ -3778,6 +3810,7 @@ mod tests {
             extra: &extra,
             forced: &forced,
             cover: None,
+            lookahead: None,
             band: None,
         };
         for x in -5i32..=15 {
@@ -3811,6 +3844,7 @@ mod tests {
                 extra: &extra,
                 forced: &forced,
                 cover: None,
+                lookahead: None,
                 band: None,
             };
             let level = |x: i32, z: i32| 31 + ((x - 40).abs().max((z + 9).abs()) - view).max(0);
@@ -3865,6 +3899,7 @@ mod tests {
             extra: &[],
             forced: &forced,
             cover: None,
+            lookahead: None,
             band: None,
         };
         let level = |x: i32, z: i32| 31 + (x - 40).abs().max((z + 40).abs());
@@ -3936,6 +3971,7 @@ mod cover_tests {
                 extra: &extra,
                 forced: &forced,
                 cover,
+                lookahead: None,
                 band: None,
             };
             let (scan, grid) = (ranges(None), ranges(Some(&cover)));
@@ -3995,6 +4031,7 @@ mod cover_tests {
                 extra: &extra,
                 forced: &forced,
                 cover,
+                lookahead: None,
                 band: None,
             };
             // The columns streaming asks about: everything kept, and the

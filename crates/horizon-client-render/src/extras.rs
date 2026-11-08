@@ -211,6 +211,15 @@ pub struct Extras {
     /// Volt Boost's memory saver: on a world or dimension change, the
     /// emptied queues and the allocator's freed pages go back to the OS.
     pub memory_saver: bool,
+    /// Volt Boost's streaming lookahead: chunks behind the player's
+    /// movement and look generate later.
+    pub lookahead_stream: bool,
+    /// Volt Boost's cave sky cull: sealed underground in the Overworld, the
+    /// weather draw is skipped.
+    pub cave_sky_cull: bool,
+    /// Volt Boost's frustum-priority meshing: sections behind the view wait
+    /// behind every visible one in the upload order.
+    pub frustum_priority_mesh: bool,
     /// Volt Boost's entity render caps: past the cap only the nearest mobs,
     /// dropped items or block entities draw (rendering only), and past the
     /// mode's distance nothing does.
@@ -291,6 +300,9 @@ impl Default for Extras {
             chaos_particle_shield: false,
             particle_frustum_cull: false,
             memory_saver: false,
+            lookahead_stream: false,
+            cave_sky_cull: false,
+            frustum_priority_mesh: false,
         }
     }
 }
@@ -457,6 +469,9 @@ impl Extras {
                 "chaosShield" => e.chaos_particle_shield = flag(e.chaos_particle_shield),
                 "particleFrustum" => e.particle_frustum_cull = flag(e.particle_frustum_cull),
                 "memorySaver" => e.memory_saver = flag(e.memory_saver),
+                "lookaheadStream" => e.lookahead_stream = flag(e.lookahead_stream),
+                "caveSkyCull" => e.cave_sky_cull = flag(e.cave_sky_cull),
+                "frustumPriorityMesh" => e.frustum_priority_mesh = flag(e.frustum_priority_mesh),
                 _ => {}
             }
         }
@@ -464,7 +479,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\nanimThrottle:{}\nactiveAnimCull:{}\nfastTranslucency:{}\nfastWeather:{}\ncullSignText:{}\ndistantMobThrottle:{}\nhubLagShield:{}\nchaosShield:{}\nparticleFrustum:{}\nmemorySaver:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\nanimThrottle:{}\nactiveAnimCull:{}\nfastTranslucency:{}\nfastWeather:{}\ncullSignText:{}\ndistantMobThrottle:{}\nhubLagShield:{}\nchaosShield:{}\nparticleFrustum:{}\nmemorySaver:{}\nlookaheadStream:{}\ncaveSkyCull:{}\nfrustumPriorityMesh:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -537,6 +552,9 @@ impl Extras {
             bool_text(self.chaos_particle_shield),
             bool_text(self.particle_frustum_cull),
             bool_text(self.memory_saver),
+            bool_text(self.lookahead_stream),
+            bool_text(self.cave_sky_cull),
+            bool_text(self.frustum_priority_mesh),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -663,6 +681,15 @@ impl Extras {
                 | VoltBoostPreset::LowRam
                 | VoltBoostPreset::BatterySaver
         );
+        // The cave sky cull is on in every non-Off profile; the streaming
+        // lookahead everywhere but Low-RAM Rescue, which prefers plain
+        // rings while memory is rebuilt.
+        self.cave_sky_cull = preset != VoltBoostPreset::Off;
+        self.lookahead_stream = !matches!(
+            preset,
+            VoltBoostPreset::Off | VoltBoostPreset::LowRam
+        );
+        self.frustum_priority_mesh = preset != VoltBoostPreset::Off;
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for
