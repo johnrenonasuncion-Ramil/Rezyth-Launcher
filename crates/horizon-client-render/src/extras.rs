@@ -153,6 +153,13 @@ pub struct Extras {
     /// Volt Boost's big.LITTLE thread tuning on Android (horizon-threads'
     /// 50 us timer slack): off, as vanilla's scheduling.
     pub thread_boost: bool,
+    /// Volt Boost's display refresh rate request on Android, in Hz (0: the
+    /// system's own choice; else one of `DISPLAY_RATES`). The frame cap's
+    /// own vote stays as it is when this is 0.
+    pub display_hz: u16,
+    /// Volt Boost's ADPF performance hints on Android (`frame_hint`'s
+    /// session): on, as the game has always asked for the boost.
+    pub performance_hints: bool,
 }
 impl Default for Extras {
     fn default() -> Self {
@@ -201,9 +208,15 @@ impl Default for Extras {
             cosmetics_mine: true,
             cosmetics_others: true,
             thread_boost: false,
+            display_hz: 0,
+            performance_hints: true,
         }
     }
 }
+
+/// The display rates the Display refresh rate switch cycles through (0: the
+/// system's own choice).
+pub const DISPLAY_RATES: [u16; 7] = [0, 30, 60, 90, 120, 144, 165];
 fn bool_text(v: bool) -> &'static str {
     if v { "true" } else { "false" }
 }
@@ -298,6 +311,14 @@ impl Extras {
                 "cosmeticsMine" => e.cosmetics_mine = flag(e.cosmetics_mine),
                 "cosmeticsOthers" => e.cosmetics_others = flag(e.cosmetics_others),
                 "threadBoost" => e.thread_boost = flag(e.thread_boost),
+                "displayHz" => {
+                    e.display_hz = value
+                        .parse::<u16>()
+                        .ok()
+                        .filter(|hz| DISPLAY_RATES.contains(hz))
+                        .unwrap_or(0);
+                }
+                "performanceHints" => e.performance_hints = flag(e.performance_hints),
                 _ => {}
             }
         }
@@ -305,7 +326,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -355,6 +376,8 @@ impl Extras {
             bool_text(self.cosmetics_mine),
             bool_text(self.cosmetics_others),
             bool_text(self.thread_boost),
+            self.display_hz,
+            bool_text(self.performance_hints),
         )
     }
     /// Binds the extra key `name` (`SORT_KEY`); false for

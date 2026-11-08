@@ -1077,6 +1077,9 @@ struct FrameHints {
     report: Option<unsafe extern "C" fn(usize, i64) -> std::ffi::c_int>,
     /// ANativeWindow_setFrameRate (Android 11).
     set_frame_rate: Option<unsafe extern "C" fn(*mut std::ffi::c_void, f32, i8) -> i32>,
+    /// APerformanceHint_closeSession (Android 12), so switching the hints off
+    /// releases the session instead of leaving an idle one.
+    close: Option<unsafe extern "C" fn(*mut std::ffi::c_void)>,
 }
 
 fn frame_hints() -> &'static FrameHints {
@@ -1110,6 +1113,7 @@ fn frame_hints() -> &'static FrameHints {
                     .map(|s| std::mem::transmute(s)),
                 set_frame_rate: symbol(c"ANativeWindow_setFrameRate")
                     .map(|s| std::mem::transmute(s)),
+                close: symbol(c"APerformanceHint_closeSession").map(|s| std::mem::transmute(s)),
             }
         }
     })
@@ -1147,45 +1151,62 @@ thread_local! {
 /// core when a tick makes a frame late, rather than following a load average; and the frame
 /// cap as the display's refresh rate, so a 60 FPS cap gets a 60 Hz screen (every frame shown
 /// as long) instead of a 120 Hz one alternating one and two refreshes. `fps_limit` 260 and up
-/// is no cap.
-pub fn frame_hint(cpu: std::time::Duration, fps_limit: i32) {
-    let hints = frame_hints();
+/// is no cap. Volt Boost's switches: `hints` turns the ADPF session off, and a non-zero
+/// `display_hz` asks the screen for that rate whatever the cap says (`Display refresh rate`,
+/// a request Android's own matcher may weigh).
+pub fn frame_hint(cpu: std::time::Duration, fps_limit: i32, hints_on: bool, display_hz: u32) {
+    let symbols = frame_hints();
     let cap = (fps_limit < 260).then(|| fps_limit.clamp(10, 240));
     let target_ns = 1_000_000_000 / i64::from(cap.unwrap_or(120));
     HINT_STATE.with_borrow_mut(|state| {
-        if state.session == 0
-            && hints.manager != 0
-            && let Some(create) = hints.create
+        if !hints_on {
+            // The player turned the hints off: end the session once. The rate
+            // vote below keeps following the frame cap.
+            if state.session != 0
+                && let Some(close) = symbols.close
+            {
+                // SAFETY: a session this thread created, still alive.
+                unsafe { close(state.session) };
+                state.session = 0;
+            }
+        } else if state.session == 0
+            && symbols.manager != 0
+            && let Some(create) = symbols.create
         {
             // SAFETY: the manager came from APerformanceHint_getManager; one thread id, this one.
             state.session = unsafe {
                 let tid = gettid();
-                create(hints.manager, &tid, 1, target_ns)
+                create(symbols.manager, &tid, 1, target_ns)
             };
             state.target_ns = target_ns;
         }
         if state.session != 0 {
-            // SAFETY: a session this thread created, never closed.
+            // SAFETY: a session this thread created, closed by the switch above.
             unsafe {
                 if state.target_ns != target_ns
-                    && let Some(update) = hints.update
+                    && let Some(update) = symbols.update
                 {
                     update(state.session, target_ns);
                     state.target_ns = target_ns;
                 }
-                if let Some(report) = hints.report {
+                if let Some(report) = symbols.report {
                     report(state.session, (cpu.as_nanos() as i64).max(1));
                 }
             }
         }
-        let Some(set_frame_rate) = hints.set_frame_rate else {
+        let Some(set_frame_rate) = symbols.set_frame_rate else {
             return;
         };
         let Some(window) = android_app().native_window() else {
             return;
         };
-        // No cap: the screen's fastest rate (Android's own choice may stay at 60 Hz).
-        let rate = cap.map_or_else(max_refresh_rate, |c| c as f32);
+        // The player's request wins; else no cap means the screen's fastest
+        // rate (Android's own choice may stay at 60 Hz).
+        let rate = if display_hz > 0 {
+            display_hz.min(240) as f32
+        } else {
+            cap.map_or_else(max_refresh_rate, |c| c as f32)
+        };
         let ptr = window.ptr().as_ptr() as usize;
         if (state.window, state.voted) != (ptr, rate) {
             // SAFETY: the window is held for the call; 0 is

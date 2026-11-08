@@ -18554,7 +18554,13 @@ impl Game<'_> {
                         r.gpu_times.clear();
                         #[cfg(target_os = "android")]
                         if rendered {
-                            crate::android::frame_hint(cpu, self.framerate_limit());
+                            let extras = &self.settings.extras;
+                            crate::android::frame_hint(
+                                cpu,
+                                self.framerate_limit(),
+                                extras.performance_hints,
+                                u32::from(extras.display_hz),
+                            );
                         }
                     }
                     horizon_client::ram_limit::frame();
