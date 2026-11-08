@@ -209,10 +209,15 @@ def check_hooks(data: dict, root: Path, commit: str, raw_targets: bool = False) 
         raise Rejected("post-build commands are not supported")
     if meta.get("horizon") == commit:
         return False
-    allowed = {"mod", "compatibility", "injection", "module", "crate"}
+    allowed = {"mod", "compatibility", "injection", "module"}
+    if raw_targets:
+        # The head's release weave takes vendored crates too under its
+        # raw-targets path; the compiler stages them and native_build.sh
+        # propagates their dependencies into horizon-android.
+        allowed.add("crate")
     if set(manifest) - allowed:
         raise Rejected("non-hook transformations are not supported")
-    if "crate" in manifest:
+    if "crate" in manifest and not raw_targets:
         raise Rejected("a bundle vendoring crates needs exact pinned source")
     hooks = meta.get("hooks")
     source = (root / "crates/horizon-client/src/game/native_hooks.rs").read_text()

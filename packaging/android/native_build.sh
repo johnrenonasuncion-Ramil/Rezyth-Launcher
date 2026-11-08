@@ -89,6 +89,35 @@ cargo fetch --locked --manifest-path "$work/source/Cargo.toml" > /dev/null
 "$tools/bin/horizon-mixins" apply --workspace "$work/source" --mods "$work/mods" \
   --out "$work/stage"
 
+# A bundle may vendor a crate ([[crate]]): horizon-mixins adds it to horizon-client's
+# [dependencies] under native-crates/, and horizon-android compiles horizon-client's sources as
+# its own lib, so it needs the same dependency. Ported from the head tree's weave.
+python3 - "$work/stage" <<'EOF'
+import pathlib, sys
+stage = pathlib.Path(sys.argv[1])
+client = stage / "crates" / "horizon-client" / "Cargo.toml"
+android = stage / "crates" / "horizon-android" / "Cargo.toml"
+if not client.is_file() or not android.is_file():
+    sys.exit(0)
+android_text = android.read_text(encoding="utf-8")
+added = []
+for line in client.read_text(encoding="utf-8").splitlines():
+    stripped = line.strip()
+    package = stripped.split("=", 1)[0].strip()
+    if ("native-crates/" in stripped and "path" in stripped and package
+            and f"\n{package} =" not in "\n" + android_text):
+        added.append(stripped)
+if not added:
+    sys.exit(0)
+marker = "[dependencies]"
+if marker not in android_text:
+    sys.exit("native_build: horizon-android has no [dependencies] table to extend")
+android.write_text(android_text.replace(marker, marker + "\n" + "\n".join(added), 1),
+                   encoding="utf-8")
+print("native_build: propagated vendored crates: " + ", ".join(
+    entry.split("=", 1)[0].strip() for entry in added), file=sys.stderr)
+EOF
+
 # Into the build folder: a file whose bytes changed gets the time of now (no -t), one that did not
 # keeps its time, so Cargo recompiles what changed even when the commit is older than the last
 # build. horizon-android's manifest goes back to building android_lib.rs.

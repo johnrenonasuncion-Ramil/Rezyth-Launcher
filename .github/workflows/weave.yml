@@ -14,16 +14,13 @@ on:
       - '.github/workflows/weave.yml'
       - 'tools/native_mods/**'
       - '.weave-trigger'
+      - '.weave-set'
   workflow_dispatch:
     inputs:
       weave_set:
         description: "Registry mods to weave, one id per line (empty: the default set)"
         type: string
         default: ''
-      raw_targets:
-        description: "Also try bundles pinned without a hook-API declaration"
-        type: boolean
-        default: false
 permissions:
   contents: read
 env:
@@ -113,11 +110,11 @@ jobs:
               "https://github.com/horizon-rust/horizon-mods/releases/download/$tag/$file"
             args+=(--mod "$name=$RUNNER_TEMP/bundle/$file")
           done < "$set_file"
-          if [ "${{ github.event.inputs.raw_targets }}" = "true" ]; then args+=(--raw-targets); fi
           python3 tools/native_mods/weave.py \
             --registry "$RUNNER_TEMP/registry" \
             --registry-revision "$REGISTRY_REV" \
             "${args[@]}" \
+            --raw-targets \
             --output "$RUNNER_TEMP/weave" 2> "$RUNNER_TEMP/weave-report.txt" \
             > "$RUNNER_TEMP/weave-bundles.txt"
           echo "--- weave report:"; cat "$RUNNER_TEMP/weave-report.txt"
