@@ -1083,6 +1083,11 @@ pub struct ParticleEngine {
     pub camera: [f64; 3],
     /// The Particles option (`ParticleStatus`): 0 all, 1 decreased, 2 minimal.
     pub particle_level: u8,
+    /// Volt Boost's budget: the cap `MAX_PARTICLES` is held to (vanilla's own
+    /// 16,384 unless the budget says less), and the squared distance past
+    /// which nothing renders (`None`: vanilla's full distance).
+    max_particles: usize,
+    max_render_distance_sq: Option<f64>,
     /// FireworkParticles.Starter instances.
     starters: Vec<Starter>,
     /// `ClientExplosionTracker` tracked explosions pending debris generation.
@@ -1166,6 +1171,8 @@ impl ParticleEngine {
             tracked_explosions: Vec::new(),
             camera: [0.0; 3],
             particle_level: 0,
+            max_particles: MAX_PARTICLES,
+            max_render_distance_sq: None,
             sounds: Vec::new(),
             made: Default::default(),
             item_sprites: HashMap::new(),
@@ -1343,6 +1350,13 @@ impl ParticleEngine {
     /// the type overrides the limiter, and thinned by the Particles option.
     pub fn add(&mut self, options: &ParticleOptions, p: [f64; 3], v: [f64; 3]) {
         self.add_with(options, p, v, false, false);
+    }
+    /// Volt Boost's budget (extras): the cap `ParticleGroup.MAX_PARTICLES`
+    /// stands for, and the squared distance past which nothing renders.
+    /// `ParticleBudget::Vanilla16k` holds both at vanilla's behaviour.
+    pub fn set_budget(&mut self, budget: crate::volt_features::ParticleBudget) {
+        self.max_particles = budget.max_particles();
+        self.max_render_distance_sq = budget.max_distance_sq();
     }
     /// `ClientLevel.addParticle(particle, overrideLimiter, alwaysShow, ...)`
     /// (`doAddParticle`). `always_show` is `addAlwaysVisibleParticle`'s flag.
@@ -3321,6 +3335,15 @@ impl ParticleEngine {
         }
     }
     pub fn tick(&mut self, level: &ParticleLevel) {
+        // Volt Boost's Off: no particle at all, not even the ones already up.
+        let cap = self.max_particles.min(MAX_PARTICLES);
+        if cap == 0 {
+            self.starters.clear();
+            self.emitters.clear();
+            self.particles.clear();
+            self.pending.clear();
+            return;
+        }
         self.tick_starters();
         self.tick_explosions(level);
         for (options, feet, width, height, life) in std::mem::take(&mut self.emitters) {
@@ -3334,7 +3357,13 @@ impl ParticleEngine {
             self.tick_particle(p, level);
         }
         particles.retain(|p| !p.removed);
+        if particles.len() > cap {
+            particles.truncate(cap);
+        }
         self.particles = particles;
+        // ParticleGroup.add: the last quarter fills with decreasing probability.
+        let soft_cap = (cap * 3) / 4;
+        let tail_span = (cap - soft_cap).max(1) as f32;
         let pending = std::mem::take(&mut self.pending);
         for mut p in pending {
             if p.pre_tick {
@@ -3344,11 +3373,11 @@ impl ParticleEngine {
             }
             // ParticleGroup.add: the last quarter fills with decreasing probability.
             let size = self.particles.len();
-            if size >= MAX_PARTICLES {
+            if size >= cap {
                 continue;
             }
-            if size >= 12288 {
-                let free = (MAX_PARTICLES - size) as f32 / 4096.0;
+            if size >= soft_cap {
+                let free = (cap - size) as f32 / tail_span;
                 if self.random.next_float() >= free * free {
                     continue;
                 }
@@ -3366,7 +3395,7 @@ impl ParticleEngine {
             return;
         }
         let explosions = std::mem::take(&mut self.tracked_explosions);
-        if self.particle_level != 0 {
+        if self.particle_level != 0 || self.max_particles == 0 {
             return;
         }
         let total_blocks: usize = explosions.iter().map(|e| e.block_count).sum();
@@ -4268,6 +4297,13 @@ impl ParticleEngine {
                 p.previous[1] + (p.position[1] - p.previous[1]) * a,
                 p.previous[2] + (p.position[2] - p.previous[2]) * a,
             ) - camera;
+            // Volt Boost's distance cut: past it the particle skips its sprite
+            // and light lookups entirely.
+            if let Some(limit_sq) = self.max_render_distance_sq
+                && pos.length_squared() > limit_sq
+            {
+                continue;
+            }
             let center = pos.as_vec3();
             let rotation = if p.roll != 0.0 {
                 base * Quat::from_rotation_z(p.o_roll + (p.roll - p.o_roll) * partial)

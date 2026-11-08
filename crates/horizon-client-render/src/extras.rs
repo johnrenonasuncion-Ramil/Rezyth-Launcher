@@ -167,6 +167,9 @@ pub struct Extras {
     /// Volt Boost's dynamic idle FPS: a 30 or 15 FPS cap while the game is
     /// paused, in a menu, or shows no world (`framerate_limit`).
     pub dynamic_fps: crate::volt_features::DynamicIdleFps,
+    /// Volt Boost's particle budget: the active cap (16,384 as vanilla) and
+    /// the distance past which nothing renders (`particles.rs`).
+    pub particle_budget: crate::volt_features::ParticleBudget,
 }
 impl Default for Extras {
     fn default() -> Self {
@@ -219,6 +222,7 @@ impl Default for Extras {
             performance_hints: true,
             volt_preset: crate::volt_features::VoltBoostPreset::Off,
             dynamic_fps: crate::volt_features::DynamicIdleFps::Off,
+            particle_budget: crate::volt_features::ParticleBudget::Vanilla16k,
         }
     }
 }
@@ -338,6 +342,11 @@ impl Extras {
                         e.dynamic_fps = m;
                     }
                 }
+                "particleBudget" => {
+                    if let Some(b) = crate::volt_features::ParticleBudget::parse(value) {
+                        e.particle_budget = b;
+                    }
+                }
                 _ => {}
             }
         }
@@ -345,7 +354,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -399,25 +408,31 @@ impl Extras {
             bool_text(self.performance_hints),
             self.volt_preset.as_str(),
             self.dynamic_fps.as_str(),
+            self.particle_budget.as_str(),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
-    /// (the thread tuning and the dynamic idle FPS; the method grows with
-    /// each ported switch, as the head's does across its Tier 1-3 fields).
-    /// `Off` puts every one of them back to vanilla's behaviour.
+    /// (the thread tuning, the dynamic idle FPS and the particle budget; the
+    /// method grows with each ported switch, as the head's does across its
+    /// Tier 1-3 fields). `Off` puts every one of them back to vanilla's
+    /// behaviour.
     pub fn apply_volt_preset(&mut self, preset: crate::volt_features::VoltBoostPreset) {
-        use crate::volt_features::{DynamicIdleFps, VoltBoostPreset};
+        use crate::volt_features::{DynamicIdleFps, ParticleBudget, VoltBoostPreset};
         self.volt_preset = preset;
-        let (thread_boost, dynamic_fps) = match preset {
-            VoltBoostPreset::Off => (false, DynamicIdleFps::Off),
-            VoltBoostPreset::Balanced | VoltBoostPreset::Competitive => {
-                (true, DynamicIdleFps::Fps30)
+        let (thread_boost, dynamic_fps, particle_budget) = match preset {
+            VoltBoostPreset::Off => (false, DynamicIdleFps::Off, ParticleBudget::Vanilla16k),
+            VoltBoostPreset::Balanced => (true, DynamicIdleFps::Fps30, ParticleBudget::Cap4096),
+            VoltBoostPreset::Competitive => (true, DynamicIdleFps::Fps30, ParticleBudget::Cap2048),
+            VoltBoostPreset::UltraFps | VoltBoostPreset::LowRam => {
+                (true, DynamicIdleFps::Fps15, ParticleBudget::Cap512)
             }
-            VoltBoostPreset::UltraFps | VoltBoostPreset::LowRam => (true, DynamicIdleFps::Fps15),
-            VoltBoostPreset::BatterySaver => (false, DynamicIdleFps::Fps15),
+            VoltBoostPreset::BatterySaver => {
+                (false, DynamicIdleFps::Fps15, ParticleBudget::Cap2048)
+            }
         };
         self.thread_boost = thread_boost;
         self.dynamic_fps = dynamic_fps;
+        self.particle_budget = particle_budget;
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for

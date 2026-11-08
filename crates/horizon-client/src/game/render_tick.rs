@@ -423,6 +423,8 @@ impl Game<'_> {
             );
         }
         self.particles.particle_level = self.settings.particles;
+        self.particles
+            .set_budget(self.settings.extras.particle_budget);
         if let Some(e) = eye {
             self.particles.camera = e;
         }
