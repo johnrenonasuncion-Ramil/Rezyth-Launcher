@@ -11045,6 +11045,7 @@ impl Game<'_> {
                 .collect();
             if max_be < usize::MAX && visible.len() > max_be {
                 visible.sort_unstable_by(|a, b| {
+                    let (pa, pb) = (&a.0, &b.0);
                     off_screen(b.1).cmp(&off_screen(a.1)).then_with(|| {
                         let center = |p: &[i32; 3]| {
                             glam::DVec3::new(
@@ -11053,9 +11054,9 @@ impl Game<'_> {
                                 f64::from(p[2]) + 0.5,
                             ) - camera
                         };
-                        center(a.0)
+                        center(pa)
                             .length_squared()
-                            .total_cmp(&center(b.0).length_squared())
+                            .total_cmp(&center(pb).length_squared())
                     })
                 });
                 visible.truncate(max_be);
