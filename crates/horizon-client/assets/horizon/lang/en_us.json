@@ -494,5 +494,9 @@
   "horizon.extras.cosmetics_mine": "My cosmetics",
   "horizon.extras.cosmetics_mine.tooltip": "Shows the cosmetics you wear on your own player, in third person and the inventory.",
   "horizon.extras.cosmetics_others": "Other players' cosmetics",
-  "horizon.extras.cosmetics_others.tooltip": "Shows the cosmetics other Horizon players wear. Off, the game never asks what they wear."
+  "horizon.extras.cosmetics_others.tooltip": "Shows the cosmetics other Horizon players wear. Off, the game never asks what they wear.",
+  "horizon.gallery.saved": "Screenshot added to the gallery: %s",
+  "horizon.gallery.failed": "Could not add the screenshot to the gallery: %s",
+  "horizon.gallery.permission": "Allow storage access to add screenshots to the gallery; the copy in the game folder is kept.",
+  "horizon.gallery.unavailable": "Could not reach Android's gallery; the screenshot stays in the game folder."
 }

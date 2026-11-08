@@ -1547,6 +1547,24 @@ impl Game<'_> {
         let Some(path) = self.ui.screenshot_message.take() else {
             return;
         };
+        #[cfg(target_os = "android")]
+        if result.is_ok() {
+            // The game keeps its copy in `screenshots/`; also publish it to the system gallery.
+            // The background copy reports through `android::gallery::poll` on a later frame.
+            match crate::android::gallery::save(&path) {
+                Ok(()) => {}
+                Err(crate::android::gallery::Failure::Unavailable) => {
+                    self.system_message(Text::translate("horizon.gallery.unavailable", &[]));
+                }
+                Err(crate::android::gallery::Failure::Spawn(error)) => {
+                    self.system_message(Text::translate(
+                        "horizon.gallery.failed",
+                        &[Text::literal(error)],
+                    ));
+                }
+            }
+            return;
+        }
         let message = match result {
             Ok(_) => {
                 log::info!("Saved screenshot to {}", path.display());
@@ -1572,6 +1590,26 @@ impl Game<'_> {
             self.ticks,
             focused,
         );
+    }
+    /// Android's background gallery copies that finished since the last frame
+    /// (android/gallery.rs): say where the screenshot went, or why it did not.
+    #[cfg(target_os = "android")]
+    pub(super) fn poll_gallery(&mut self) {
+        for outcome in crate::android::gallery::poll() {
+            let message = match outcome {
+                crate::android::gallery::Outcome::Saved(name) => {
+                    Text::translate("horizon.gallery.saved", &[Text::literal(name)])
+                }
+                crate::android::gallery::Outcome::Failed(error) => Text::translate(
+                    "horizon.gallery.failed",
+                    &[Text::literal(error)],
+                ),
+                crate::android::gallery::Outcome::PermissionDenied => {
+                    Text::translate("horizon.gallery.permission", &[])
+                }
+            };
+            self.system_message(message);
+        }
     }
 }
 /// `yyyy-MM-dd_HH.mm.ss[_n].png` (Util.getFilenameFormattedDateTime, in local time).

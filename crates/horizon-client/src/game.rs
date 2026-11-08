@@ -18748,6 +18748,9 @@ impl Game<'_> {
         // The mouse and the keyboard as Android's input hook saw them (game/input_mode.rs).
         #[cfg(target_os = "android")]
         self.android_input_frame(event_loop);
+        // Screenshots the system gallery published in the background (android/gallery.rs).
+        #[cfg(target_os = "android")]
+        self.poll_gallery();
         self.touch_frame(event_loop);
         self.poll_imports();
         if let Some(folder) = &self.content_record

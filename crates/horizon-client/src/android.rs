@@ -16,6 +16,8 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use winit::platform::android::activity::AndroidApp;
 
+pub mod gallery;
+
 static APP: OnceLock<AndroidApp> = OnceLock::new();
 static ARGS: OnceLock<Vec<String>> = OnceLock::new();
 /// Shared storage's Starling folder, when the player allowed the app to use it.
