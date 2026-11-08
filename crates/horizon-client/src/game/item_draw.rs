@@ -555,6 +555,32 @@ impl Game<'_> {
         // position. A pickup particle is not an entity and keeps 64 blocks.
         let range =
             super::entity_culling::default_range(glam::DVec3::splat(0.25), self.view_scale());
+        // Volt Boost's item cap: when more dropped items are up than it, only
+        // the nearest ones draw, and none past its distance. Rendering only.
+        let (max_items, max_dist_sq) = self
+            .settings
+            .extras
+            .item_render_cap
+            .limit_and_dist_sq()
+            .unwrap_or((usize::MAX, f64::INFINITY));
+        let drawn: Option<std::collections::HashSet<u64>> = (self.dropped.len() > max_items)
+            .then(|| {
+                let mut sorted: Vec<(u64, f64)> = self
+                    .dropped
+                    .iter()
+                    .map(|item| {
+                        let d = glam::DVec3::new(item.position.x, item.position.y, item.position.z)
+                            - camera;
+                        (u64::from(item.id), d.length_squared())
+                    })
+                    .collect();
+                sorted.sort_unstable_by(|a, b| a.1.total_cmp(&b.1));
+                sorted
+                    .into_iter()
+                    .take(max_items)
+                    .map(|(id, _)| id)
+                    .collect()
+            });
         let skinning = self.skinning();
         let lights = diffuse_lights(self.dim == Dim::Nether);
         for (item, at, partial, entity) in live.chain(taken) {
@@ -569,6 +595,14 @@ impl Game<'_> {
             };
             if far {
                 continue;
+            }
+            if entity {
+                if let Some(drawn) = &drawn && !drawn.contains(&u64::from(item.id)) {
+                    continue;
+                }
+                if pos.length_squared() > max_dist_sq {
+                    continue;
+                }
             }
             // EntityRenderer.shouldRender: the item's 0.25 box, grown by 0.5,
             // in the view frustum. Checked before its model is resolved.

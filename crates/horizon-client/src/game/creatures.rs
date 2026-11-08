@@ -6458,6 +6458,38 @@ impl Game<'_> {
                 == super::perspective::CameraType::ThirdPersonFront,
             ..Default::default()
         });
+        // Volt Boost's entity cap: when the world holds more mobs than it,
+        // only the nearest ones draw (the ones the view looks out of never
+        // take a slot). Rendering only: their ticking and interaction are
+        // the world's.
+        let max_entities = self
+            .settings
+            .extras
+            .entity_cap
+            .limit()
+            .unwrap_or(usize::MAX);
+        let drawn: Option<std::collections::HashSet<u64>> = (self.mobs.len() > max_entities)
+            .then(|| {
+                let mut sorted: Vec<(u64, f64)> = self
+                    .mobs
+                    .iter()
+                    .filter(|mob| !self.hides_as_camera(mob.id))
+                    .map(|mob| {
+                        let d = glam::DVec3::new(
+                            mob.position.x,
+                            mob.position.y,
+                            mob.position.z,
+                        ) - camera;
+                        (u64::from(mob.id), d.length_squared())
+                    })
+                    .collect();
+                sorted.sort_unstable_by(|a, b| a.1.total_cmp(&b.1));
+                sorted
+                    .into_iter()
+                    .take(max_entities)
+                    .map(|(id, _)| id)
+                    .collect()
+            });
         for mob in &self.mobs {
             let entity_start = out.len();
             self.mark_motion(entity_start, (1 << 32) | u64::from(mob.id));
@@ -6474,6 +6506,9 @@ impl Game<'_> {
             // LevelRenderer: the entity the view looks out of is not drawn
             // in first person.
             if self.hides_as_camera(mob.id) {
+                continue;
+            }
+            if let Some(drawn) = &drawn && !drawn.contains(&u64::from(mob.id)) {
                 continue;
             }
             let d = glam::DVec3::new(mob.position.x, mob.position.y, mob.position.z) - camera;

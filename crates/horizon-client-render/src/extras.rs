@@ -179,6 +179,12 @@ pub struct Extras {
     /// Volt Boost's thermal guard: under load, the resolution and the
     /// particle budget ease down until the phone cools.
     pub thermal_guard: bool,
+    /// Volt Boost's entity render caps: past the cap only the nearest mobs,
+    /// dropped items or block entities draw (rendering only), and past the
+    /// mode's distance nothing does.
+    pub entity_cap: crate::volt_features::EntityCap,
+    pub item_render_cap: crate::volt_features::ItemRenderCap,
+    pub block_entity_cap: crate::volt_features::BlockEntityCap,
     /// Volt Reflex: the GPU's queue is worked before the frame's sleep, with
     /// precise pacing while playing.
     pub volt_reflex: bool,
@@ -239,6 +245,9 @@ impl Default for Extras {
             auto_drs: crate::volt_features::AutoDrsMode::Off,
             thermal_guard: false,
             volt_reflex: false,
+            entity_cap: crate::volt_features::EntityCap::Unlimited,
+            item_render_cap: crate::volt_features::ItemRenderCap::Unlimited,
+            block_entity_cap: crate::volt_features::BlockEntityCap::Unlimited,
         }
     }
 }
@@ -375,6 +384,21 @@ impl Extras {
                 }
                 "thermalGuard" => e.thermal_guard = flag(e.thermal_guard),
                 "voltReflex" => e.volt_reflex = flag(e.volt_reflex),
+                "entityCap" => {
+                    if let Some(c) = crate::volt_features::EntityCap::parse(value) {
+                        e.entity_cap = c;
+                    }
+                }
+                "itemRenderCap" => {
+                    if let Some(c) = crate::volt_features::ItemRenderCap::parse(value) {
+                        e.item_render_cap = c;
+                    }
+                }
+                "blockEntityCap" => {
+                    if let Some(c) = crate::volt_features::BlockEntityCap::parse(value) {
+                        e.block_entity_cap = c;
+                    }
+                }
                 _ => {}
             }
         }
@@ -382,7 +406,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -441,6 +465,9 @@ impl Extras {
             self.auto_drs.as_str(),
             bool_text(self.thermal_guard),
             bool_text(self.volt_reflex),
+            self.entity_cap.as_str(),
+            self.item_render_cap.as_str(),
+            self.block_entity_cap.as_str(),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -450,73 +477,91 @@ impl Extras {
     /// behaviour.
     pub fn apply_volt_preset(&mut self, preset: crate::volt_features::VoltBoostPreset) {
         use crate::volt_features::{
-            AudioVoiceCap, AutoDrsMode, DynamicIdleFps, ParticleBudget, VoltBoostPreset,
+            AudioVoiceCap, AutoDrsMode, BlockEntityCap, DynamicIdleFps, EntityCap, ItemRenderCap,
+            ParticleBudget, VoltBoostPreset,
         };
         self.volt_preset = preset;
-        let (thread_boost, dynamic_fps, particle_budget, audio_voice_cap, auto_drs, thermal_guard, volt_reflex) =
-            match preset {
-                VoltBoostPreset::Off => (
-                    false,
-                    DynamicIdleFps::Off,
-                    ParticleBudget::Vanilla16k,
-                    AudioVoiceCap::Vanilla,
-                    AutoDrsMode::Off,
-                    false,
-                    false,
-                ),
-                VoltBoostPreset::Balanced => (
-                    true,
-                    DynamicIdleFps::Fps30,
-                    ParticleBudget::Cap4096,
-                    AudioVoiceCap::Cap32,
-                    AutoDrsMode::Off,
-                    true,
-                    true,
-                ),
-                VoltBoostPreset::Competitive => (
-                    true,
-                    DynamicIdleFps::Fps30,
-                    ParticleBudget::Cap2048,
-                    AudioVoiceCap::Cap32,
-                    AutoDrsMode::Target120,
-                    true,
-                    true,
-                ),
-                VoltBoostPreset::UltraFps => (
-                    true,
-                    DynamicIdleFps::Fps15,
-                    ParticleBudget::Cap512,
-                    AudioVoiceCap::Cap16,
-                    AutoDrsMode::Aggressive50,
-                    true,
-                    true,
-                ),
-                VoltBoostPreset::BatterySaver => (
-                    false,
-                    DynamicIdleFps::Fps15,
-                    ParticleBudget::Cap2048,
-                    AudioVoiceCap::Cap16,
-                    AutoDrsMode::Target60,
-                    true,
-                    false,
-                ),
-                VoltBoostPreset::LowRam => (
-                    true,
-                    DynamicIdleFps::Fps15,
-                    ParticleBudget::Cap512,
-                    AudioVoiceCap::Cap16,
-                    AutoDrsMode::Target60,
-                    true,
-                    true,
-                ),
-            };
+        let (thread_boost, dynamic_fps, particle_budget, audio_voice_cap) = match preset {
+            VoltBoostPreset::Off => {
+                (false, DynamicIdleFps::Off, ParticleBudget::Vanilla16k, AudioVoiceCap::Vanilla)
+            }
+            VoltBoostPreset::Balanced => {
+                (true, DynamicIdleFps::Fps30, ParticleBudget::Cap4096, AudioVoiceCap::Cap32)
+            }
+            VoltBoostPreset::Competitive => {
+                (true, DynamicIdleFps::Fps30, ParticleBudget::Cap2048, AudioVoiceCap::Cap32)
+            }
+            VoltBoostPreset::UltraFps => {
+                (true, DynamicIdleFps::Fps15, ParticleBudget::Cap512, AudioVoiceCap::Cap16)
+            }
+            VoltBoostPreset::BatterySaver => {
+                (false, DynamicIdleFps::Fps15, ParticleBudget::Cap2048, AudioVoiceCap::Cap16)
+            }
+            VoltBoostPreset::LowRam => {
+                (true, DynamicIdleFps::Fps15, ParticleBudget::Cap512, AudioVoiceCap::Cap16)
+            }
+        };
         self.thread_boost = thread_boost;
         self.dynamic_fps = dynamic_fps;
         self.particle_budget = particle_budget;
         self.audio_voice_cap = audio_voice_cap;
+        let (auto_drs, thermal_guard, volt_reflex, entity_cap, item_render_cap, block_entity_cap) =
+            match preset {
+                VoltBoostPreset::Off => (
+                    AutoDrsMode::Off,
+                    false,
+                    false,
+                    EntityCap::Unlimited,
+                    ItemRenderCap::Unlimited,
+                    BlockEntityCap::Unlimited,
+                ),
+                VoltBoostPreset::Balanced => (
+                    AutoDrsMode::Off,
+                    true,
+                    true,
+                    EntityCap::Cap128,
+                    ItemRenderCap::Cap128,
+                    BlockEntityCap::Cap64,
+                ),
+                VoltBoostPreset::Competitive => (
+                    AutoDrsMode::Target120,
+                    true,
+                    true,
+                    EntityCap::Cap96,
+                    ItemRenderCap::Cap64,
+                    BlockEntityCap::Cap32,
+                ),
+                VoltBoostPreset::UltraFps => (
+                    AutoDrsMode::Aggressive50,
+                    true,
+                    true,
+                    EntityCap::Cap64,
+                    ItemRenderCap::Cap32,
+                    BlockEntityCap::Cap16,
+                ),
+                VoltBoostPreset::BatterySaver => (
+                    AutoDrsMode::Target60,
+                    true,
+                    false,
+                    EntityCap::Cap96,
+                    ItemRenderCap::Cap64,
+                    BlockEntityCap::Cap32,
+                ),
+                VoltBoostPreset::LowRam => (
+                    AutoDrsMode::Target60,
+                    true,
+                    true,
+                    EntityCap::Cap64,
+                    ItemRenderCap::Cap32,
+                    BlockEntityCap::Cap16,
+                ),
+            };
         self.auto_drs = auto_drs;
         self.thermal_guard = thermal_guard;
         self.volt_reflex = volt_reflex;
+        self.entity_cap = entity_cap;
+        self.item_render_cap = item_render_cap;
+        self.block_entity_cap = block_entity_cap;
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for

@@ -11022,6 +11022,45 @@ impl Game<'_> {
                         && (off_screen(state) || *section_inside || in_view(&pos))
                 })
                 .map(|(block, _)| block);
+            // Volt Boost's block-entity cap: past the distance nothing draws
+            // (beams and gateways but for it), and past the cap only the
+            // nearest do, the long-range kinds first. Rendering only.
+            let (max_be, max_be_dist_sq) = self
+                .settings
+                .extras
+                .block_entity_cap
+                .limit_and_dist_sq()
+                .unwrap_or((usize::MAX, f64::INFINITY));
+            let mut visible: Vec<&([i32; 3], u32)> = visible
+                .filter(|block| {
+                    let (pos, state) = (block.0, block.1);
+                    let dist_sq = (glam::DVec3::new(
+                        f64::from(pos[0]),
+                        f64::from(pos[1]),
+                        f64::from(pos[2]),
+                    ) - camera)
+                        .length_squared();
+                    off_screen(state) || dist_sq <= max_be_dist_sq
+                })
+                .collect();
+            if max_be < usize::MAX && visible.len() > max_be {
+                visible.sort_unstable_by(|a, b| {
+                    off_screen(b.1).cmp(&off_screen(a.1)).then_with(|| {
+                        let center = |p: &[i32; 3]| {
+                            glam::DVec3::new(
+                                f64::from(p[0]) + 0.5,
+                                f64::from(p[1]) + 0.5,
+                                f64::from(p[2]) + 0.5,
+                            ) - camera
+                        };
+                        center(a.0)
+                            .length_squared()
+                            .total_cmp(&center(b.0).length_squared())
+                    })
+                });
+                visible.truncate(max_be);
+            }
+            let visible = visible.into_iter();
             let block_entity_cache = CacheOptions {
                 shulker_boxes: self.settings.horizon.cache_shulker_boxes,
                 signs: self.settings.horizon.cache_signs,
