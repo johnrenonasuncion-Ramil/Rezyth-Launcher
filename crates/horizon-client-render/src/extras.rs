@@ -1126,6 +1126,16 @@ impl Item {
             | ChatAnimation | WheelCyclesSettings | MusicPage | CosmeticsMine | CosmeticsOthers => {
                 return None;
             }
+            // Each Volt Boost switch stands on its own.
+            VoltPreset | VoltThreadBoost | VoltPerformanceHints | VoltDisplayHz
+            | VoltDynamicFps | VoltAudioCap | VoltAutoDrs | VoltThermalGuard | VoltReflex
+            | VoltParticleBudget | VoltChaosShield | VoltParticleFrustum | VoltEntityCap
+            | VoltItemCap | VoltBlockEntityCap | VoltAnimThrottle | VoltActiveAnimCull
+            | VoltFastTranslucency | VoltFastWeather | VoltCullSignText | VoltMobThrottle
+            | VoltHubShield | VoltMenuBg | VoltLookahead | VoltCaveSkyCull | VoltFrustumMesh
+            | VoltMemorySaver => {
+                return None;
+            }
         })
     }
     /// The English description: the fallback of [`Item::description_text`].
