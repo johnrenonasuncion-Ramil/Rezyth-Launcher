@@ -150,6 +150,9 @@ pub struct Extras {
     /// players' (`cosmeticsMine`, `cosmeticsOthers`; both on by default).
     pub cosmetics_mine: bool,
     pub cosmetics_others: bool,
+    /// Volt Boost's big.LITTLE thread tuning on Android (horizon-threads'
+    /// 50 us timer slack): off, as vanilla's scheduling.
+    pub thread_boost: bool,
 }
 impl Default for Extras {
     fn default() -> Self {
@@ -197,6 +200,7 @@ impl Default for Extras {
             music_page: false,
             cosmetics_mine: true,
             cosmetics_others: true,
+            thread_boost: false,
         }
     }
 }
@@ -293,6 +297,7 @@ impl Extras {
                 "musicPage" => e.music_page = flag(e.music_page),
                 "cosmeticsMine" => e.cosmetics_mine = flag(e.cosmetics_mine),
                 "cosmeticsOthers" => e.cosmetics_others = flag(e.cosmetics_others),
+                "threadBoost" => e.thread_boost = flag(e.thread_boost),
                 _ => {}
             }
         }
@@ -300,7 +305,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -349,6 +354,7 @@ impl Extras {
             bool_text(self.music_page),
             bool_text(self.cosmetics_mine),
             bool_text(self.cosmetics_others),
+            bool_text(self.thread_boost),
         )
     }
     /// Binds the extra key `name` (`SORT_KEY`); false for

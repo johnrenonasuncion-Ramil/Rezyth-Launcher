@@ -41,14 +41,30 @@ fn parse_worker_count(value: Option<String>) -> Option<usize> {
 /// world generation and chunk encoding on every other core don't hold a tick
 /// back (the client asks the same for its render thread, so they don't hold
 /// a frame back either): user-interactive quality of service on macOS,
-/// above-normal priority on Windows. Nothing elsewhere: Linux lets an
-/// unprivileged thread lower its priority but not raise it (and the JVM
-/// leaves it there too). Whether the OS took it.
+/// above-normal priority on Windows, and on Android (Volt Boost's
+/// big.LITTLE affinity) a 50 us timer slack so frame-pacing sleeps wake
+/// crisp on 60/90/120 Hz displays without busy-spinning. Nothing elsewhere:
+/// Linux lets an unprivileged thread lower its priority but not raise it
+/// (and the JVM leaves it there too). Whether the OS took it.
 pub fn favour_current() -> bool {
     if std::thread::available_parallelism().map_or(1, |n| n.get()) <= 4 {
         return false;
     }
     favour()
+}
+
+/// Volt Boost's big.LITTLE thread tuning, on until the game's stored setting
+/// says otherwise (`extras.thread_boost`, applied at the Android start).
+static THREAD_BOOST: AtomicBool = AtomicBool::new(true);
+
+/// Enables or disables the Android timer-slack tuning before the threads start.
+pub fn set_thread_boost(enabled: bool) {
+    THREAD_BOOST.store(enabled, Ordering::Relaxed);
+}
+
+/// Whether the tuning is enabled.
+pub fn thread_boost_enabled() -> bool {
+    THREAD_BOOST.load(Ordering::Relaxed)
 }
 
 #[cfg(target_vendor = "apple")]
@@ -68,7 +84,17 @@ fn favour() -> bool {
     unsafe { SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_ABOVE_NORMAL) != 0 }
 }
 
-#[cfg(not(any(target_vendor = "apple", windows)))]
+#[cfg(target_os = "android")]
+fn favour() -> bool {
+    if !THREAD_BOOST.load(Ordering::Relaxed) {
+        return false;
+    }
+    // SAFETY: PR_SET_TIMERSLACK takes an unsigned nanosecond value for the
+    // calling thread.
+    unsafe { libc::prctl(libc::PR_SET_TIMERSLACK, 50_000usize, 0, 0, 0) == 0 }
+}
+
+#[cfg(not(any(target_vendor = "apple", windows, target_os = "android")))]
 fn favour() -> bool {
     false
 }

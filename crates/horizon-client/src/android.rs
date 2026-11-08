@@ -1249,6 +1249,9 @@ pub fn main(app: AndroidApp) {
             &format!("Horizon: cannot enter {}: {e}", home.display()),
         );
     }
+    // Volt Boost's big.LITTLE thread tuning, as the player's last setting has
+    // it, before any game thread starts.
+    horizon_threads::set_thread_boost(crate::extras::Extras::load(&home).thread_boost);
     logging::set_console(logcat);
     // A bounded, redacted copy of the log and the run's state in the game folder's
     // `performance/`, plus Android's exit history for the previous process (diagnostics.rs,
