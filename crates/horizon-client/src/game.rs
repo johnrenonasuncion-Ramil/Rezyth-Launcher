@@ -10973,9 +10973,22 @@ impl Game<'_> {
                 atlas_revision: self.gui.atlas.revision,
                 nether: self.dim == Dim::Nether,
                 lid: &lid,
-                sign: &|p| match self.world.block_entities.get(&(p[0], p[1], p[2])) {
-                    Some(BlockEntity::Sign(sign)) => Some(sign),
-                    _ => None,
+                sign: &|p| {
+                    // Volt Boost's sign-text cull: the standing text is not
+                    // readable past sixteen blocks, and its quads cost a
+                    // draw per sign (the block itself stays).
+                    if self.settings.extras.cull_sign_text {
+                        let dx = f64::from(p[0]) + 0.5 - camera.x;
+                        let dy = f64::from(p[1]) + 0.5 - camera.y;
+                        let dz = f64::from(p[2]) + 0.5 - camera.z;
+                        if dx * dx + dy * dy + dz * dz > 256.0 {
+                            return None;
+                        }
+                    }
+                    match self.world.block_entities.get(&(p[0], p[1], p[2])) {
+                        Some(BlockEntity::Sign(sign)) => Some(sign),
+                        _ => None,
+                    }
                 },
                 banner: &|p| self.banner_layers_at(p),
                 skull: &|p| self.skull_skin_at(p),
@@ -14377,7 +14390,13 @@ impl Game<'_> {
             camera.z.floor() as i32,
         );
         // The 32x32 direction table supports at most a 15-block radius.
-        let radius = self.settings.weather_radius.clamp(0, 15);
+        // Volt Boost's fast weather draws the rain and snow nearer (its loop
+        // is the cost, and a phone hardly sees past four blocks of it).
+        let radius = if self.settings.extras.fast_weather {
+            self.settings.weather_radius.clamp(0, 4)
+        } else {
+            self.settings.weather_radius.clamp(0, 15)
+        };
         let eye = camera.to_array();
         let mut rain = Vec::new();
         let mut snow_vertices = Vec::new();

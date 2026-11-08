@@ -6470,10 +6470,25 @@ impl Game<'_> {
             .unwrap_or(usize::MAX);
         let drawn: Option<std::collections::HashSet<u64>> = (self.mobs.len() > max_entities)
             .then(|| {
+                // Volt Boost's hub lag shield: in a hub of players, the ones
+                // far beyond nametag range give up their render slot first.
+                let hub_shield =
+                    self.settings.extras.hub_lag_shield && self.mobs.len() > 24;
                 let mut sorted: Vec<(u64, f64)> = self
                     .mobs
                     .iter()
-                    .filter(|mob| !self.hides_as_camera(mob.id))
+                    .filter(|mob| {
+                        !self.hides_as_camera(mob.id)
+                            && !(hub_shield
+                                && &*mob.kind.id == "minecraft:player"
+                                && (glam::DVec3::new(
+                                    mob.position.x,
+                                    mob.position.y,
+                                    mob.position.z,
+                                ) - camera)
+                                .length_squared()
+                                    > 18.0 * 18.0)
+                    })
                     .map(|mob| {
                         let d = glam::DVec3::new(
                             mob.position.x,
@@ -6526,6 +6541,15 @@ impl Game<'_> {
             if d.length_squared() >= range * range {
                 continue;
             }
+            // Volt Boost's distant mob throttle: far mobs' bodies and player
+            // layers draw without their animation alpha (the models stay).
+            let mob_alpha = if self.settings.extras.distant_mob_throttle
+                && d.length_squared() > 24.0 * 24.0
+            {
+                0.0
+            } else {
+                alpha
+            };
             // EntityRenderer.shouldRender: the culling box, grown by 0.5
             // (GuardianRenderer also draws while its beam is out).
             if let Some(view) = &self.view_frustum
@@ -6638,7 +6662,7 @@ impl Game<'_> {
                 let mut skin = horizon_client::mobs::skin::Skin::new(&mut models, &mut frame);
                 horizon_client::mobs::render::render_skinned(
                     mob,
-                    alpha as f32,
+                    mob_alpha as f32,
                     camera,
                     &lookup,
                     packed,
@@ -6655,7 +6679,7 @@ impl Game<'_> {
                 };
                 render(
                     mob,
-                    alpha as f32,
+                    mob_alpha as f32,
                     camera,
                     &lookup,
                     packed,
@@ -6683,18 +6707,18 @@ impl Game<'_> {
                 // the others have no `isInvisible` check.
                 let chest = mob.extra.chest.as_deref();
                 if !layers_only {
-                    self.player_cape_geometry(mob, chest, camera, alpha as f32, packed, out);
+                    self.player_cape_geometry(mob, chest, camera, mob_alpha as f32, packed, out);
                 }
                 if let Some((_, name)) = self
                     .remote_player_names()
                     .into_iter()
                     .find(|(id, _)| *id == mob.id)
                 {
-                    self.player_ears_geometry(mob, &name, camera, alpha as f32, packed, out);
+                    self.player_ears_geometry(mob, &name, camera, mob_alpha as f32, packed, out);
                 }
-                self.player_elytra_geometry(mob, chest, camera, alpha as f32, packed, out);
+                self.player_elytra_geometry(mob, chest, camera, mob_alpha as f32, packed, out);
                 self.shoulder_parrots_geometry(mob, camera, alpha as f32, packed, out);
-                self.spin_attack_geometry(mob, camera, alpha as f32, packed, out);
+                self.spin_attack_geometry(mob, camera, mob_alpha as f32, packed, out);
                 self.stuck_in_body_geometry(mob, mob.id as i32, camera, alpha as f32, packed, out);
             }
             // Cosmetics (game/cosmetics.rs), posed on the GPU with the mob's own jobs: culled

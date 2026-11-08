@@ -191,6 +191,17 @@ pub struct Extras {
     /// Volt Boost's fast translucency: distant water and glass re-sort on a
     /// coarser grid with a smaller rotating budget.
     pub fast_translucency: bool,
+    /// Volt Boost's fast weather: rain and snow draw within four blocks.
+    pub fast_weather: bool,
+    /// Volt Boost's sign-text cull: signs' standing text is skipped past
+    /// sixteen blocks (the block itself stays).
+    pub cull_sign_text: bool,
+    /// Volt Boost's distant mob throttle: far mobs' bodies and player layers
+    /// draw without their animation alpha.
+    pub distant_mob_throttle: bool,
+    /// Volt Boost's hub lag shield: in a world of more than 24 mobs, players
+    /// beyond nametag range give up their render slot first.
+    pub hub_lag_shield: bool,
     /// Volt Boost's entity render caps: past the cap only the nearest mobs,
     /// dropped items or block entities draw (rendering only), and past the
     /// mode's distance nothing does.
@@ -264,6 +275,10 @@ impl Default for Extras {
             anim_throttle: false,
             active_anim_cull: true,
             fast_translucency: false,
+            fast_weather: false,
+            cull_sign_text: false,
+            distant_mob_throttle: false,
+            hub_lag_shield: false,
         }
     }
 }
@@ -423,6 +438,10 @@ impl Extras {
                 "animThrottle" => e.anim_throttle = flag(e.anim_throttle),
                 "activeAnimCull" => e.active_anim_cull = flag(e.active_anim_cull),
                 "fastTranslucency" => e.fast_translucency = flag(e.fast_translucency),
+                "fastWeather" => e.fast_weather = flag(e.fast_weather),
+                "cullSignText" => e.cull_sign_text = flag(e.cull_sign_text),
+                "distantMobThrottle" => e.distant_mob_throttle = flag(e.distant_mob_throttle),
+                "hubLagShield" => e.hub_lag_shield = flag(e.hub_lag_shield),
                 _ => {}
             }
         }
@@ -430,7 +449,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\nanimThrottle:{}\nactiveAnimCull:{}\nfastTranslucency:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\nanimThrottle:{}\nactiveAnimCull:{}\nfastTranslucency:{}\nfastWeather:{}\ncullSignText:{}\ndistantMobThrottle:{}\nhubLagShield:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -496,6 +515,10 @@ impl Extras {
             bool_text(self.anim_throttle),
             bool_text(self.active_anim_cull),
             bool_text(self.fast_translucency),
+            bool_text(self.fast_weather),
+            bool_text(self.cull_sign_text),
+            bool_text(self.distant_mob_throttle),
+            bool_text(self.hub_lag_shield),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -595,15 +618,23 @@ impl Extras {
             VoltBoostPreset::Off => crate::volt_features::MenuBgMode::PanoramaBlur,
             _ => crate::volt_features::MenuBgMode::FastDark,
         };
-        // The Tier 2 switches: the throttle and the translucency savings are
-        // on in every profile, and the animation cull stays this engine's
-        // default (on) under all of them.
+        // The Tier 2 switches, per the head's profiles: the throttle, the
+        // sign-text cull and the mob throttle are on in every profile that
+        // is not Off; the weather and the hub shield skip Balanced.
         let (anim_throttle, fast_translucency) = match preset {
             VoltBoostPreset::Off => (false, false),
             _ => (true, true),
         };
         self.anim_throttle = anim_throttle;
         self.fast_translucency = fast_translucency;
+        let (fast_weather, hub_lag_shield) = match preset {
+            VoltBoostPreset::Off | VoltBoostPreset::Balanced => (false, false),
+            _ => (true, true),
+        };
+        self.fast_weather = fast_weather;
+        self.hub_lag_shield = hub_lag_shield;
+        self.cull_sign_text = preset != VoltBoostPreset::Off;
+        self.distant_mob_throttle = preset != VoltBoostPreset::Off;
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for
