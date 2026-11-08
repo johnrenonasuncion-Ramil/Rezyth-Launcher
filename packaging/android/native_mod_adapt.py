@@ -84,6 +84,13 @@ CHANGED = (
         "Some(st) => BlockState { name: st.name.clone(),"
         " properties: st.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect() },",
     ),
+    # Carryblock's BlockInfo does the same.
+    (
+        r"\.state\(state\)\s*\.map\(\|s\| s\.properties\.clone\(\)\)\s*\.unwrap_or_default\(\)",
+        ".state(state)\n"
+        "                .map(|s| s.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect())\n"
+        "                .unwrap_or_default()",
+    ),
 )
 
 
