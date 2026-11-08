@@ -163,10 +163,10 @@ pub struct Extras {
     /// The selected Volt Boost profile, as the switches below hold it
     /// (`apply_volt_preset` writes it; the profiles themselves grow with the
     /// ported switches).
-    pub volt_preset: volt_features::VoltBoostPreset,
+    pub volt_preset: crate::volt_features::VoltBoostPreset,
     /// Volt Boost's dynamic idle FPS: a 30 or 15 FPS cap while the game is
     /// paused, in a menu, or shows no world (`framerate_limit`).
-    pub dynamic_fps: volt_features::DynamicIdleFps,
+    pub dynamic_fps: crate::volt_features::DynamicIdleFps,
 }
 impl Default for Extras {
     fn default() -> Self {
@@ -217,8 +217,8 @@ impl Default for Extras {
             thread_boost: false,
             display_hz: 0,
             performance_hints: true,
-            volt_preset: volt_features::VoltBoostPreset::Off,
-            dynamic_fps: volt_features::DynamicIdleFps::Off,
+            volt_preset: crate::volt_features::VoltBoostPreset::Off,
+            dynamic_fps: crate::volt_features::DynamicIdleFps::Off,
         }
     }
 }
@@ -329,12 +329,12 @@ impl Extras {
                 }
                 "performanceHints" => e.performance_hints = flag(e.performance_hints),
                 "voltPreset" => {
-                    if let Some(p) = volt_features::VoltBoostPreset::parse(value) {
+                    if let Some(p) = crate::volt_features::VoltBoostPreset::parse(value) {
                         e.volt_preset = p;
                     }
                 }
                 "dynamicFps" => {
-                    if let Some(m) = volt_features::DynamicIdleFps::parse(value) {
+                    if let Some(m) = crate::volt_features::DynamicIdleFps::parse(value) {
                         e.dynamic_fps = m;
                     }
                 }
@@ -405,8 +405,8 @@ impl Extras {
     /// (the thread tuning and the dynamic idle FPS; the method grows with
     /// each ported switch, as the head's does across its Tier 1-3 fields).
     /// `Off` puts every one of them back to vanilla's behaviour.
-    pub fn apply_volt_preset(&mut self, preset: volt_features::VoltBoostPreset) {
-        use volt_features::{DynamicIdleFps, VoltBoostPreset};
+    pub fn apply_volt_preset(&mut self, preset: crate::volt_features::VoltBoostPreset) {
+        use crate::volt_features::{DynamicIdleFps, VoltBoostPreset};
         self.volt_preset = preset;
         let (thread_boost, dynamic_fps) = match preset {
             VoltBoostPreset::Off => (false, DynamicIdleFps::Off),
