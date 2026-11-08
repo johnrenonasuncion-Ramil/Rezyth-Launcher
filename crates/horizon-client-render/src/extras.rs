@@ -170,6 +170,9 @@ pub struct Extras {
     /// Volt Boost's particle budget: the active cap (16,384 as vanilla) and
     /// the distance past which nothing renders (`particles.rs`).
     pub particle_budget: crate::volt_features::ParticleBudget,
+    /// Volt Boost's audio voice cap: how many of a tick's particle sounds
+    /// play (all of them as vanilla).
+    pub audio_voice_cap: crate::volt_features::AudioVoiceCap,
 }
 impl Default for Extras {
     fn default() -> Self {
@@ -223,6 +226,7 @@ impl Default for Extras {
             volt_preset: crate::volt_features::VoltBoostPreset::Off,
             dynamic_fps: crate::volt_features::DynamicIdleFps::Off,
             particle_budget: crate::volt_features::ParticleBudget::Vanilla16k,
+            audio_voice_cap: crate::volt_features::AudioVoiceCap::Vanilla,
         }
     }
 }
@@ -347,6 +351,11 @@ impl Extras {
                         e.particle_budget = b;
                     }
                 }
+                "audioVoiceCap" => {
+                    if let Some(c) = crate::volt_features::AudioVoiceCap::parse(value) {
+                        e.audio_voice_cap = c;
+                    }
+                }
                 _ => {}
             }
         }
@@ -354,7 +363,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -409,6 +418,7 @@ impl Extras {
             self.volt_preset.as_str(),
             self.dynamic_fps.as_str(),
             self.particle_budget.as_str(),
+            self.audio_voice_cap.as_str(),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -417,22 +427,46 @@ impl Extras {
     /// Tier 1-3 fields). `Off` puts every one of them back to vanilla's
     /// behaviour.
     pub fn apply_volt_preset(&mut self, preset: crate::volt_features::VoltBoostPreset) {
-        use crate::volt_features::{DynamicIdleFps, ParticleBudget, VoltBoostPreset};
+        use crate::volt_features::{
+            AudioVoiceCap, DynamicIdleFps, ParticleBudget, VoltBoostPreset,
+        };
         self.volt_preset = preset;
-        let (thread_boost, dynamic_fps, particle_budget) = match preset {
-            VoltBoostPreset::Off => (false, DynamicIdleFps::Off, ParticleBudget::Vanilla16k),
-            VoltBoostPreset::Balanced => (true, DynamicIdleFps::Fps30, ParticleBudget::Cap4096),
-            VoltBoostPreset::Competitive => (true, DynamicIdleFps::Fps30, ParticleBudget::Cap2048),
-            VoltBoostPreset::UltraFps | VoltBoostPreset::LowRam => {
-                (true, DynamicIdleFps::Fps15, ParticleBudget::Cap512)
-            }
-            VoltBoostPreset::BatterySaver => {
-                (false, DynamicIdleFps::Fps15, ParticleBudget::Cap2048)
-            }
+        let (thread_boost, dynamic_fps, particle_budget, audio_voice_cap) = match preset {
+            VoltBoostPreset::Off => (
+                false,
+                DynamicIdleFps::Off,
+                ParticleBudget::Vanilla16k,
+                AudioVoiceCap::Vanilla,
+            ),
+            VoltBoostPreset::Balanced => (
+                true,
+                DynamicIdleFps::Fps30,
+                ParticleBudget::Cap4096,
+                AudioVoiceCap::Cap32,
+            ),
+            VoltBoostPreset::Competitive => (
+                true,
+                DynamicIdleFps::Fps30,
+                ParticleBudget::Cap2048,
+                AudioVoiceCap::Cap32,
+            ),
+            VoltBoostPreset::UltraFps | VoltBoostPreset::LowRam => (
+                true,
+                DynamicIdleFps::Fps15,
+                ParticleBudget::Cap512,
+                AudioVoiceCap::Cap16,
+            ),
+            VoltBoostPreset::BatterySaver => (
+                false,
+                DynamicIdleFps::Fps15,
+                ParticleBudget::Cap2048,
+                AudioVoiceCap::Cap16,
+            ),
         };
         self.thread_boost = thread_boost;
         self.dynamic_fps = dynamic_fps;
         self.particle_budget = particle_budget;
+        self.audio_voice_cap = audio_voice_cap;
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for
