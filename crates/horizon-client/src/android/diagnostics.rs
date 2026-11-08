@@ -12,13 +12,13 @@ use std::{
     collections::VecDeque,
     fs::{self, File},
     io::{self, Read, Seek, SeekFrom, Write},
-    path::{Path, PathBuf},
+    path::Path,
     sync::{
         Mutex, OnceLock,
         atomic::{AtomicU64, Ordering},
         mpsc,
     },
-    time::{Duration, Instant, SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 const LOG_LIMIT: u64 = 512 * 1024;

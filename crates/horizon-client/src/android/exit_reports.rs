@@ -143,9 +143,9 @@ fn query(env: &mut JNIEnv<'_>, activity: &JObject<'_>, dir: &Path) -> jni::error
                 "reason_name": diagnostics::reason_name(reason),
                 "status": status,
             });
-            row["description"] = clear(env, description(env, &item))
-                .unwrap_or_default()
-                .into();
+            // The description's own borrow of `env` ends before `clear` starts its.
+            let description = description(env, &item);
+            row["description"] = clear(env, description).unwrap_or_default().into();
             for (method, key) in [("getPss", "pss_kib"), ("getRss", "rss_kib")] {
                 let value = env
                     .call_method(&item, method, "()J", &[])
