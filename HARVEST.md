@@ -112,15 +112,21 @@ CI: `android.yml` run **42457716326** built the APK green at `a848813fc`.
    and the head’s own switch has no consumer in its tree), pipeline prewarm (also without a
    consumer in the head), and the Volt Settings hub UI (step 3, which makes every switch
    reachable in-game).
-   Still open, Tier 2/3 switches with small consumers in the head (each a follow-up commit):
-   `fast_weather` (weather radius), `anim_throttle` (animation step ticks), `memory_saver`
-   (particle/allocator trims), `distant_mob_throttle` (mob pass), `hub_lag_shield`,
-   `cull_sign_text`, `chaos_particle_shield`, `particle_frustum_cull`, `active_anim_cull`,
-   `fast_translucency`, `lookahead_stream`, `cave_sky_cull`, `frustum_priority_mesh`, and the
-   `volt_boost_plus` mesh-pool group.
-3. **In-game UI**: the Options screen gains the **Volt Settings** hub (`Page::VoltSettings`) with
-   the Boost page first, then Waypoints/Minimap, using `graphics_style.rs`'s tokens. The main
-   menu's and Options screen's entries land with the hub, so no command interface is needed.
+   **Tier 2/3 sweep complete** (`2cc6ad735`–`8c3a328ff`, CI runs **42484393177**–
+   **42495038054** green): the animation throttle and active-animation cull, fast translucency,
+   fast weather, the sign-text cull, the mob throttle, the hub shield, the chaos shield, the
+   particle frustum cull, the memory saver, the streaming lookahead, the cave sky cull and
+   frustum-priority meshing all landed with their engine features and their profile values.
+   The `volt_boost_plus` mesh-pool group stays out: its five switches have no consumer in the
+   head’s tree either (stored only), like pipeline prewarm.
+3. **In-game UI** — DONE (`5dcf4008c`, fixed `fd9ec72d4`, CI run **42500485131** green):
+   the Volt Settings hub (`Page::VoltSettings`) and its Boost page (`Page::VoltBoost`) on the
+   game’s own Options screen, with every ported switch (27 items: the profile and all of them)
+   two to a row through the same caption/value/cycle machinery the Extras page uses, off a
+   translation key each (100 new bundled en_us keys). The Options screen gets a Volt Settings
+   entry; the main menu gets a Volt Settings button that opens the same hub (in the game and
+   the startup menu alike). The profile applies at once and the thread tuning follows the
+   switch. The hub has room for the Waypoints and Minimap pages when their engines’ UI lands.
 4. **The native-mod weave**: port `tools/native_mods/` (compat.py, build_set.py, tests), the
    pinned registry snapshot, and `bundled_native.rs` (compiled-in registration on the in-game
    Mods page), then add a `weave` job to `android.yml` for the 33-mod `WEAVE_SET` (arm64-v8a).
