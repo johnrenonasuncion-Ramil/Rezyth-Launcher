@@ -109,9 +109,15 @@ for line in client.read_text(encoding="utf-8").splitlines():
         added.append(stripped)
 if not added:
     sys.exit(0)
+# Starling's horizon-android keeps everything under the Android target table;
+# a plain [dependencies] wins when present (upstream's layout). The copied
+# path is relative to the manifest's own directory, and both manifests sit at
+# the same depth under crates/, so it resolves the same way in both.
 marker = "[dependencies]"
 if marker not in android_text:
-    sys.exit("native_build: horizon-android has no [dependencies] table to extend")
+    marker = "[target.'cfg(target_os = \"android\")'.dependencies]"
+if marker not in android_text:
+    sys.exit("native_build: horizon-android has no dependency table to extend")
 android.write_text(android_text.replace(marker, marker + "\n" + "\n".join(added), 1),
                    encoding="utf-8")
 print("native_build: propagated vendored crates: " + ", ".join(
