@@ -893,6 +893,7 @@ impl Loading {
             Action::Accessibility => self.open_menu_options(Page::Accessibility),
             Action::Language => self.open_menu_options(Page::Language),
             Action::Sounds => self.open_menu_options(Page::Sound),
+            Action::VoltSettings => self.open_menu_options(Page::VoltSettings),
             Action::Credits => self.open_menu_options(Page::Credits),
             Action::OpenUri(uri) => super::packs::open_uri(&uri),
             Action::CopyText(text) => {

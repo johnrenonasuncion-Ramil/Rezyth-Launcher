@@ -12009,6 +12009,9 @@ impl Game<'_> {
                 self.open_options_at(true, horizon_client::options_ui::Page::Language)
             }
             Action::Sounds => self.open_options_at(true, horizon_client::options_ui::Page::Sound),
+            Action::VoltSettings => {
+                self.open_options_at(true, horizon_client::options_ui::Page::VoltSettings)
+            }
             Action::Credits => {
                 self.open_options_at(true, horizon_client::options_ui::Page::Credits)
             }

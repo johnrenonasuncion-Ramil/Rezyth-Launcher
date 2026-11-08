@@ -1502,6 +1502,9 @@ pub enum Page {
     Controller,
     PadBinds,
     Extras,
+    /// The Volt Settings hub and its Boost page.
+    VoltSettings,
+    VoltBoost,
     /// CreditsAndAttributionScreen.
     Credits,
     /// Horizon Settings: every page Horizon adds, as a mod's settings
@@ -2057,6 +2060,7 @@ fn horizon_page_tooltip(page: Page) -> Option<&'static str> {
         Page::GraphicsAdvanced => "horizon.pages.graphics_advanced.tooltip",
         Page::Controller => "horizon.pages.controller.tooltip",
         Page::Extras => "horizon.pages.extras.tooltip",
+        Page::VoltSettings => "horizon.pages.volt.tooltip",
         Page::Agent => "horizon.pages.agent.tooltip",
         Page::SplitProfiles => "horizon.pages.split_profiles.tooltip",
         Page::ShaderPacks => "horizon.pages.shader_packs.tooltip",
@@ -2718,6 +2722,8 @@ impl OptionsUi {
             Page::Controller => "horizon.pages.controller",
             Page::PadBinds => "horizon.pages.controller_binds",
             Page::Extras => "horizon.pages.extras",
+            Page::VoltSettings => "horizon.pages.volt",
+            Page::VoltBoost => "horizon.volt.boost",
             Page::Credits => "credits_and_attribution.screen.title",
             Page::Horizon => "horizon.pages.settings",
             Page::Agent => "horizon.pages.agent",
@@ -3158,6 +3164,40 @@ impl OptionsUi {
                         None,
                     ));
                 }
+                rows
+            }
+            Page::VoltSettings => {
+                // The Volt Settings hub: its pages, the Boost page first.
+                let open = |key: &str, page: Page| button(0.0, 0.0, 150.0, tr(key), Act::Push(page));
+                vec![Row::Buttons(open("horizon.volt.boost", Page::VoltBoost), None)]
+            }
+            Page::VoltBoost => {
+                // The Boost page: the profile first, then every switch the
+                // port carries, two to a row as the Extras page lays them out.
+                let extra = |item: crate::extras::Item| {
+                    let value = format!("{}: {}", item.caption_text(), item.value(&s.extras));
+                    button(0.0, 0.0, 150.0, Text::literal(value), Act::Extra(item))
+                };
+                let mut rows = Vec::new();
+                let mut section = Vec::new();
+                let flush = |rows: &mut Vec<Row>, section: &mut Vec<crate::extras::Item>| {
+                    rows.extend(
+                        section
+                            .chunks(2)
+                            .map(|c| Row::Buttons(extra(c[0]), c.get(1).map(|&b| extra(b)))),
+                    );
+                    section.clear();
+                };
+                for row in crate::extras::volt_boost_rows() {
+                    match row {
+                        Err(header) => {
+                            flush(&mut rows, &mut section);
+                            rows.push(Row::Header(header));
+                        }
+                        Ok(item) => section.push(item),
+                    }
+                }
+                flush(&mut rows, &mut section);
                 rows
             }
             Page::Music => {
@@ -3819,6 +3859,7 @@ impl OptionsUi {
                     // settings and its mods, as a mod adds its button here.
                     // Credits & Attribution (WinScreen's credits) follows them.
                     ("horizon.pages.open.horizon_settings", Some(Page::Horizon)),
+                    ("horizon.pages.open.volt_settings", Some(Page::VoltSettings)),
                     ("horizon.pages.open.mods", Some(Page::Mods)),
                     ("options.credits_and_attribution", Some(Page::Credits)),
                 ];

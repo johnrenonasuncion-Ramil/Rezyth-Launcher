@@ -840,6 +840,34 @@ pub enum Item {
     /// Shown only while cosmetics are enabled (`horizon_cosmetics::enabled`).
     CosmeticsMine,
     CosmeticsOthers,
+    /// The Volt Settings hub's Boost page: the profile and every ported switch.
+    VoltPreset,
+    VoltThreadBoost,
+    VoltPerformanceHints,
+    VoltDisplayHz,
+    VoltDynamicFps,
+    VoltAudioCap,
+    VoltAutoDrs,
+    VoltThermalGuard,
+    VoltReflex,
+    VoltParticleBudget,
+    VoltChaosShield,
+    VoltParticleFrustum,
+    VoltEntityCap,
+    VoltItemCap,
+    VoltBlockEntityCap,
+    VoltAnimThrottle,
+    VoltActiveAnimCull,
+    VoltFastTranslucency,
+    VoltFastWeather,
+    VoltCullSignText,
+    VoltMobThrottle,
+    VoltHubShield,
+    VoltMenuBg,
+    VoltLookahead,
+    VoltCaveSkyCull,
+    VoltFrustumMesh,
+    VoltMemorySaver,
 }
 /// The Extras page: headers (language keys) and items.
 pub fn rows() -> Vec<Result<Item, &'static str>> {
@@ -877,6 +905,45 @@ pub fn rows() -> Vec<Result<Item, &'static str>> {
     }
     rows
 }
+/// The Volt Settings hub's Boost page: the profile first, then every switch
+/// the port carries, in its sections.
+pub fn volt_boost_rows() -> Vec<Result<Item, &'static str>> {
+    use Item::*;
+    vec![
+        Err("horizon.volt.header.profile"),
+        Ok(VoltPreset),
+        Err("horizon.volt.header.threads"),
+        Ok(VoltThreadBoost),
+        Ok(VoltPerformanceHints),
+        Ok(VoltDisplayHz),
+        Err("horizon.volt.header.frames"),
+        Ok(VoltDynamicFps),
+        Ok(VoltAudioCap),
+        Err("horizon.volt.header.render"),
+        Ok(VoltAutoDrs),
+        Ok(VoltThermalGuard),
+        Ok(VoltReflex),
+        Ok(VoltParticleBudget),
+        Ok(VoltChaosShield),
+        Ok(VoltParticleFrustum),
+        Ok(VoltEntityCap),
+        Ok(VoltItemCap),
+        Ok(VoltBlockEntityCap),
+        Ok(VoltAnimThrottle),
+        Ok(VoltActiveAnimCull),
+        Ok(VoltFastTranslucency),
+        Ok(VoltFastWeather),
+        Ok(VoltCullSignText),
+        Ok(VoltMobThrottle),
+        Ok(VoltHubShield),
+        Ok(VoltMenuBg),
+        Err("horizon.volt.header.streaming"),
+        Ok(VoltLookahead),
+        Ok(VoltCaveSkyCull),
+        Ok(VoltFrustumMesh),
+        Ok(VoltMemorySaver),
+    ]
+}
 impl Item {
     /// The language key of the caption (`horizon.*`, assets/horizon/lang).
     pub fn caption_key(self) -> &'static str {
@@ -902,6 +969,33 @@ impl Item {
             Item::WheelCyclesSettings => "horizon.extras.wheel_cycles_settings",
             Item::CosmeticsMine => "horizon.extras.cosmetics_mine",
             Item::CosmeticsOthers => "horizon.extras.cosmetics_others",
+            Item::VoltPreset => "horizon.volt.preset",
+            Item::VoltThreadBoost => "horizon.volt.thread_boost",
+            Item::VoltPerformanceHints => "horizon.volt.hints",
+            Item::VoltDisplayHz => "horizon.volt.display_hz",
+            Item::VoltDynamicFps => "horizon.volt.dynamic_fps",
+            Item::VoltAudioCap => "horizon.volt.audio",
+            Item::VoltAutoDrs => "horizon.volt.auto_drs",
+            Item::VoltThermalGuard => "horizon.volt.thermal",
+            Item::VoltReflex => "horizon.volt.reflex",
+            Item::VoltParticleBudget => "horizon.volt.particles",
+            Item::VoltChaosShield => "horizon.volt.chaos",
+            Item::VoltParticleFrustum => "horizon.volt.particle_frustum",
+            Item::VoltEntityCap => "horizon.volt.entity_cap",
+            Item::VoltItemCap => "horizon.volt.item_cap",
+            Item::VoltBlockEntityCap => "horizon.volt.block_entity_cap",
+            Item::VoltAnimThrottle => "horizon.volt.anim_throttle",
+            Item::VoltActiveAnimCull => "horizon.volt.anim_cull",
+            Item::VoltFastTranslucency => "horizon.volt.translucency",
+            Item::VoltFastWeather => "horizon.volt.weather",
+            Item::VoltCullSignText => "horizon.volt.sign_text",
+            Item::VoltMobThrottle => "horizon.volt.mob_throttle",
+            Item::VoltHubShield => "horizon.volt.hub_shield",
+            Item::VoltMenuBg => "horizon.volt.menu_bg",
+            Item::VoltLookahead => "horizon.volt.lookahead",
+            Item::VoltCaveSkyCull => "horizon.volt.cave_sky",
+            Item::VoltFrustumMesh => "horizon.volt.frustum_mesh",
+            Item::VoltMemorySaver => "horizon.volt.memory",
         }
     }
     /// The language key of the description shown as the row's tooltip.
@@ -928,6 +1022,33 @@ impl Item {
             Item::WheelCyclesSettings => "horizon.extras.wheel_cycles_settings.tooltip",
             Item::CosmeticsMine => "horizon.extras.cosmetics_mine.tooltip",
             Item::CosmeticsOthers => "horizon.extras.cosmetics_others.tooltip",
+            Item::VoltPreset => "horizon.volt.preset.tooltip",
+            Item::VoltThreadBoost => "horizon.volt.thread_boost.tooltip",
+            Item::VoltPerformanceHints => "horizon.volt.hints.tooltip",
+            Item::VoltDisplayHz => "horizon.volt.display_hz.tooltip",
+            Item::VoltDynamicFps => "horizon.volt.dynamic_fps.tooltip",
+            Item::VoltAudioCap => "horizon.volt.audio.tooltip",
+            Item::VoltAutoDrs => "horizon.volt.auto_drs.tooltip",
+            Item::VoltThermalGuard => "horizon.volt.thermal.tooltip",
+            Item::VoltReflex => "horizon.volt.reflex.tooltip",
+            Item::VoltParticleBudget => "horizon.volt.particles.tooltip",
+            Item::VoltChaosShield => "horizon.volt.chaos.tooltip",
+            Item::VoltParticleFrustum => "horizon.volt.particle_frustum.tooltip",
+            Item::VoltEntityCap => "horizon.volt.entity_cap.tooltip",
+            Item::VoltItemCap => "horizon.volt.item_cap.tooltip",
+            Item::VoltBlockEntityCap => "horizon.volt.block_entity_cap.tooltip",
+            Item::VoltAnimThrottle => "horizon.volt.anim_throttle.tooltip",
+            Item::VoltActiveAnimCull => "horizon.volt.anim_cull.tooltip",
+            Item::VoltFastTranslucency => "horizon.volt.translucency.tooltip",
+            Item::VoltFastWeather => "horizon.volt.weather.tooltip",
+            Item::VoltCullSignText => "horizon.volt.sign_text.tooltip",
+            Item::VoltMobThrottle => "horizon.volt.mob_throttle.tooltip",
+            Item::VoltHubShield => "horizon.volt.hub_shield.tooltip",
+            Item::VoltMenuBg => "horizon.volt.menu_bg.tooltip",
+            Item::VoltLookahead => "horizon.volt.lookahead.tooltip",
+            Item::VoltCaveSkyCull => "horizon.volt.cave_sky.tooltip",
+            Item::VoltFrustumMesh => "horizon.volt.frustum_mesh.tooltip",
+            Item::VoltMemorySaver => "horizon.volt.memory.tooltip",
         }
     }
     /// The caption in the current language (English when the key is missing).
@@ -963,6 +1084,33 @@ impl Item {
             Item::WheelCyclesSettings => "Scroll wheel changes settings",
             Item::CosmeticsMine => "My cosmetics",
             Item::CosmeticsOthers => "Other players' cosmetics",
+            Item::VoltPreset => "Boost profile",
+            Item::VoltThreadBoost => "big.LITTLE thread boost",
+            Item::VoltPerformanceHints => "ADPF performance hints",
+            Item::VoltDisplayHz => "Display refresh rate",
+            Item::VoltDynamicFps => "Dynamic idle FPS",
+            Item::VoltAudioCap => "Audio voice cap",
+            Item::VoltAutoDrs => "Auto dynamic resolution",
+            Item::VoltThermalGuard => "Thermal guard",
+            Item::VoltReflex => "Volt Reflex low latency",
+            Item::VoltParticleBudget => "Particle budget",
+            Item::VoltChaosShield => "Explosion chaos shield",
+            Item::VoltParticleFrustum => "Particle frustum cull",
+            Item::VoltEntityCap => "Entity render cap",
+            Item::VoltItemCap => "Dropped-item render cap",
+            Item::VoltBlockEntityCap => "Block-entity render cap",
+            Item::VoltAnimThrottle => "Animation throttle",
+            Item::VoltActiveAnimCull => "Active-animation cull",
+            Item::VoltFastTranslucency => "Fast translucency",
+            Item::VoltFastWeather => "Fast weather",
+            Item::VoltCullSignText => "Cull sign text",
+            Item::VoltMobThrottle => "Distant mob throttle",
+            Item::VoltHubShield => "Hub lag shield",
+            Item::VoltMenuBg => "Menu backdrop",
+            Item::VoltLookahead => "Streaming lookahead",
+            Item::VoltCaveSkyCull => "Cave sky cull",
+            Item::VoltFrustumMesh => "Frustum-priority meshing",
+            Item::VoltMemorySaver => "Memory saver",
         }
     }
     /// The switch this setting belongs to: it does nothing while that is off.
@@ -1042,6 +1190,33 @@ impl Item {
             Item::WheelCyclesSettings => {
                 "The scroll wheel over a button in the settings changes its value, as in vanilla. Off, the wheel only scrolls the list."
             }
+            Item::VoltPreset => "One tap sets every Volt Boost switch below to a profile; Off is vanilla.",
+            Item::VoltThreadBoost => "Tightens the game threads’ timer slack on Android so frame pacing wakes crisp on 90 and 120 Hz displays.",
+            Item::VoltPerformanceHints => "Lets Android raise the clock when a frame runs late (the ADPF hint session).",
+            Item::VoltDisplayHz => "Asks the screen for this rate every frame; System default follows the frame cap.",
+            Item::VoltDynamicFps => "A stronger cap while paused, in a menu or showing no world: 30 or 15 FPS.",
+            Item::VoltAudioCap => "Caps a tick’s particle sounds (a farm or a TNT blast) at 8 or 4.",
+            Item::VoltAutoDrs => "Eases the world’s resolution towards a frame target; the HUD stays native.",
+            Item::VoltThermalGuard => "Under load, eases the resolution and the particle budget down until the phone cools.",
+            Item::VoltReflex => "Works the GPU’s queue before the frame’s sleep and paces precisely while playing.",
+            Item::VoltParticleBudget => "The active particle cap and the distance past which nothing renders.",
+            Item::VoltChaosShield => "An explosion throws at most 24 debris particles, and a far one starts no firework show.",
+            Item::VoltParticleFrustum => "Particles behind the camera skip their sprite and light lookups.",
+            Item::VoltEntityCap => "Past the cap only the nearest mobs draw; the ones you fight never vanish first.",
+            Item::VoltItemCap => "Past the cap only the nearest dropped items draw, with a distance cut.",
+            Item::VoltBlockEntityCap => "Past the cap only the nearest chests, signs and banners draw.",
+            Item::VoltAnimThrottle => "Animated textures upload every second tick (10 Hz instead of vanilla’s 20).",
+            Item::VoltActiveAnimCull => "Skips animated textures no loaded chunk uses.",
+            Item::VoltFastTranslucency => "Distant water and glass re-sort on a coarser grid with a smaller budget.",
+            Item::VoltFastWeather => "Rain and snow draw within four blocks instead of fifteen.",
+            Item::VoltCullSignText => "Signs’ standing text is skipped past sixteen blocks; the block stays.",
+            Item::VoltMobThrottle => "Far mobs’ bodies and player layers draw without their animation alpha.",
+            Item::VoltHubShield => "With more than 24 mobs, players beyond nametag range give up their render slot first.",
+            Item::VoltMenuBg => "FastDark skips the multi-pass menu blur for a plain dark backdrop.",
+            Item::VoltLookahead => "Chunks behind the movement and the look generate later than the ones ahead.",
+            Item::VoltCaveSkyCull => "Sealed underground in the Overworld, the weather draw is skipped.",
+            Item::VoltFrustumMesh => "Sections behind the view upload after every visible one.",
+            Item::VoltMemorySaver => "On a world or dimension change, emptied queues and freed pages go back to the OS.",
         }
     }
     /// The frame-time cost the main switch of an extra shows.
@@ -1087,6 +1262,23 @@ impl Item {
             Item::WheelCyclesSettings => e.wheel_cycles_settings,
             Item::CosmeticsMine => e.cosmetics_mine,
             Item::CosmeticsOthers => e.cosmetics_others,
+            Item::VoltThreadBoost => e.thread_boost,
+            Item::VoltPerformanceHints => e.performance_hints,
+            Item::VoltThermalGuard => e.thermal_guard,
+            Item::VoltReflex => e.volt_reflex,
+            Item::VoltChaosShield => e.chaos_particle_shield,
+            Item::VoltParticleFrustum => e.particle_frustum_cull,
+            Item::VoltAnimThrottle => e.anim_throttle,
+            Item::VoltActiveAnimCull => e.active_anim_cull,
+            Item::VoltFastTranslucency => e.fast_translucency,
+            Item::VoltFastWeather => e.fast_weather,
+            Item::VoltCullSignText => e.cull_sign_text,
+            Item::VoltMobThrottle => e.distant_mob_throttle,
+            Item::VoltHubShield => e.hub_lag_shield,
+            Item::VoltLookahead => e.lookahead_stream,
+            Item::VoltCaveSkyCull => e.cave_sky_cull,
+            Item::VoltFrustumMesh => e.frustum_priority_mesh,
+            Item::VoltMemorySaver => e.memory_saver,
             _ => return None,
         })
     }
@@ -1094,6 +1286,54 @@ impl Item {
     pub fn value(self, e: &Extras) -> String {
         match self {
             Item::SortKey => crate::keybinds::display_name(&e.sort_key).plain(),
+            Item::VoltPreset => {
+                use crate::volt_features::VoltBoostPreset;
+                match e.volt_preset {
+                    VoltBoostPreset::Off => crate::lang::get_or("options.off", "Off"),
+                    p => crate::lang::get_or(p.label_key(), p.label()),
+                }
+            }
+            Item::VoltDisplayHz => {
+                if e.display_hz == 0 {
+                    crate::lang::get_or("horizon.volt.hz.system", "System default")
+                } else {
+                    crate::lang::get_or("horizon.volt.hz", "%s Hz")
+                        .replace("%s", &e.display_hz.to_string())
+                }
+            }
+            Item::VoltDynamicFps => {
+                use crate::volt_features::DynamicIdleFps;
+                match e.dynamic_fps {
+                    DynamicIdleFps::Off => crate::lang::get_or("options.off", "Off"),
+                    DynamicIdleFps::Fps30 => crate::lang::get_or("horizon.volt.idle30", "30 FPS"),
+                    DynamicIdleFps::Fps15 => crate::lang::get_or("horizon.volt.idle15", "15 FPS"),
+                }
+            }
+            Item::VoltAudioCap => crate::lang::get_or(
+                &format!("horizon.volt.audio.{}", e.audio_voice_cap.as_str()),
+                e.audio_voice_cap.label(),
+            ),
+            Item::VoltAutoDrs => crate::lang::get_or(
+                &format!("horizon.volt.drs.{}", e.auto_drs.as_str()),
+                e.auto_drs.label(),
+            ),
+            Item::VoltParticleBudget => crate::lang::get_or(
+                &format!("horizon.volt.particles.{}", e.particle_budget.as_str()),
+                e.particle_budget.label(),
+            ),
+            Item::VoltEntityCap => crate::lang::get_or(
+                &format!("horizon.volt.entity.{}", e.entity_cap.as_str()),
+                e.entity_cap.label(),
+            ),
+            Item::VoltItemCap => crate::lang::get_or(
+                &format!("horizon.volt.items.{}", e.item_render_cap.as_str()),
+                e.item_render_cap.label(),
+            ),
+            Item::VoltBlockEntityCap => crate::lang::get_or(
+                &format!("horizon.volt.block_entities.{}", e.block_entity_cap.as_str()),
+                e.block_entity_cap.label(),
+            ),
+            Item::VoltMenuBg => crate::lang::get_or(e.menu_bg_mode.label_key(), e.menu_bg_mode.as_str()),
             other => match other.switch(e) {
                 Some(true) => crate::lang::get_or("On", "On"),
                 _ => crate::lang::get_or("Off", "Off"),
@@ -1124,6 +1364,37 @@ impl Item {
             Item::WheelCyclesSettings => e.wheel_cycles_settings = !e.wheel_cycles_settings,
             Item::CosmeticsMine => e.cosmetics_mine = !e.cosmetics_mine,
             Item::CosmeticsOthers => e.cosmetics_others = !e.cosmetics_others,
+            Item::VoltPreset => e.apply_volt_preset(e.volt_preset.next()),
+            Item::VoltThreadBoost => e.thread_boost = !e.thread_boost,
+            Item::VoltPerformanceHints => e.performance_hints = !e.performance_hints,
+            Item::VoltDisplayHz => {
+                let rates = DISPLAY_RATES;
+                let i = rates.iter().position(|&hz| hz == e.display_hz).unwrap_or(0);
+                e.display_hz = rates[(i + 1) % rates.len()];
+            }
+            Item::VoltDynamicFps => e.dynamic_fps = e.dynamic_fps.next(),
+            Item::VoltAudioCap => e.audio_voice_cap = e.audio_voice_cap.next(),
+            Item::VoltAutoDrs => e.auto_drs = e.auto_drs.next(),
+            Item::VoltThermalGuard => e.thermal_guard = !e.thermal_guard,
+            Item::VoltReflex => e.volt_reflex = !e.volt_reflex,
+            Item::VoltParticleBudget => e.particle_budget = e.particle_budget.next(),
+            Item::VoltChaosShield => e.chaos_particle_shield = !e.chaos_particle_shield,
+            Item::VoltParticleFrustum => e.particle_frustum_cull = !e.particle_frustum_cull,
+            Item::VoltEntityCap => e.entity_cap = e.entity_cap.next(),
+            Item::VoltItemCap => e.item_render_cap = e.item_render_cap.next(),
+            Item::VoltBlockEntityCap => e.block_entity_cap = e.block_entity_cap.next(),
+            Item::VoltAnimThrottle => e.anim_throttle = !e.anim_throttle,
+            Item::VoltActiveAnimCull => e.active_anim_cull = !e.active_anim_cull,
+            Item::VoltFastTranslucency => e.fast_translucency = !e.fast_translucency,
+            Item::VoltFastWeather => e.fast_weather = !e.fast_weather,
+            Item::VoltCullSignText => e.cull_sign_text = !e.cull_sign_text,
+            Item::VoltMobThrottle => e.distant_mob_throttle = !e.distant_mob_throttle,
+            Item::VoltHubShield => e.hub_lag_shield = !e.hub_lag_shield,
+            Item::VoltMenuBg => e.menu_bg_mode = e.menu_bg_mode.next(),
+            Item::VoltLookahead => e.lookahead_stream = !e.lookahead_stream,
+            Item::VoltCaveSkyCull => e.cave_sky_cull = !e.cave_sky_cull,
+            Item::VoltFrustumMesh => e.frustum_priority_mesh = !e.frustum_priority_mesh,
+            Item::VoltMemorySaver => e.memory_saver = !e.memory_saver,
             Item::SortKey => {}
         }
     }

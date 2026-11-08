@@ -371,6 +371,8 @@ pub enum Action {
     Language,
     /// AccessibilityOnboardingScreen's Music & Sounds button.
     Sounds,
+    /// The main menu's Volt Settings button.
+    VoltSettings,
     /// The title's bottom text (`PlainTextButton`): `CreditsAndAttributionScreen`.
     Credits,
     /// `Blaze3D.openUri`: a ConfirmLinkScreen's Open in Browser.
@@ -1768,6 +1770,16 @@ impl Title {
                     button.icon = Some((icon, 15.0));
                     buttons.push(button);
                 }
+                // Volt Boost lives behind this button, on the main menu where a
+                // player looks for it (and on the Options screen).
+                buttons.push(b(
+                    cx - 100.0,
+                    y + 120.0,
+                    200.0,
+                    &lang::get_or("horizon.pages.volt", "Volt Settings..."),
+                    true,
+                    9,
+                ));
                 // Starling's account, where the game signs in itself: in the top left corner,
                 // clear of the logo, so vanilla's buttons stay as they are.
                 if crate::accounts::in_game() {
@@ -3444,6 +3456,7 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 self.mode = Mode::Account;
                 Action::None
             }
+            (Mode::Main, Some(9)) => Action::VoltSettings,
             (Mode::Account, Some(id)) => {
                 if account::click(id) {
                     self.mode = Mode::Main;
