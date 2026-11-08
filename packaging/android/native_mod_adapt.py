@@ -67,6 +67,24 @@ CHANGED = (
         # JavaString takes &str, not String (From<&str> is implemented).
         "d.custom_name = Some(horizon_world::nbt::Tag::String(bc::ITEM_NAME.into()));",
     ),
+    # Worldedit's wand: custom_name is a Tag here, and the plain string is read
+    # through `custom_name_plain` (the head tree's own shim, same edits).
+    (
+        r"stack\.data_mut\(\)\.custom_name = Some\(WAND_NAME\.to_owned\(\)\);",
+        "stack.data_mut().custom_name = Some(horizon_world::nbt::Tag::String(WAND_NAME.into()));",
+    ),
+    (
+        r"stack\.data\(\)\.and_then\(\|data\| data\.custom_name\.as_deref\(\)\) == Some\(WAND_NAME\)",
+        "stack.data().and_then(|data| data.custom_name_plain()).as_deref() == Some(WAND_NAME)",
+    ),
+    # Horizonmatica reads a registry state's properties; this tree's
+    # BlockProperties iterates (name, value) pairs.
+    (
+        r"Some\(st\) => BlockState \{ name: st\.name\.clone\(\), properties: st\.properties\.clone\(\)\.into\(\) \},",
+        "Some(st) => BlockState { name: st.name.clone(),"
+        " properties: st.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect() },",
+    ),
+    ),
 )
 
 
