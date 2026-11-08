@@ -27,9 +27,9 @@ pub(super) struct ExtrasState {
     reconnect: Tracker,
     /// Volt Boost's smoothed frame time (ms), which Auto-DRS and the
     /// thermal guard steer by (the performance HUD's ring comes with it).
-    ema_frame_ms: f32,
+    pub(super) ema_frame_ms: f32,
     /// Auto-DRS's world-resolution factor (1.0: the Resolution Scale alone).
-    drs_scale: f32,
+    pub(super) drs_scale: f32,
     last_drs_apply_at: f64,
 }
 
@@ -122,9 +122,10 @@ impl Game<'_> {
         {
             self.extras.drs_scale = desired_drs;
             self.extras.last_drs_apply_at = now;
+            let base = self.world_scale();
             if let Some(r) = self.renderer.as_mut() {
                 r.set_world_post(
-                    (self.world_scale() * desired_drs).clamp(0.25, 2.0),
+                    (base * desired_drs).clamp(0.25, 2.0),
                     self.settings.horizon.fxaa,
                     self.settings.horizon.taa,
                     self.settings.horizon.upscaling.ratio(),
