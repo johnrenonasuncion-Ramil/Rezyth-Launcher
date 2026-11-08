@@ -5,6 +5,15 @@ name: weave
 # it downloads third-party bundles and executes their build, so it never runs
 # on a push. arm64-v8a only, as this repository's APK builds are.
 on:
+  # A change to the weave tooling or this file is a request to run it (the
+  # dispatch trigger waits for this file on the default branch). The
+  # sentinel file reruns the same set without a tooling change.
+  push:
+    branches: [feat/volt-harvest]
+    paths:
+      - '.github/workflows/weave.yml'
+      - 'tools/native_mods/**'
+      - '.weave-trigger'
   workflow_dispatch:
     inputs:
       weave_set:
