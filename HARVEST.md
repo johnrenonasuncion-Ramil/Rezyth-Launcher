@@ -99,14 +99,19 @@ CI: `android.yml` run **42457716326** built the APK green at `a848813fc`.
    `favour` arm (50 us `PR_SET_TIMERSLACK`, on until `set_thread_boost`), the persisted
    `extras.threadBoost` switch, applied at the Android start. CI: run **42463514240** green.
 2. **Volt Boost switches and effects** — IN PROGRESS: landed so far
-   (`39eb25aa6`–`8a68ca5e4`, CI run **42467361511** green): the switches as persisted `extras`
-   fields — `performanceHints` (ADPF session on/off, closed through
-   `APerformanceHint_closeSession`), `displayHz` (a rate requested every frame whatever the frame
-   cap says; 0 keeps today's behaviour), `threadBoost`, `voltPreset`, `dynamicFps` — the
-   frame-limiter effect for the idle cap (paused, a menu, or no world; AFK in a world stays the
-   vanilla tracker's), and `apply_volt_preset` growing with the ported switches, exactly as the
-   head's does. Remaining effects: chunk-upload cap (`streaming`), entity/item/block-entity caps
-   (rendering), particle budget, auto-DRS, menu-blur saver, audio voice cap.
+   (`39eb25aa6`–`46f40fe78`, CI runs **42467361511**–**42470799457** green): the persisted
+   switches — `performanceHints` (ADPF session on/off, closed through
+   `APerformanceHint_closeSession`), `displayHz` (a rate requested every frame whatever the
+   frame cap says; 0 keeps today's behaviour), `threadBoost`, `voltPreset`, `dynamicFps`,
+   `particleBudget`, `audioVoiceCap` — and their effects: the frame-limiter idle cap (paused, a
+   menu, or no world; AFK in a world stays the vanilla tracker's), the particle budget
+   (`ParticleGroup.MAX_PARTICLES` generalised to any cap, `Off` clears everything and stops the
+   debris tracker, and a render-side distance cut before sprite and light lookups), and the
+   particle-sound voice cap per tick. `apply_volt_preset` sets every ported switch per the head's
+   profiles. Covered by existing settings here, not ported: the chunk-upload cap (our
+   `UploadBudget` graphics setting already budgets uploads per frame, and the head's own switch
+   has no consumer in its tree). Remaining effects: entity/item/block-entity render caps,
+   auto-DRS, menu-blur saver, thermal guard, Reflex, pipeline prewarm.
 3. **In-game UI**: the Options screen gains the **Volt Settings** hub (`Page::VoltSettings`) with
    the Boost page first, then Waypoints/Minimap, using `graphics_style.rs`'s tokens. The main
    menu's and Options screen's entries land with the hub, so no command interface is needed.
