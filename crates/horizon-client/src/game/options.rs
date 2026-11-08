@@ -596,6 +596,8 @@ impl Game<'_> {
             );
         }
         self.particles.set_budget(s.extras.particle_budget);
+        self.particles.burst_shield = s.extras.chaos_particle_shield;
+        self.particles.frustum_cull = s.extras.particle_frustum_cull;
         let mut volumes = s.volumes;
         volumes[0] = 1.0;
         // Splitscreen: the speakers are P1's, and so are their volumes.

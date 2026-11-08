@@ -1088,6 +1088,12 @@ pub struct ParticleEngine {
     /// which nothing renders (`None`: vanilla's full distance).
     pub max_particles: usize,
     pub max_render_distance_sq: Option<f64>,
+    /// Volt Boost's chaos shield: an explosion throws at most 24 debris
+    /// particles (vanilla's 512), and a far one starts no firework show.
+    pub burst_shield: bool,
+    /// Volt Boost's frustum cull: a particle behind the camera and well out
+    /// of the view skips its sprite and light lookups.
+    pub frustum_cull: bool,
     /// FireworkParticles.Starter instances.
     starters: Vec<Starter>,
     /// `ClientExplosionTracker` tracked explosions pending debris generation.
@@ -1173,6 +1179,8 @@ impl ParticleEngine {
             particle_level: 0,
             max_particles: MAX_PARTICLES,
             max_render_distance_sq: None,
+            burst_shield: false,
+            frustum_cull: false,
             sounds: Vec::new(),
             made: Default::default(),
             item_sprites: HashMap::new(),
@@ -3175,6 +3183,9 @@ impl ParticleEngine {
         let twinkle = explosions.iter().any(|e| e.twinkle);
         let lifetime = explosions.len() as i32 * 2 - 1 + if twinkle { 15 } else { 0 };
         let far = (0..3).map(|i| (at[i] - camera[i]).powi(2)).sum::<f64>() >= 256.0;
+        if self.burst_shield && (far || self.starters.len() >= 4) {
+            return;
+        }
         self.starters.push(Starter {
             at,
             v,
@@ -3334,6 +3345,15 @@ impl ParticleEngine {
             }
         }
     }
+    /// Frees the queues' spare capacity (Volt Boost's memory saver), after
+    /// a world's or a dimension's clear emptied them.
+    pub fn trim_memory(&mut self) {
+        self.particles.shrink_to_fit();
+        self.pending.shrink_to_fit();
+        self.emitters.shrink_to_fit();
+        self.starters.shrink_to_fit();
+        self.sounds.shrink_to_fit();
+    }
     pub fn tick(&mut self, level: &ParticleLevel) {
         // Volt Boost's Off: no particle at all, not even the ones already up.
         let cap = self.max_particles.min(MAX_PARTICLES);
@@ -3402,7 +3422,8 @@ impl ParticleEngine {
         if total_blocks == 0 {
             return;
         }
-        let total_particles = total_blocks.min(512);
+        let debris_cap = if self.burst_shield { 24 } else { 512 };
+        let total_particles = total_blocks.min(debris_cap);
         for _ in 0..total_particles {
             // `WeightedRandom.getRandomItem` draws its `nextInt(totalWeight)`
             // even when one explosion is tracked.
@@ -4265,6 +4286,13 @@ impl ParticleEngine {
         // Camera.setRotation: rotationYXZ(PI - yRot, -xRot, 0).
         let base = Quat::from_rotation_y(std::f32::consts::PI - yaw.to_radians())
             * Quat::from_rotation_x(-pitch.to_radians());
+        let frustum_cull = self.frustum_cull;
+        let (yaw_rad, pitch_rad) = (yaw.to_radians(), pitch.to_radians());
+        let forward = Vec3::new(
+            -yaw_rad.sin() * pitch_rad.cos(),
+            -pitch_rad.sin(),
+            yaw_rad.cos() * pitch_rad.cos(),
+        );
         let mut light_cache = ParticleLightCache::default();
         for p in &self.particles {
             if p.no_render {
@@ -4305,6 +4333,9 @@ impl ParticleEngine {
                 continue;
             }
             let center = pos.as_vec3();
+            if frustum_cull && pos.length_squared() > 9.0 && center.dot(forward) < -2.5 {
+                continue;
+            }
             let rotation = if p.roll != 0.0 {
                 base * Quat::from_rotation_z(p.o_roll + (p.roll - p.o_roll) * partial)
             } else {

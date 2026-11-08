@@ -202,6 +202,15 @@ pub struct Extras {
     /// Volt Boost's hub lag shield: in a world of more than 24 mobs, players
     /// beyond nametag range give up their render slot first.
     pub hub_lag_shield: bool,
+    /// Volt Boost's chaos shield: explosions throw at most 24 debris
+    /// particles, and a far one starts no firework show.
+    pub chaos_particle_shield: bool,
+    /// Volt Boost's particle frustum cull: particles behind the camera skip
+    /// their sprite and light lookups.
+    pub particle_frustum_cull: bool,
+    /// Volt Boost's memory saver: on a world or dimension change, the
+    /// emptied queues and the allocator's freed pages go back to the OS.
+    pub memory_saver: bool,
     /// Volt Boost's entity render caps: past the cap only the nearest mobs,
     /// dropped items or block entities draw (rendering only), and past the
     /// mode's distance nothing does.
@@ -279,6 +288,9 @@ impl Default for Extras {
             cull_sign_text: false,
             distant_mob_throttle: false,
             hub_lag_shield: false,
+            chaos_particle_shield: false,
+            particle_frustum_cull: false,
+            memory_saver: false,
         }
     }
 }
@@ -442,6 +454,9 @@ impl Extras {
                 "cullSignText" => e.cull_sign_text = flag(e.cull_sign_text),
                 "distantMobThrottle" => e.distant_mob_throttle = flag(e.distant_mob_throttle),
                 "hubLagShield" => e.hub_lag_shield = flag(e.hub_lag_shield),
+                "chaosShield" => e.chaos_particle_shield = flag(e.chaos_particle_shield),
+                "particleFrustum" => e.particle_frustum_cull = flag(e.particle_frustum_cull),
+                "memorySaver" => e.memory_saver = flag(e.memory_saver),
                 _ => {}
             }
         }
@@ -449,7 +464,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\nanimThrottle:{}\nactiveAnimCull:{}\nfastTranslucency:{}\nfastWeather:{}\ncullSignText:{}\ndistantMobThrottle:{}\nhubLagShield:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\nanimThrottle:{}\nactiveAnimCull:{}\nfastTranslucency:{}\nfastWeather:{}\ncullSignText:{}\ndistantMobThrottle:{}\nhubLagShield:{}\nchaosShield:{}\nparticleFrustum:{}\nmemorySaver:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -519,6 +534,9 @@ impl Extras {
             bool_text(self.cull_sign_text),
             bool_text(self.distant_mob_throttle),
             bool_text(self.hub_lag_shield),
+            bool_text(self.chaos_particle_shield),
+            bool_text(self.particle_frustum_cull),
+            bool_text(self.memory_saver),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -635,6 +653,16 @@ impl Extras {
         self.hub_lag_shield = hub_lag_shield;
         self.cull_sign_text = preset != VoltBoostPreset::Off;
         self.distant_mob_throttle = preset != VoltBoostPreset::Off;
+        self.chaos_particle_shield = preset != VoltBoostPreset::Off;
+        self.particle_frustum_cull = preset != VoltBoostPreset::Off;
+        // The memory saver is Ultra FPS's, Low-RAM Rescue's and Battery
+        // Saver's; Balanced keeps the caches warm.
+        self.memory_saver = matches!(
+            preset,
+            VoltBoostPreset::UltraFps
+                | VoltBoostPreset::LowRam
+                | VoltBoostPreset::BatterySaver
+        );
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for
