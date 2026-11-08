@@ -91,12 +91,19 @@ CI: `android.yml` run **42457716326** built the APK green at `a848813fc`.
 
 ## Plan for the named priorities (Volt Boost first)
 
-1. **Engines**: port `volt_features.rs` into `horizon-client-render` (its dependencies exist
-   here: `camera::view_matrix`, `minimap::View`, `glam`, serde). Off by default; engines carry
-   their own tests.
-2. **Volt Boost switches and effects**: the Boost subset of `extras::Item` switches + presets
-   applied to this game's systems (`horizon-threads` timer-slack boost, ADPF, chunk-upload cap in
-   `streaming`, entity/item caps in rendering, dynamic idle FPS), one commit per system.
+1. **Engines** — DONE: `volt_features.rs` ported into `horizon-client-render` and re-exported as
+   `horizon_client::volt_features` (`b68b91738`, module declaration fixed `28582b3d0`; its
+   dependencies exist here unchanged, and the minimap projection inverts this tree's own
+   `compose`). Off by default; engines carry their own tests.
+   **Volt Boost's big.LITTLE thread tuning** also landed (`28582b3d0`): `horizon-threads`' Android
+   `favour` arm (50 us `PR_SET_TIMERSLACK`, on until `set_thread_boost`), the persisted
+   `extras.threadBoost` switch, applied at the Android start. CI: run **42463514240** green.
+2. **Volt Boost switches and effects** (next): the Boost subset of switches as `extras` fields +
+   `apply_volt_preset` mapped onto this game's settings (cutout leaves and friends live in
+   `Settings` here, not `Extras`), then the per-system effects: ADPF gating and the display-rate
+   request, chunk-upload cap in `streaming`, entity/item/block-entity caps in rendering,
+   particle budget, auto-DRS, dynamic idle FPS (the `native_framerate_limit` hook), menu-blur
+   saver, audio voice cap.
 3. **In-game UI**: the Options screen gains the **Volt Settings** hub (`Page::VoltSettings`) with
    the Boost page first, then Waypoints/Minimap, using `graphics_style.rs`'s tokens. The main
    menu's and Options screen's entries land with the hub, so no command interface is needed.
