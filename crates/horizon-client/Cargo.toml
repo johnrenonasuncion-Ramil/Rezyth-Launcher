@@ -87,6 +87,8 @@ rustix = { version = "1", default-features = false, features = ["std", "time", "
 # file manager, the file picker, the clipboard (cpal's version of jni).
 winit = { version = "0.30.13", features = ["android-native-activity"] }
 jni = "0.21.1"
+# Local diagnostics' redaction of log lines before they reach the game folder (android/diagnostics.rs).
+regex = "1.13.1"
 
 [target.'cfg(windows)'.dependencies]
 # (Resource pack overlays' `junction` is horizon-client-render's, with packs.rs.)

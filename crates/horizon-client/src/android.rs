@@ -16,6 +16,8 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use winit::platform::android::activity::AndroidApp;
 
+pub mod diagnostics;
+pub mod exit_reports;
 pub mod gallery;
 
 static APP: OnceLock<AndroidApp> = OnceLock::new();
@@ -1248,6 +1250,19 @@ pub fn main(app: AndroidApp) {
         );
     }
     logging::set_console(logcat);
+    // A bounded, redacted copy of the log and the run's state in the game folder's
+    // `performance/`, plus Android's exit history for the previous process (diagnostics.rs,
+    // exit_reports.rs), for a bug report to carry.
+    if let Err(error) = diagnostics::initialize(&home, serde_json::json!({})) {
+        log::warn!("Horizon: local diagnostics are off: {error}");
+    }
+    logging::set_sink(diagnostics_sink);
+    if diagnostics::previous_unclean(&home) {
+        log::warn!(
+            "Horizon: the previous session ended without a clean exit; performance/previous-session.json says what it was doing"
+        );
+    }
+    exit_reports::collect(&home);
     crate::system_stats::set_probes(crate::system_stats::Probes {
         heap_bytes,
         thermal_status,
@@ -1286,10 +1301,17 @@ pub fn main(app: AndroidApp) {
     finish_and_exit()
 }
 
+/// The logger's second consumer (logging::set_sink): a bounded, redacted copy of each line in
+/// the game folder's `performance/diagnostic.log`.
+fn diagnostics_sink(record: &log::Record) {
+    diagnostics::log_line(record.level(), record.target(), &record.args().to_string());
+}
+
 /// The end of the game's run, normal or not. Quit leaves the activity alive, and Android starts
 /// again an app whose process ends under its top activity, as after a crash: finish it, and its
 /// onDestroy ends the process.
 pub fn finish_and_exit() -> ! {
+    diagnostics::finish();
     with_activity(|env, activity| env.call_method(activity, "finish", "()V", &[]).map(drop));
     std::thread::sleep(std::time::Duration::from_secs(3));
     // Else, or once the activity is gone: Android may keep the process and start a new activity

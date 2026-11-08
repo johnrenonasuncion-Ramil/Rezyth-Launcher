@@ -479,6 +479,15 @@ pub fn set_console(console: fn(log::Level, &str)) {
     let _ = CONSOLE.set(console);
 }
 
+/// A second consumer of every record the file gets (Android's local diagnostics, which copy
+/// bounded, redacted lines to the game folder). Set before `init`, so no line is missed.
+static SINK: std::sync::OnceLock<fn(&log::Record)> = std::sync::OnceLock::new();
+
+/// Sends every record the file gets to `sink` from now on (before `init`).
+pub fn set_sink(sink: fn(&log::Record)) {
+    let _ = SINK.set(sink);
+}
+
 fn ours(target: &str) -> bool {
     target.starts_with("horizon")
 }
@@ -501,6 +510,9 @@ impl log::Log for Logger {
                 );
             }
             return;
+        }
+        if let Some(sink) = SINK.get() {
+            sink(record);
         }
         let message = record.args().to_string();
         // A platform console (Android's logcat) gets the message in place of stderr.
