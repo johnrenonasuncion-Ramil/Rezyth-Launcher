@@ -12383,6 +12383,13 @@ impl Game<'_> {
         self.title = None;
         self.clear_lod();
         self.pending_uploads.clear();
+        // Volt Boost's memory saver: hand the emptied queues' and the
+        // allocator's pages back while the new dimension loads.
+        if self.settings.extras.memory_saver {
+            self.particles.trim_memory();
+            self.pending_uploads.shrink_to_fit();
+            horizon_threads::release_free_memory();
+        }
         if let Some(r) = self.renderer.as_mut() {
             r.clear_sections(self.world.layout());
         }
@@ -12617,6 +12624,12 @@ impl Game<'_> {
         self.screen = Screen::Playing;
         self.clear_lod();
         self.pending_uploads.clear();
+        // Volt Boost's memory saver, as at a dimension change.
+        if self.settings.extras.memory_saver {
+            self.particles.trim_memory();
+            self.pending_uploads.shrink_to_fit();
+            horizon_threads::release_free_memory();
+        }
         if let Some(r) = self.renderer.as_mut() {
             r.clear_sections(self.world.layout());
         }
