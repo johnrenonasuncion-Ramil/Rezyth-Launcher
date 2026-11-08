@@ -5559,6 +5559,12 @@ impl Renderer {
         self.world_post.taa = taa;
         self.world_post.upscale = if taa { upscale.clamp(1.0, 4.0) } else { 1.0 };
     }
+    /// Volt Reflex: poll the GPU's queue now (`wgpu::Device::poll`), so a
+    /// frame's fences resolve during the limiter's sleep instead of at the
+    /// swap chain's question.
+    pub fn poll_gpu(&self) {
+        let _ = self.device.poll(wgpu::PollType::Poll);
+    }
     /// Runs `post` over the world from now on (`None`: no pack), for the dimension `dimension`;
     /// `block_ids` gives each block sprite layer's `mc_Entity` (id, fluid) and `at_midBlock.w`
     /// (its block's light), three values a layer.

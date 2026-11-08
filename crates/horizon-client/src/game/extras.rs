@@ -15,7 +15,6 @@ use horizon_client::{
 use std::time::Duration;
 use winit::event::MouseButton;
 
-#[derive(Default)]
 pub(super) struct ExtrasState {
     fps: FpsCounter,
     /// Left and right mouse buttons: held, and their clicks.
@@ -26,6 +25,38 @@ pub(super) struct ExtrasState {
     minimap_dim: Option<Dim>,
     /// Auto-reconnect's attempts at the current server.
     reconnect: Tracker,
+    /// Volt Boost's smoothed frame time (ms), which Auto-DRS and the
+    /// thermal guard steer by (the performance HUD's ring comes with it).
+    ema_frame_ms: f32,
+    /// Auto-DRS's world-resolution factor (1.0: the Resolution Scale alone).
+    drs_scale: f32,
+    last_drs_apply_at: f64,
+}
+
+impl Default for ExtrasState {
+    fn default() -> Self {
+        Self {
+            fps: FpsCounter::default(),
+            mouse: [false; 2],
+            cps: Default::default(),
+            minimap: Minimap::default(),
+            minimap_dim: None,
+            reconnect: Tracker::default(),
+            // A 60th of a second: the first frames read as on target, so
+            // Auto-DRS starts at the Resolution Scale and eases from there.
+            ema_frame_ms: 16.0,
+            drs_scale: 1.0,
+            last_drs_apply_at: 0.0,
+        }
+    }
+}
+
+impl ExtrasState {
+    /// The world-resolution factor Auto-DRS may use: never under half, and
+    /// 1.0 while it is off.
+    pub(super) fn effective_drs_scale(&self) -> f32 {
+        self.drs_scale.clamp(0.50, 1.0)
+    }
 }
 /// CPU time the minimap's tiles may take per frame.
 const MINIMAP_BUDGET: Duration = Duration::from_micros(300);
@@ -60,7 +91,52 @@ impl Game<'_> {
         self.update_minimap();
         // For mods (`render.frame-stats`, `native_frame_rate`).
         let now = self.extras_now();
-        self.extras.fps.record(now, elapsed.as_secs_f32() * 1000.0);
+        let ms = (elapsed.as_secs_f32() * 1000.0).clamp(0.1, 250.0);
+        self.extras.fps.record(now, ms);
+        // Volt Boost's smoothed frame time: Auto-DRS and the thermal guard
+        // steer the world's resolution and the particle budget with it.
+        self.extras.ema_frame_ms = self.extras.ema_frame_ms * 0.90 + ms * 0.10;
+
+        // Auto-DRS and the thermal guard: while playing, ease the world's
+        // resolution towards the frame target (never under the mode's floor,
+        // or 70% under a hot phone), and back up when frames come easy.
+        let drs_cfg = self.settings.extras.auto_drs.target_and_floor();
+        let thermal_on = self.settings.extras.thermal_guard;
+        let desired_drs = if playing && (drs_cfg.is_some() || thermal_on) {
+            let (target_fps, floor) = drs_cfg.unwrap_or((60.0, 0.72));
+            let target_ms = 1000.0 / target_fps;
+            let mut s = self.extras.drs_scale;
+            if self.extras.ema_frame_ms > target_ms * 1.12 {
+                s = (s - 0.04).max(floor);
+            } else if thermal_on && self.extras.ema_frame_ms > 24.0 {
+                s = (s - 0.05).max(0.70);
+            } else if self.extras.ema_frame_ms < target_ms * 0.80 {
+                s = (s + 0.02).min(1.0);
+            }
+            s
+        } else {
+            1.0
+        };
+        if (desired_drs - self.extras.drs_scale).abs() >= 0.035
+            && now - self.extras.last_drs_apply_at >= 0.45
+        {
+            self.extras.drs_scale = desired_drs;
+            self.extras.last_drs_apply_at = now;
+            if let Some(r) = self.renderer.as_mut() {
+                r.set_world_post(
+                    (self.world_scale() * desired_drs).clamp(0.25, 2.0),
+                    self.settings.horizon.fxaa,
+                    self.settings.horizon.taa,
+                    self.settings.horizon.upscaling.ratio(),
+                );
+            }
+        }
+        // A hot phone also thins the particle budget until it cools.
+        if thermal_on && playing && self.extras.ema_frame_ms > 28.0 {
+            self.particles.max_particles = self.particles.max_particles.min(1024);
+        } else {
+            self.particles.max_particles = self.settings.extras.particle_budget.max_particles();
+        }
         self.native_frame(elapsed);
         self.recipes_received_now();
     }

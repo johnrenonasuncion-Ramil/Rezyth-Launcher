@@ -1086,8 +1086,8 @@ pub struct ParticleEngine {
     /// Volt Boost's budget: the cap `MAX_PARTICLES` is held to (vanilla's own
     /// 16,384 unless the budget says less), and the squared distance past
     /// which nothing renders (`None`: vanilla's full distance).
-    max_particles: usize,
-    max_render_distance_sq: Option<f64>,
+    pub max_particles: usize,
+    pub max_render_distance_sq: Option<f64>,
     /// FireworkParticles.Starter instances.
     starters: Vec<Starter>,
     /// `ClientExplosionTracker` tracked explosions pending debris generation.

@@ -173,6 +173,15 @@ pub struct Extras {
     /// Volt Boost's audio voice cap: how many of a tick's particle sounds
     /// play (all of them as vanilla).
     pub audio_voice_cap: crate::volt_features::AudioVoiceCap,
+    /// Volt Boost's Auto-DRS: the world's resolution eases towards a frame
+    /// target while the HUD stays native (`extras_frame`).
+    pub auto_drs: crate::volt_features::AutoDrsMode,
+    /// Volt Boost's thermal guard: under load, the resolution and the
+    /// particle budget ease down until the phone cools.
+    pub thermal_guard: bool,
+    /// Volt Reflex: the GPU's queue is worked before the frame's sleep, with
+    /// precise pacing while playing.
+    pub volt_reflex: bool,
 }
 impl Default for Extras {
     fn default() -> Self {
@@ -227,6 +236,9 @@ impl Default for Extras {
             dynamic_fps: crate::volt_features::DynamicIdleFps::Off,
             particle_budget: crate::volt_features::ParticleBudget::Vanilla16k,
             audio_voice_cap: crate::volt_features::AudioVoiceCap::Vanilla,
+            auto_drs: crate::volt_features::AutoDrsMode::Off,
+            thermal_guard: false,
+            volt_reflex: false,
         }
     }
 }
@@ -356,6 +368,13 @@ impl Extras {
                         e.audio_voice_cap = c;
                     }
                 }
+                "autoDrs" => {
+                    if let Some(m) = crate::volt_features::AutoDrsMode::parse(value) {
+                        e.auto_drs = m;
+                    }
+                }
+                "thermalGuard" => e.thermal_guard = flag(e.thermal_guard),
+                "voltReflex" => e.volt_reflex = flag(e.volt_reflex),
                 _ => {}
             }
         }
@@ -363,7 +382,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -419,6 +438,9 @@ impl Extras {
             self.dynamic_fps.as_str(),
             self.particle_budget.as_str(),
             self.audio_voice_cap.as_str(),
+            self.auto_drs.as_str(),
+            bool_text(self.thermal_guard),
+            bool_text(self.volt_reflex),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -428,45 +450,73 @@ impl Extras {
     /// behaviour.
     pub fn apply_volt_preset(&mut self, preset: crate::volt_features::VoltBoostPreset) {
         use crate::volt_features::{
-            AudioVoiceCap, DynamicIdleFps, ParticleBudget, VoltBoostPreset,
+            AudioVoiceCap, AutoDrsMode, DynamicIdleFps, ParticleBudget, VoltBoostPreset,
         };
         self.volt_preset = preset;
-        let (thread_boost, dynamic_fps, particle_budget, audio_voice_cap) = match preset {
-            VoltBoostPreset::Off => (
-                false,
-                DynamicIdleFps::Off,
-                ParticleBudget::Vanilla16k,
-                AudioVoiceCap::Vanilla,
-            ),
-            VoltBoostPreset::Balanced => (
-                true,
-                DynamicIdleFps::Fps30,
-                ParticleBudget::Cap4096,
-                AudioVoiceCap::Cap32,
-            ),
-            VoltBoostPreset::Competitive => (
-                true,
-                DynamicIdleFps::Fps30,
-                ParticleBudget::Cap2048,
-                AudioVoiceCap::Cap32,
-            ),
-            VoltBoostPreset::UltraFps | VoltBoostPreset::LowRam => (
-                true,
-                DynamicIdleFps::Fps15,
-                ParticleBudget::Cap512,
-                AudioVoiceCap::Cap16,
-            ),
-            VoltBoostPreset::BatterySaver => (
-                false,
-                DynamicIdleFps::Fps15,
-                ParticleBudget::Cap2048,
-                AudioVoiceCap::Cap16,
-            ),
-        };
+        let (thread_boost, dynamic_fps, particle_budget, audio_voice_cap, auto_drs, thermal_guard, volt_reflex) =
+            match preset {
+                VoltBoostPreset::Off => (
+                    false,
+                    DynamicIdleFps::Off,
+                    ParticleBudget::Vanilla16k,
+                    AudioVoiceCap::Vanilla,
+                    AutoDrsMode::Off,
+                    false,
+                    false,
+                ),
+                VoltBoostPreset::Balanced => (
+                    true,
+                    DynamicIdleFps::Fps30,
+                    ParticleBudget::Cap4096,
+                    AudioVoiceCap::Cap32,
+                    AutoDrsMode::Off,
+                    true,
+                    true,
+                ),
+                VoltBoostPreset::Competitive => (
+                    true,
+                    DynamicIdleFps::Fps30,
+                    ParticleBudget::Cap2048,
+                    AudioVoiceCap::Cap32,
+                    AutoDrsMode::Target120,
+                    true,
+                    true,
+                ),
+                VoltBoostPreset::UltraFps => (
+                    true,
+                    DynamicIdleFps::Fps15,
+                    ParticleBudget::Cap512,
+                    AudioVoiceCap::Cap16,
+                    AutoDrsMode::Aggressive50,
+                    true,
+                    true,
+                ),
+                VoltBoostPreset::BatterySaver => (
+                    false,
+                    DynamicIdleFps::Fps15,
+                    ParticleBudget::Cap2048,
+                    AudioVoiceCap::Cap16,
+                    AutoDrsMode::Target60,
+                    true,
+                    false,
+                ),
+                VoltBoostPreset::LowRam => (
+                    true,
+                    DynamicIdleFps::Fps15,
+                    ParticleBudget::Cap512,
+                    AudioVoiceCap::Cap16,
+                    AutoDrsMode::Target60,
+                    true,
+                    true,
+                ),
+            };
         self.thread_boost = thread_boost;
         self.dynamic_fps = dynamic_fps;
         self.particle_budget = particle_budget;
         self.audio_voice_cap = audio_voice_cap;
+        self.auto_drs = auto_drs;
+        self.thermal_guard = thermal_guard;
+        self.volt_reflex = volt_reflex;
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for

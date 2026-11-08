@@ -552,6 +552,15 @@ impl Game<'_> {
             self.reload_packs();
         }
         self.apply_fullscreen();
+        // Volt Boost's Auto-DRS and thermal guard scale the world's
+        // resolution against the frame time (extras_frame); with neither,
+        // the world renders at the Resolution Scale alone.
+        if self.settings.extras.auto_drs == horizon_client::volt_features::AutoDrsMode::Off
+            && !self.settings.extras.thermal_guard
+        {
+            self.extras.drs_scale = 1.0;
+        }
+        let effective_drs = self.extras.effective_drs_scale();
         let s = &self.settings;
         if let Some(r) = self.renderer.as_mut() {
             r.gamma = s.gamma;
@@ -566,7 +575,7 @@ impl Game<'_> {
                 s.file.int("maxAnisotropyBit"),
             );
             r.set_world_post(
-                scale,
+                (scale * effective_drs).clamp(0.25, 2.0),
                 s.horizon.fxaa,
                 s.horizon.taa,
                 s.horizon.upscaling.ratio(),
@@ -583,6 +592,7 @@ impl Game<'_> {
                 &Self::options_path().with_file_name(horizon_client::graphics::HDR_MARKER),
             );
         }
+        self.particles.set_budget(s.extras.particle_budget);
         let mut volumes = s.volumes;
         volumes[0] = 1.0;
         // Splitscreen: the speakers are P1's, and so are their volumes.
@@ -712,8 +722,24 @@ impl Game<'_> {
         if self.options.frames.is_some() || self.options.paced_by_split {
             return;
         }
+        // Volt Reflex: work the GPU's queue before the frame's sleep, so its
+        // result is ready when the swap chain wants it (and the loading
+        // screen stays on the phone's efficient grid).
+        if self.settings.extras.volt_reflex
+            && self.title.is_none()
+            && let Some(r) = self.renderer.as_ref()
+        {
+            r.poll_gpu();
+        }
         let limit = self.framerate_limit();
-        match self.settings.horizon.pacing {
+        let pacing = if cfg!(target_os = "android") && self.title.is_some() {
+            horizon_client::graphics::Pacing::Efficient
+        } else if self.settings.extras.volt_reflex {
+            horizon_client::graphics::Pacing::Precise
+        } else {
+            self.settings.horizon.pacing
+        };
+        match pacing {
             horizon_client::graphics::Pacing::Precise => {
                 horizon_client::window::end_frame(&mut self.limiter, limit, &mut self.frame_clock)
             }
