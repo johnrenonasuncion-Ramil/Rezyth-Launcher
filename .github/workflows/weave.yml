@@ -102,7 +102,13 @@ jobs:
         run: |
           set -euo pipefail
           set_file="$RUNNER_TEMP/weave-set.txt"
-          if [ -n "$SET" ]; then printf '%s\n' "$SET" > "$set_file"; else printf '%s\n' "$DEFAULT_SET" > "$set_file"; fi
+          if [ -n "$SET" ]; then
+            printf '%s\n' "$SET" > "$set_file"
+          elif [ -f .weave-set ]; then
+            cp .weave-set "$set_file"
+          else
+            printf '%s\n' "$DEFAULT_SET" > "$set_file"
+          fi
           mkdir -p "$RUNNER_TEMP/bundle"
           args=()
           while IFS= read -r line; do
