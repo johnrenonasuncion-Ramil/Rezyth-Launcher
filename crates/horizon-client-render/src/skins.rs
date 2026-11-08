@@ -935,6 +935,11 @@ impl Downloader {
         self.queued.insert(location.clone());
         self.ready.push((location, rgba));
     }
+    /// The decoded pixels of a location's skin already in memory, for the
+    /// native mods that build from them (the `skins_3d` bundle's voxels).
+    pub fn image(&self, location: &str) -> Option<&Vec<u8>> {
+        self.images.get(location)
+    }
     /// A ready skin whose atlas slot was evicted (`show_skin` answered no):
     /// its image for upload again, from memory or the disk cache.
     pub fn again(&mut self, location: &str) -> bool {

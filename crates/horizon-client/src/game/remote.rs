@@ -5690,10 +5690,15 @@ impl Game<'_> {
                 continue;
             };
             let (skin, is_slim) = self.drawn_skin(uuid, skin_of(&skins, uuid));
+            // The 3D skin-layers model, when a native mod builds one for this
+            // skin (the flat outer layer draws otherwise).
+            let kind = self.mobs[i].kind.clone();
+            let skin_3d = self.skin_3d_model(&kind, &skin, is_slim);
             let cape = capes.get(&uuid).filter(|c| self.again_skin(c)).cloned();
             let mob = &mut self.mobs[i];
             mob.skin = Some(skin);
             mob.slim = is_slim;
+            mob.skin_3d = skin_3d;
             mob.cape = cape;
         }
         if self.player_model.is_some() {
@@ -5704,9 +5709,14 @@ impl Game<'_> {
                 .filter(|_| self.settings.file.bool("modelPart_cape"))
                 .filter(|c| self.again_skin(c))
                 .cloned();
+            let kind = self.player_model.as_ref().map(|m| m.kind.clone());
+            let skin_3d = kind
+                .as_ref()
+                .and_then(|kind| self.skin_3d_model(kind, &skin, is_slim));
             if let Some(mob) = self.player_model.as_mut() {
                 mob.skin = Some(skin);
                 mob.slim = is_slim;
+                mob.skin_3d = skin_3d;
                 mob.cape = cape;
             }
         }
@@ -5853,6 +5863,19 @@ impl Game<'_> {
     /// `drawn_skin` for a face in the player list or spectator menu.
     pub(super) fn face_skin(&mut self, uuid: u128, skin: &str) -> String {
         self.drawn_skin(uuid, (skin.to_owned(), false)).0
+    }
+    /// The 3D skin-layers model for a player: a native mod's hook point (the
+    /// `skins_3d` bundle builds the outer layer with one slab per painted
+    /// texel). This tree keeps the function for that only — without a mod the
+    /// flat layer draws as always and this costs nothing.
+    fn skin_3d_model(
+        &self,
+        kind: &std::sync::Arc<horizon_client::mobs::MobType>,
+        skin: &str,
+        slim: bool,
+    ) -> Option<std::sync::Arc<horizon_client::mobs::Part>> {
+        let _ = (kind, skin, slim);
+        None
     }
     /// ChatType.Bound.decorate (`Decoration::Chat`) and `decorateNarration`
     /// (`Decoration::Narration`): the chat type's decoration from the

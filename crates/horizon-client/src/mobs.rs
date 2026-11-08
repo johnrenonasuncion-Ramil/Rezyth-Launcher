@@ -1238,6 +1238,10 @@ pub struct Mob {
     pub skin: Option<String>,
     /// `PlayerSkin.model` is `SLIM`: the player model with 3-pixel arms.
     pub slim: bool,
+    /// The 3D skin-layers model a native mod builds for this player
+    /// (`remote::Game::skin_3d_model`, a hook point): the body model with
+    /// its outer layer as real pixels. None: the flat layer draws.
+    pub skin_3d: Option<std::sync::Arc<Part>>,
     /// `PlayerSkin.cape`: a player's cape texture, once every download of
     /// its skin is ready.
     pub cape: Option<String>,
@@ -2682,6 +2686,7 @@ impl Mob {
             outbox: Vec::new(),
             skin: None,
             slim: false,
+            skin_3d: None,
             cape: None,
             profile: None,
             random_textures: Default::default(),
