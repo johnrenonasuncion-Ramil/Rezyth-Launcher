@@ -4288,7 +4288,7 @@ impl ParticleEngine {
             * Quat::from_rotation_x(-pitch.to_radians());
         let frustum_cull = self.frustum_cull;
         let (yaw_rad, pitch_rad) = (yaw.to_radians(), pitch.to_radians());
-        let forward = glam::Vec3::new(
+        let forward = FVec3::new(
             -yaw_rad.sin() * pitch_rad.cos(),
             -pitch_rad.sin(),
             yaw_rad.cos() * pitch_rad.cos(),
