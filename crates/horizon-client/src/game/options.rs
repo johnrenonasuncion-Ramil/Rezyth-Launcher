@@ -687,7 +687,7 @@ impl Game<'_> {
                     || self.title.is_some()
                     || self.screen != super::Screen::Playing =>
             {
-                i32::from(cap).min(limit)
+                (cap as i32).min(limit)
             }
             _ => limit,
         };
