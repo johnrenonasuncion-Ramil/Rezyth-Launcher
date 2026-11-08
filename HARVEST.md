@@ -135,18 +135,20 @@ CI: `android.yml` run **42457716326** built the APK green at `a848813fc`.
    repository’s own weaver (`packaging/android/native_build.sh`, one horizon-mixins pass, with
    `native_mod_adapt.py` bringing the mods’ calls up to date; the compiler runs at the newest
    consumer pin, Skins 3D’s, and vendored crates propagate into horizon-android).
-   **30 of the 33 weave and build green** (CI run **42517109722**, artifact `woven-apk`,
-   33.1 MB): jei, jade, veinminer, appleskin, status_effect_hud, toggle_sprint,
-   inventory_profiles, shulker_peek, mousetricks, itemnew, eatinganimation, enchantmenthints,
-   light_overlay, right_click_crops, smartf3, armor_status, crosshair_indicator, hitbox_plus,
-   invisible_frames, freelook, voicechat, worldedit, horizonmatica, held_item_info, carryblock,
-   chatheads, fast_items, customhud, coords_hud, biomecompass.
-   Three stay out, each with its exact blocker (in `.weave-set`, reported every run):
-   `skins_3d` targets `remote::Game::skin_3d_model`, the hook point the head’s fork keeps for
-   it (with `Mob.skin_3d` and its render path); `visuality_horizon` and `horizon_physics`
-   inject the shader-packs code that needs the head fork’s built-in shader runtime
-   (`native_shaders.picked` / `NativeShaders::picking`). Each needs its engine feature ported
-   first, as follow-ups.
+   **All 33 weave and build green** (CI run **42521156965**, artifact `woven-apk`, 33.6 MB;
+   every bundle staged, none rejected): jei, horizon_physics, jade, veinminer, appleskin,
+   status_effect_hud, toggle_sprint, inventory_profiles, shulker_peek, mousetricks, itemnew,
+   eatinganimation, enchantmenthints, light_overlay, right_click_crops, smartf3, armor_status,
+   crosshair_indicator, hitbox_plus, invisible_frames, freelook, voicechat, worldedit,
+   horizonmatica, visuality_horizon, held_item_info, carryblock, chatheads, fast_items,
+   customhud, coords_hud, biomecompass, skins_3d.
+   The last three needed their engine features ported first, all landed here: `Mob.skin_3d`,
+   the `remote::Game::skin_3d_model` hook point (called where a player’s skin is applied,
+   drawn in place of the flat outer layer) and `Downloader::image` for Skins 3D;
+   `NativeShaders::picked`/`picking` and the pick-by-name wiring in `shader_packs.rs` for
+   Visuality Horizon and Horizon Physics. The weave also drove the stale `Cargo.lock` fix, the
+   `thread_local!` move out of `game.rs`’s top level (the compiler’s macro policy) and five
+   `native_mod_adapt` rules.
 ## Verify
 
 ```sh
