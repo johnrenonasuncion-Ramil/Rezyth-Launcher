@@ -16308,6 +16308,14 @@ impl Game<'_> {
     /// `Screen.extractBlurredBackground` over the panorama or the world and
     /// HUD, when `menuBackgroundBlurriness` is at least 1.
     fn menu_blur(&self) -> Option<f32> {
+        // Volt Boost's menu backdrop saver: FastDark skips the multi-pass
+        // blur (the phone's tile GPUs pay for it every frame); the menus sit
+        // on their plain dark backdrop.
+        if self.settings.extras.menu_bg_mode
+            == horizon_client::volt_features::MenuBgMode::FastDark
+        {
+            return None;
+        }
         let blurred = self.remote_loading()
             || self.title.as_ref().is_some_and(|t| {
                 matches!(self.screen, Screen::Options | Screen::Win)

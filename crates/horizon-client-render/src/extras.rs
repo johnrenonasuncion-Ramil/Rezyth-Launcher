@@ -179,6 +179,9 @@ pub struct Extras {
     /// Volt Boost's thermal guard: under load, the resolution and the
     /// particle budget ease down until the phone cools.
     pub thermal_guard: bool,
+    /// Volt Boost's menu backdrop saver: FastDark skips the multi-pass menu
+    /// blur for a plain dark backdrop (PanoramaBlur is the vanilla blur).
+    pub menu_bg_mode: crate::volt_features::MenuBgMode,
     /// Volt Boost's entity render caps: past the cap only the nearest mobs,
     /// dropped items or block entities draw (rendering only), and past the
     /// mode's distance nothing does.
@@ -248,6 +251,7 @@ impl Default for Extras {
             entity_cap: crate::volt_features::EntityCap::Unlimited,
             item_render_cap: crate::volt_features::ItemRenderCap::Unlimited,
             block_entity_cap: crate::volt_features::BlockEntityCap::Unlimited,
+            menu_bg_mode: crate::volt_features::MenuBgMode::PanoramaBlur,
         }
     }
 }
@@ -399,6 +403,11 @@ impl Extras {
                         e.block_entity_cap = c;
                     }
                 }
+                "menuBgMode" => {
+                    if let Some(m) = crate::volt_features::MenuBgMode::parse(value) {
+                        e.menu_bg_mode = m;
+                    }
+                }
                 _ => {}
             }
         }
@@ -406,7 +415,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\nparticleBudget:{}\naudioVoiceCap:{}\nautoDrs:{}\nthermalGuard:{}\nvoltReflex:{}\nentityCap:{}\nitemRenderCap:{}\nblockEntityCap:{}\nmenuBgMode:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -468,6 +477,7 @@ impl Extras {
             self.entity_cap.as_str(),
             self.item_render_cap.as_str(),
             self.block_entity_cap.as_str(),
+            self.menu_bg_mode.as_str(),
         )
     }
     /// Applies a Volt Boost profile to the switches this port carries so far
@@ -562,6 +572,11 @@ impl Extras {
         self.entity_cap = entity_cap;
         self.item_render_cap = item_render_cap;
         self.block_entity_cap = block_entity_cap;
+        // Every profile that is not Off puts the menu backdrop on FastDark.
+        self.menu_bg_mode = match preset {
+            VoltBoostPreset::Off => crate::volt_features::MenuBgMode::PanoramaBlur,
+            _ => crate::volt_features::MenuBgMode::FastDark,
+        };
     }
 
     /// Binds the extra key `name` (`SORT_KEY`); false for
