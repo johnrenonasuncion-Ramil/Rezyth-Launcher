@@ -84,7 +84,6 @@ CHANGED = (
         "Some(st) => BlockState { name: st.name.clone(),"
         " properties: st.properties.iter().map(|(k, v)| (k.clone(), v.clone())).collect() },",
     ),
-    ),
 )
 
 
