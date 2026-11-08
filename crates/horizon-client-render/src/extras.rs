@@ -160,6 +160,13 @@ pub struct Extras {
     /// Volt Boost's ADPF performance hints on Android (`frame_hint`'s
     /// session): on, as the game has always asked for the boost.
     pub performance_hints: bool,
+    /// The selected Volt Boost profile, as the switches below hold it
+    /// (`apply_volt_preset` writes it; the profiles themselves grow with the
+    /// ported switches).
+    pub volt_preset: volt_features::VoltBoostPreset,
+    /// Volt Boost's dynamic idle FPS: a 30 or 15 FPS cap while the game is
+    /// paused, in a menu, or shows no world (`framerate_limit`).
+    pub dynamic_fps: volt_features::DynamicIdleFps,
 }
 impl Default for Extras {
     fn default() -> Self {
@@ -210,6 +217,8 @@ impl Default for Extras {
             thread_boost: false,
             display_hz: 0,
             performance_hints: true,
+            volt_preset: volt_features::VoltBoostPreset::Off,
+            dynamic_fps: volt_features::DynamicIdleFps::Off,
         }
     }
 }
@@ -319,6 +328,16 @@ impl Extras {
                         .unwrap_or(0);
                 }
                 "performanceHints" => e.performance_hints = flag(e.performance_hints),
+                "voltPreset" => {
+                    if let Some(p) = volt_features::VoltBoostPreset::parse(value) {
+                        e.volt_preset = p;
+                    }
+                }
+                "dynamicFps" => {
+                    if let Some(m) = volt_features::DynamicIdleFps::parse(value) {
+                        e.dynamic_fps = m;
+                    }
+                }
                 _ => {}
             }
         }
@@ -326,7 +345,7 @@ impl Extras {
     }
     pub fn serialize(&self) -> String {
         format!(
-            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\n",
+            "fullbright:{}\ndynamicLights:{}\nzoom:{}\nzoomKey:{}\nzoomLevel:{}\nzoomSmooth:{}\nzoomSensitivity:{}\nfps:{}\nfpsCorner:{}\nfpsLows:{}\nkeystrokes:{}\nkeystrokesCorner:{}\nkeystrokesCps:{}\nmovedToMods:{}\nminimap:{}\nminimapCorner:{}\nminimapSize:{}\nminimapShape:{}\nminimapZoom:{}\nminimapRotate:{}\nautoReconnect:{}\nuiSoundReserve:{}\nownNameTag:{}\nhideBlockParticles:{}\nmouseTweaks:{}\nmouseTweaksWheel:{}\nsort:{}\nsortKey:{}\nchatAnimation:{}\nchatIndicator:{}\n{}:{}\nagentControl:{}\nreproKeys:{}\ndiscordPresence:{}\nsplitscreen:{}\nsplitscreenTwo:{}\nsplitscreenThree:{}\nsplitscreenNames:{}\nwheelCyclesSettings:{}\nmusicOff:{}\nmusicPage:{}\ncosmeticsMine:{}\ncosmeticsOthers:{}\nthreadBoost:{}\ndisplayHz:{}\nperformanceHints:{}\nvoltPreset:{}\ndynamicFps:{}\n",
             bool_text(self.fullbright),
             bool_text(self.dynamic_lights),
             bool_text(self.zoom),
@@ -378,8 +397,29 @@ impl Extras {
             bool_text(self.thread_boost),
             self.display_hz,
             bool_text(self.performance_hints),
+            self.volt_preset.as_str(),
+            self.dynamic_fps.as_str(),
         )
     }
+    /// Applies a Volt Boost profile to the switches this port carries so far
+    /// (the thread tuning and the dynamic idle FPS; the method grows with
+    /// each ported switch, as the head's does across its Tier 1-3 fields).
+    /// `Off` puts every one of them back to vanilla's behaviour.
+    pub fn apply_volt_preset(&mut self, preset: volt_features::VoltBoostPreset) {
+        use volt_features::{DynamicIdleFps, VoltBoostPreset};
+        self.volt_preset = preset;
+        let (thread_boost, dynamic_fps) = match preset {
+            VoltBoostPreset::Off => (false, DynamicIdleFps::Off),
+            VoltBoostPreset::Balanced | VoltBoostPreset::Competitive => {
+                (true, DynamicIdleFps::Fps30)
+            }
+            VoltBoostPreset::UltraFps | VoltBoostPreset::LowRam => (true, DynamicIdleFps::Fps15),
+            VoltBoostPreset::BatterySaver => (false, DynamicIdleFps::Fps15),
+        };
+        self.thread_boost = thread_boost;
+        self.dynamic_fps = dynamic_fps;
+    }
+
     /// Binds the extra key `name` (`SORT_KEY`); false for
     /// another name (a vanilla mapping).
     pub fn set_key(&mut self, name: &str, value: String) -> bool {

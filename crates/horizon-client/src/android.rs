@@ -1166,7 +1166,7 @@ pub fn frame_hint(cpu: std::time::Duration, fps_limit: i32, hints_on: bool, disp
                 && let Some(close) = symbols.close
             {
                 // SAFETY: a session this thread created, still alive.
-                unsafe { close(state.session) };
+                unsafe { close(state.session as *mut std::ffi::c_void) };
                 state.session = 0;
             }
         } else if state.session == 0

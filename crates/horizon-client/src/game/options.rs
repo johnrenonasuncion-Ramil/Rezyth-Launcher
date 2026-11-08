@@ -678,6 +678,19 @@ impl Game<'_> {
             .settings
             .horizon
             .battery_limit(limit, self.title.is_none(), self.focused);
+        // Volt Boost's dynamic idle FPS: paused, in a menu, or showing no
+        // world, the phone's screen and battery hardly need the full rate
+        // (AFK in a world stays the vanilla tracker's).
+        let limit = match self.settings.extras.dynamic_fps.cap_fps() {
+            Some(cap)
+                if self.pause
+                    || self.title.is_some()
+                    || self.screen != super::Screen::Playing =>
+            {
+                i32::from(cap).min(limit)
+            }
+            _ => limit,
+        };
         // A native mod may only lower it (`native_framerate_limit`).
         let mut hooked = limit;
         self.native_framerate_limit(
