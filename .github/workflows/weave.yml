@@ -17,11 +17,11 @@ on:
   workflow_dispatch:
     inputs:
       weave_set:
-        description: Registry mods to weave, one id per line (empty: the default set in this file)
+        description: "Registry mods to weave, one id per line (empty: the default set)"
         type: string
         default: ''
       raw_targets:
-        description: Also try bundles pinned without a hook-API declaration (the compiler judges)
+        description: "Also try bundles pinned without a hook-API declaration"
         type: boolean
         default: false
 permissions:
