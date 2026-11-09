@@ -1,12 +1,15 @@
 //! The Modrinth resource-pack gallery's workers and effects (the page, at
 //! `Options > Resource Packs > Download Packs`): search and version requests,
 //! a download per install with its SHA-512 checked, the sidecar of what was
-//! installed (`pack-gallery.json`), the update check and the auto-enable. The
-//! state the page draws is `horizon_client::pack_gallery::Gallery`, in the
-//! `OptionsUi` the event came from (the game's or the startup menu's).
+//! installed (`pack-gallery.json`), the update check and the auto-enable.
+//! [`GalleryOps`] works on any options UI, so the title screen's menu (a
+//! `Loading`) and the game's own options both use it; the page itself draws
+//! `horizon_client::pack_gallery::Gallery`.
 use super::{Game, packs};
-use horizon_client::options_ui::Event;
+use horizon_client::options_ui::{Event, OptionsUi};
 use horizon_client::pack_gallery as gallery;
+use horizon_client::packs::Pack;
+use horizon_client::settings::Settings;
 use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -23,209 +26,209 @@ const USER_AGENT: &str = "Rezyth-Launcher (github.com/johnrenonasuncion-Ramil/Re
 /// The sidecar of what the gallery installed, in the game folder.
 const INDEX: &str = "pack-gallery.json";
 
-/// What a worker sends back; [`Game::poll_pack_gallery`] applies it.
+/// What a worker sends back; [`GalleryOps::poll`] applies it.
 pub(super) enum Msg {
     Search {
-        menu: bool,
         generation: u64,
         offset: usize,
         query: String,
         result: Result<(Vec<gallery::Pack>, u64), String>,
     },
     Progress {
-        menu: bool,
         project_id: String,
         done: u64,
         total: u64,
     },
     Installed {
-        menu: bool,
         record: gallery::Installed,
         replace: Option<String>,
     },
     InstallFailed {
-        menu: bool,
         project_id: String,
         error: String,
     },
     Updates {
-        menu: bool,
         updates: Vec<gallery::Update>,
     },
 }
 
-/// The gallery's worker half on `Game`: the channel, the running search's
-/// number per options UI, and when the installed packs were last checked.
-pub(super) struct PackGallery {
+/// One options UI's gallery workers: its channel, the running search's number
+/// and when the installed packs were last checked.
+pub(super) struct GalleryOps {
     tx: Sender<Msg>,
     rx: Receiver<Msg>,
-    generations: [u64; 2],
+    generation: u64,
     checked: Option<Instant>,
 }
 
-impl PackGallery {
+impl GalleryOps {
     pub(super) fn new() -> Self {
         let (tx, rx) = std::sync::mpsc::channel();
         Self {
             tx,
             rx,
-            generations: [0, 0],
+            generation: 0,
             checked: None,
         }
     }
 }
 
-impl Default for PackGallery {
+impl Default for GalleryOps {
     fn default() -> Self {
         Self::new()
     }
-}
 
-fn slot(menu: bool) -> usize {
-    usize::from(menu)
-}
-
-impl Game<'_> {
-    /// What the gallery's events ask of the game; other events go on.
-    pub(super) fn pack_gallery_event(&mut self, menu: bool, event: &Event) -> bool {
+    /// What the gallery's events ask of `ui`; None: not a gallery event.
+    /// `Some(true)` when the settings changed (the caller saves them).
+    pub(super) fn event(
+        &mut self,
+        ui: &mut OptionsUi,
+        settings: &mut Settings,
+        root: &Path,
+        server: &[Pack],
+        event: &Event,
+    ) -> Option<bool> {
         match event {
-            Event::ListPackGallery => self.list_pack_gallery(menu),
-            Event::PackGalleryInstall(i) => self.install_gallery_result(menu, *i),
-            Event::PackGalleryUpdate(file) => self.install_gallery_update(menu, file),
-            Event::PackGalleryMore => self.start_gallery_search(menu, true),
-            Event::PackGalleryRetry => self.start_gallery_search(menu, false),
-            _ => return false,
+            Event::ListPackGallery => self.list(ui),
+            Event::PackGalleryInstall(i) => self.install_result(ui, *i),
+            Event::PackGalleryUpdate(file) => self.install_update(ui, file),
+            Event::PackGalleryMore => self.search(ui, true),
+            Event::PackGalleryRetry => self.search(ui, false),
+            _ => return None,
         }
-        true
+        let _ = (settings, root, server);
+        Some(false)
     }
 
-    /// The gallery's answers, applied to the state that asked for them; a
-    /// query typed in the search box starts a search after a pause.
-    pub(super) fn poll_pack_gallery(&mut self, menu: bool) {
+    /// The workers' answers each frame `ui` draws, and the search box's
+    /// debounce. Whether the settings changed (the caller saves them).
+    pub(super) fn poll(
+        &mut self,
+        ui: &mut OptionsUi,
+        settings: &mut Settings,
+        root: &Path,
+        server: &[Pack],
+    ) -> bool {
         let due = {
-            let state = &self.gallery_ui_mut(menu).gallery;
+            let state = &ui.gallery;
             state.changed_at.is_some_and(|at| at.elapsed() >= DEBOUNCE)
                 && state.query != state.searched
         };
         if due {
-            self.gallery_ui_mut(menu).gallery.changed_at = None;
-            self.start_gallery_search(menu, false);
+            ui.gallery.changed_at = None;
+            self.search(ui, false);
         }
         let mut msgs = Vec::new();
-        while let Ok(msg) = self.pack_gallery.rx.try_recv() {
+        while let Ok(msg) = self.rx.try_recv() {
             msgs.push(msg);
         }
+        let mut changed = false;
         for msg in msgs {
-            self.apply_pack_gallery(msg);
+            changed |= self.apply(msg, ui, settings, root, server);
         }
+        changed
     }
 
-    fn apply_pack_gallery(&mut self, msg: Msg) {
+    fn apply(
+        &mut self,
+        msg: Msg,
+        ui: &mut OptionsUi,
+        settings: &mut Settings,
+        root: &Path,
+        server: &[Pack],
+    ) -> bool {
         match msg {
             Msg::Search {
-                menu,
                 generation,
                 offset,
                 query,
                 result,
             } => {
-                if generation != self.pack_gallery.generations[slot(menu)] {
-                    return;
+                if generation != self.generation {
+                    return false;
                 }
-                let state = &mut self.gallery_ui_mut(menu).gallery;
                 match result {
                     Ok((found, total)) => {
                         if offset == 0 {
-                            state.results = found;
+                            ui.gallery.results = found;
                         } else {
-                            state.results.extend(found);
+                            ui.gallery.results.extend(found);
                         }
-                        state.total = total;
-                        state.searched = query;
-                        state.error.clear();
+                        ui.gallery.total = total;
+                        ui.gallery.searched = query;
+                        ui.gallery.error.clear();
                     }
                     Err(error) => {
                         log::warn!("Horizon: the Modrinth search failed: {error}");
-                        state.error = error;
+                        ui.gallery.error = error;
                     }
                 }
-                state.status = gallery::Status::Ready;
+                ui.gallery.status = gallery::Status::Ready;
+                false
             }
             Msg::Progress {
-                menu,
                 project_id,
                 done,
                 total,
             } => {
-                self.gallery_ui_mut(menu)
-                    .gallery
-                    .downloading
-                    .insert(project_id, (done, total));
+                ui.gallery.downloading.insert(project_id, (done, total));
+                false
             }
-            Msg::Installed {
-                menu,
-                record,
-                replace,
-            } => self.finish_gallery_install(menu, record, replace),
+            Msg::Installed { record, replace } => {
+                finish(ui, settings, root, server, record, replace)
+            }
             Msg::InstallFailed {
-                menu,
                 project_id,
                 error,
             } => {
                 log::warn!("Horizon: a gallery download failed: {error}");
-                let state = &mut self.gallery_ui_mut(menu).gallery;
-                state.downloading.remove(&project_id);
-                state.warning = error;
+                ui.gallery.downloading.remove(&project_id);
+                ui.gallery.warning = error;
+                false
             }
-            Msg::Updates { menu, updates } => {
-                self.gallery_ui_mut(menu).gallery.updates =
-                    updates.into_iter().map(|u| (u.file.clone(), u)).collect();
+            Msg::Updates { updates } => {
+                ui.gallery.updates = updates.into_iter().map(|u| (u.file.clone(), u)).collect();
+                false
             }
         }
     }
 
     /// The gallery page opened: read the sidecar, look for updates and, with
     /// no results yet, search.
-    fn list_pack_gallery(&mut self, menu: bool) {
+    fn list(&mut self, ui: &mut OptionsUi) {
         let dir = packs::packs_dir();
         let records: Vec<gallery::Installed> = read_index()
             .into_iter()
             .filter(|record| dir.join(&record.file).is_file())
             .collect();
-        {
-            let state = &mut self.gallery_ui_mut(menu).gallery;
-            state.installed = records
-                .iter()
-                .map(|record| (record.file.clone(), record.clone()))
-                .collect();
-        }
+        ui.gallery.installed = records
+            .iter()
+            .map(|record| (record.file.clone(), record.clone()))
+            .collect();
         if !records.is_empty()
             && self
-                .pack_gallery
                 .checked
                 .is_none_or(|at| at.elapsed() >= UPDATE_EVERY)
         {
-            self.pack_gallery.checked = Some(Instant::now());
-            self.gallery_ui_mut(menu).gallery.checked_at = Some(Instant::now());
-            let tx = self.pack_gallery.tx.clone();
+            self.checked = Some(Instant::now());
+            ui.gallery.checked_at = Some(Instant::now());
+            let tx = self.tx.clone();
             let _ = std::thread::Builder::new()
                 .name("pack-gallery-updates".into())
-                .spawn(move || check_updates(tx, menu, records));
+                .spawn(move || check_updates(tx, records));
         }
-        let fresh = {
-            let state = &self.gallery_ui_mut(menu).gallery;
-            state.results.is_empty() && state.status != gallery::Status::Loading
-        };
+        let fresh =
+            ui.gallery.results.is_empty() && ui.gallery.status != gallery::Status::Loading;
         if fresh {
-            self.start_gallery_search(menu, false);
+            self.search(ui, false);
         }
     }
 
     /// Ask Modrinth for `query`'s page. The running search's number moves on:
     /// a page of an older one that arrives is dropped.
-    fn start_gallery_search(&mut self, menu: bool, more: bool) {
+    fn search(&mut self, ui: &mut OptionsUi, more: bool) {
         let (query, offset) = {
-            let state = &mut self.gallery_ui_mut(menu).gallery;
+            let state = &mut ui.gallery;
             if !more {
                 state.results.clear();
                 state.total = 0;
@@ -239,16 +242,14 @@ impl Game<'_> {
             let offset = if more { state.results.len() } else { 0 };
             (state.query.clone(), offset)
         };
-        let index = slot(menu);
-        self.pack_gallery.generations[index] += 1;
-        let generation = self.pack_gallery.generations[index];
-        let tx = self.pack_gallery.tx.clone();
+        self.generation += 1;
+        let generation = self.generation;
+        let tx = self.tx.clone();
         let _ = std::thread::Builder::new()
             .name("pack-gallery".into())
             .spawn(move || {
                 let result = search(&query, offset);
                 let _ = tx.send(Msg::Search {
-                    menu,
                     generation,
                     offset,
                     query,
@@ -258,60 +259,41 @@ impl Game<'_> {
     }
 
     /// Install gallery result `index` of the page.
-    fn install_gallery_result(&mut self, menu: bool, index: usize) {
-        let Some(pack) = self.gallery_ui_mut(menu).gallery.results.get(index).cloned() else {
+    fn install_result(&mut self, ui: &mut OptionsUi, index: usize) {
+        let Some(pack) = ui.gallery.results.get(index).cloned() else {
             return;
         };
-        if self
-            .gallery_ui_mut(menu)
-            .gallery
-            .downloading
-            .contains_key(&pack.project_id)
-        {
+        if ui.gallery.downloading.contains_key(&pack.project_id) {
             return;
         }
         if pack.latest.is_empty() {
-            self.gallery_ui_mut(menu).gallery.warning =
-                horizon_client::lang::get_or(
-                    "horizon.pack_gallery.no_version",
-                    "This pack has no downloadable version",
-                );
+            ui.gallery.warning = horizon_client::lang::get_or(
+                "horizon.pack_gallery.no_version",
+                "This pack has no downloadable version",
+            );
             return;
         }
-        self.gallery_ui_mut(menu)
-            .gallery
+        ui.gallery
             .downloading
             .insert(pack.project_id.clone(), (0, 0));
-        let tx = self.pack_gallery.tx.clone();
+        let tx = self.tx.clone();
         let project_id = pack.project_id.clone();
         let title = pack.title.clone();
         let latest = pack.latest.clone();
         let _ = std::thread::Builder::new()
             .name("pack-gallery-install".into())
-            .spawn(move || run_install(tx, menu, project_id, title, fetch_version(&latest), None));
+            .spawn(move || run_install(tx, project_id, title, fetch_version(&latest), None));
     }
 
     /// Install the update an installed pack has.
-    fn install_gallery_update(&mut self, menu: bool, local: &str) {
-        let Some(update) = self
-            .gallery_ui_mut(menu)
-            .gallery
-            .updates
-            .get(local)
-            .cloned()
-        else {
+    fn install_update(&mut self, ui: &mut OptionsUi, local: &str) {
+        let Some(update) = ui.gallery.updates.get(local).cloned() else {
             return;
         };
-        if self
-            .gallery_ui_mut(menu)
-            .gallery
-            .downloading
-            .contains_key(&update.project_id)
-        {
+        if ui.gallery.downloading.contains_key(&update.project_id) {
             return;
         }
-        self.gallery_ui_mut(menu)
-            .gallery
+        ui.gallery
             .downloading
             .insert(update.project_id.clone(), (0, update.size));
         let file = gallery::FileRef {
@@ -322,97 +304,96 @@ impl Game<'_> {
             sha512: update.sha512.clone(),
             size: update.size,
         };
-        let tx = self.pack_gallery.tx.clone();
+        let tx = self.tx.clone();
         let project_id = update.project_id.clone();
         let title = update.title.clone();
         let replace = Some(local.to_owned());
         let _ = std::thread::Builder::new()
             .name("pack-gallery-install".into())
-            .spawn(move || run_install(tx, menu, project_id, title, Ok(file), replace));
+            .spawn(move || run_install(tx, project_id, title, Ok(file), replace));
     }
+}
 
-    /// A download landed in `resourcepacks/`: the index keeps it, the old
-    /// file of an update goes, and the pack joins the selection.
-    fn finish_gallery_install(
-        &mut self,
-        menu: bool,
-        record: gallery::Installed,
-        replace: Option<String>,
-    ) {
-        let installed: Vec<gallery::Installed> = {
-            let state = &mut self.gallery_ui_mut(menu).gallery;
-            state.downloading.remove(&record.project_id);
-            state.warning.clear();
-            if let Some(old) = &replace {
-                state.installed.remove(old);
-                state.updates.remove(old);
-            }
-            state.installed.insert(record.file.clone(), record.clone());
-            state.installed.values().cloned().collect()
-        };
-        write_index(&installed);
-        if let Some(old) = &replace
-            && old != &record.file
+/// A download landed in `resourcepacks/`: the index keeps it, the old file of
+/// an update goes, and the pack joins the selection; whether the settings
+/// changed.
+fn finish(
+    ui: &mut OptionsUi,
+    settings: &mut Settings,
+    root: &Path,
+    server: &[Pack],
+    record: gallery::Installed,
+    replace: Option<String>,
+) -> bool {
+    let installed: Vec<gallery::Installed> = {
+        ui.gallery.downloading.remove(&record.project_id);
+        ui.gallery.warning.clear();
+        if let Some(old) = &replace {
+            ui.gallery.installed.remove(old);
+            ui.gallery.updates.remove(old);
+        }
+        ui.gallery.installed.insert(record.file.clone(), record.clone());
+        ui.gallery.installed.values().cloned().collect()
+    };
+    write_index(&installed);
+    if let Some(old) = &replace
+        && old != &record.file
+    {
+        let _ = std::fs::remove_file(packs::packs_dir().join(old));
+    }
+    enable(ui, settings, root, server, &record, replace.as_deref())
+}
+
+/// Auto-enable: the pack joins the player's selection (an update keeps the
+/// place the file it replaces had), and the open pack screen is listed again
+/// with it.
+fn enable(
+    ui: &mut OptionsUi,
+    settings: &mut Settings,
+    root: &Path,
+    server: &[Pack],
+    record: &gallery::Installed,
+    replace: Option<&str>,
+) -> bool {
+    let new_id = format!("file/{}", record.file);
+    let mut selection = {
+        // What the player had picked on the screen so far is kept.
+        if let Some(screen) = &mut ui.pack_screen
+            && screen.changed
         {
-            let _ = std::fs::remove_file(packs::packs_dir().join(old));
+            ui.pack_selection = screen.commit();
+            screen.changed = false;
         }
-        self.enable_gallery_pack(menu, &record, replace.as_deref());
-    }
-
-    /// Auto-enable: the pack joins the player's selection (an update keeps the
-    /// place the file it replaces had), and both pack screens are listed
-    /// again with it.
-    fn enable_gallery_pack(
-        &mut self,
-        menu: bool,
-        record: &gallery::Installed,
-        replace: Option<&str>,
-    ) {
-        let new_id = format!("file/{}", record.file);
-        let mut selection = {
-            let ui = self.gallery_ui_mut(menu);
-            // What the player had picked on the screen so far is kept.
-            if let Some(screen) = &mut ui.pack_screen
-                && screen.changed
+        ui.pack_selection.clone()
+    };
+    let mut changed = false;
+    match replace {
+        Some(old) => {
+            let old_id = format!("file/{old}");
+            if old_id != new_id
+                && !selection.contains(&new_id)
+                && let Some(i) = selection.iter().position(|id| *id == old_id)
             {
-                ui.pack_selection = screen.commit();
-                screen.changed = false;
-            }
-            ui.pack_selection.clone()
-        };
-        let mut changed = false;
-        match replace {
-            Some(old) => {
-                let old_id = format!("file/{old}");
-                if old_id != new_id
-                    && !selection.contains(&new_id)
-                    && let Some(i) = selection.iter().position(|id| *id == old_id)
-                {
-                    selection[i] = new_id.clone();
-                    changed = true;
-                }
-            }
-            None => {
-                if !selection.contains(&new_id) {
-                    selection.push(new_id.clone());
-                    changed = true;
-                }
+                selection[i] = new_id.clone();
+                changed = true;
             }
         }
-        if changed {
-            self.settings.resource_packs = selection.clone();
-            self.settings.save(&Self::options_path());
-        }
-        let infos = super::packs::pack_infos(&self.vanilla_root(), &self.server_packs.active);
-        for which in [false, true] {
-            let ui = self.gallery_ui_mut(which);
-            ui.update_pack_infos(infos.clone());
-            if changed {
-                ui.pack_selection = selection.clone();
-                ui.reselect();
+        None => {
+            if !selection.contains(&new_id) {
+                selection.push(new_id.clone());
+                changed = true;
             }
         }
     }
+    if changed {
+        settings.resource_packs = selection.clone();
+    }
+    ui.update_pack_infos(super::packs::pack_infos(root, server));
+    if changed {
+        ui.pack_selection = selection;
+        ui.reselect();
+    }
+    changed
 }
 
 /// A search page from Modrinth.
@@ -428,16 +409,16 @@ fn fetch_version(id: &str) -> Result<gallery::FileRef, String> {
 }
 
 /// The newer version of every installed pack, for the gallery's update check.
-fn check_updates(tx: Sender<Msg>, menu: bool, installed: Vec<gallery::Installed>) {
+fn check_updates(tx: Sender<Msg>, installed: Vec<gallery::Installed>) {
     let mut updates = Vec::new();
     for record in installed {
         let url = format!(
             "https://api.modrinth.com/v2/project/{}/version",
             record.project_id
         );
-        match request(&url).and_then(|text| {
-            gallery::parse_project_versions(&text, &record.version_id)
-        }) {
+        match request(&url)
+            .and_then(|text| gallery::parse_project_versions(&text, &record.version_id))
+        {
             Ok(Some(file)) => updates.push(gallery::Update {
                 file: record.file.clone(),
                 title: record.title.clone(),
@@ -456,27 +437,25 @@ fn check_updates(tx: Sender<Msg>, menu: bool, installed: Vec<gallery::Installed>
             ),
         }
     }
-    let _ = tx.send(Msg::Updates { menu, updates });
+    let _ = tx.send(Msg::Updates { updates });
 }
 
 /// The whole install of one pack: resolve, download, check and place.
 fn run_install(
     tx: Sender<Msg>,
-    menu: bool,
     project_id: String,
     title: String,
     file: Result<gallery::FileRef, String>,
     replace: Option<String>,
 ) {
     let result = file.and_then(|file| {
-        let part = download(&tx, menu, &project_id, &file)?;
+        let part = download(&tx, &project_id, &file)?;
         let stored = place(&part, &file.file_name)?;
         Ok((stored, file.version_id))
     });
     match result {
         Ok((stored, version_id)) => {
             let _ = tx.send(Msg::Installed {
-                menu,
                 record: gallery::Installed {
                     file: stored,
                     title,
@@ -488,7 +467,6 @@ fn run_install(
         }
         Err(error) => {
             let _ = tx.send(Msg::InstallFailed {
-                menu,
                 project_id,
                 error,
             });
@@ -499,7 +477,6 @@ fn run_install(
 /// The file into the cache, its SHA-512 checked when Modrinth gave one.
 fn download(
     tx: &Sender<Msg>,
-    menu: bool,
     project_id: &str,
     file: &gallery::FileRef,
 ) -> Result<PathBuf, String> {
@@ -523,7 +500,6 @@ fn download(
         done += read as u64;
         out.write_all(&buffer[..read]).map_err(|e| e.to_string())?;
         let _ = tx.send(Msg::Progress {
-            menu,
             project_id: project_id.to_owned(),
             done,
             total: file.size,
@@ -671,5 +647,41 @@ fn write_index(installed: &[gallery::Installed]) {
             }
         }
         Err(e) => log::warn!("Horizon: the gallery index did not write: {e}"),
+    }
+}
+
+impl Game<'_> {
+    /// The gallery's events, on this window's options UI; None: not a gallery
+    /// event. `Some(true)` when the settings changed (save them).
+    pub(super) fn pack_gallery_event(&mut self, event: &Event) -> Option<bool> {
+        let root = self.vanilla_root();
+        let Game {
+            pack_gallery,
+            ui,
+            settings,
+            server_packs,
+            ..
+        } = self;
+        pack_gallery.event(
+            &mut ui.options,
+            settings,
+            &root,
+            &server_packs.active,
+            event,
+        )
+    }
+
+    /// The gallery's answers each frame the options are drawn; whether the
+    /// settings changed (save them).
+    pub(super) fn poll_pack_gallery(&mut self) -> bool {
+        let root = self.vanilla_root();
+        let Game {
+            pack_gallery,
+            ui,
+            settings,
+            server_packs,
+            ..
+        } = self;
+        pack_gallery.poll(&mut ui.options, settings, &root, &server_packs.active)
     }
 }

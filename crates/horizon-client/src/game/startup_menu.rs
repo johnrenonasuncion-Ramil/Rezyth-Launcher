@@ -681,14 +681,30 @@ impl Loading {
         self.settings.save(&Game::options_path());
     }
 
-    /// The `OptionsUi` a gallery event works on: the startup menu's (the
-    /// title has its own) or the game's.
-    pub(super) fn gallery_ui_mut(&mut self, menu: bool) -> &mut horizon_client::options_ui::OptionsUi {
-        if menu {
-            &mut self.menu.options
-        } else {
-            &mut self.ui.options
-        }
+    /// The gallery's events, on the menu's options UI; None: not a gallery
+    /// event. `Some(true)` when the settings changed (save them).
+    pub(super) fn pack_gallery_event(&mut self, event: &Event) -> Option<bool> {
+        let root = self.vanilla_root.clone();
+        let Loading {
+            pack_gallery,
+            menu,
+            settings,
+            ..
+        } = self;
+        pack_gallery.event(&mut menu.options, settings, &root, &[], event)
+    }
+
+    /// The gallery's answers each frame the menu draws; whether the settings
+    /// changed (save them).
+    pub(super) fn poll_pack_gallery(&mut self) -> bool {
+        let root = self.vanilla_root.clone();
+        let Loading {
+            pack_gallery,
+            menu,
+            settings,
+            ..
+        } = self;
+        pack_gallery.poll(&mut menu.options, settings, &root, &[])
     }
 
     pub(super) fn open_menu_options(&mut self, page: Page) {
@@ -702,7 +718,10 @@ impl Loading {
 
     fn menu_option_events(&mut self, events: Vec<Event>) {
         for event in events {
-            if self.pack_gallery_event(true, &event) {
+            if let Some(changed) = self.pack_gallery_event(&event) {
+                if changed {
+                    self.save_menu_settings();
+                }
                 continue;
             }
             match event {
@@ -1380,7 +1399,9 @@ impl Loading {
 
     pub(super) fn draw_menu(&mut self, batch: &mut HudBatch) {
         self.menu_button_image();
-        self.poll_pack_gallery(true);
+        if self.poll_pack_gallery() {
+            self.save_menu_settings();
+        }
         let logs = horizon_client::logging::recent_lines();
         let Some(gui) = &self.gui else {
             // The pack's screens do not exist yet: the boot screen holds the
@@ -1538,6 +1559,7 @@ mod tests {
             ui_at: None,
             title_drawn: false,
             menu: StartupMenu::default(),
+            pack_gallery: Default::default(),
             error: None,
             failure: None,
             setup: Default::default(),

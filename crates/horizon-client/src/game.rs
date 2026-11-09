@@ -2353,7 +2353,7 @@ struct Game<'a> {
     /// A server's resource packs (game/server_packs.rs).
     server_packs: server_packs::ServerPackState,
     /// The Modrinth gallery's workers and their channel (game/pack_gallery.rs).
-    pack_gallery: pack_gallery::PackGallery,
+    pack_gallery: pack_gallery::GalleryOps,
     /// The link a chat click asks to open (`ConfirmLinkScreen`).
     link_prompt: Option<String>,
     /// A command the player didn't type, waiting for their answer
@@ -21276,6 +21276,8 @@ struct Loading {
     ui_at: Option<Instant>,
     title_drawn: bool,
     menu: startup_menu::StartupMenu,
+    /// The menu's gallery workers (game/pack_gallery.rs).
+    pack_gallery: pack_gallery::GalleryOps,
     error: Option<Box<dyn std::error::Error>>,
     /// Why the resources did not load, kept on screen instead of quitting where no terminal
     /// shows the error (Android).
@@ -21951,6 +21953,7 @@ fn run_loading(
         ui_at: None,
         title_drawn: false,
         menu,
+        pack_gallery: Default::default(),
         error: None,
         failure: None,
         setup: Default::default(),
