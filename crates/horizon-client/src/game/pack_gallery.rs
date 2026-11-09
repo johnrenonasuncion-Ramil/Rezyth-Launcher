@@ -77,7 +77,9 @@ impl Default for GalleryOps {
     fn default() -> Self {
         Self::new()
     }
+}
 
+impl GalleryOps {
     /// What the gallery's events ask of `ui`; None: not a gallery event.
     /// `Some(true)` when the settings changed (the caller saves them).
     pub(super) fn event(
