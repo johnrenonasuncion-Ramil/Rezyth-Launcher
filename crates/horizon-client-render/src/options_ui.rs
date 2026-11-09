@@ -2976,7 +2976,7 @@ impl OptionsUi {
                         .values()
                         .any(|p| p.project_id == pack.project_id);
                     let action = if let Some((done, total)) = installing {
-                        let percent = done * 100 / total.max(1);
+                        let percent = *done * 100 / (*total).max(1);
                         let label = Text::translate(
                             "horizon.pack_gallery.downloading",
                             &[Text::literal(format!("{percent}%"))],
@@ -5269,16 +5269,18 @@ impl OptionsUi {
                     .pack_screen
                     .as_ref()
                     .and_then(crate::pack_screen::PackScreen::gallery_button);
-                if let Some((gx, gy, gw)) = gallery
-                    && x as f64 >= f64::from(gx)
-                    && x as f64 < f64::from(gx + gw)
-                    && y as f64 >= f64::from(gy)
-                    && y as f64 < f64::from(gy + 20)
-                {
-                    events.push(Event::ButtonClick);
-                    events.push(Event::ListPackGallery);
-                    self.push(Page::PackGallery);
-                    return events;
+                if let Some((gx, gy, gw)) = gallery {
+                    let (px, py) = (f64::from(x), f64::from(y));
+                    if px >= f64::from(gx)
+                        && px < f64::from(gx + gw)
+                        && py >= f64::from(gy)
+                        && py < f64::from(gy + 20)
+                    {
+                        events.push(Event::ButtonClick);
+                        events.push(Event::ListPackGallery);
+                        self.push(Page::PackGallery);
+                        return events;
+                    }
                 }
             }
             let m = crate::screen_draw::Measure(&atlas.font);
@@ -6710,6 +6712,20 @@ impl OptionsUi {
                             }
                             self.push(p);
                         }
+                        Act::GalleryInstall(i) => events.push(Event::PackGalleryInstall(i)),
+                        Act::GalleryOpen(i) => {
+                            if let Some(pack) = self.gallery.results.get(i) {
+                                events.push(Event::OpenUri(format!(
+                                    "https://modrinth.com/resourcepack/{}",
+                                    pack.slug
+                                )));
+                            }
+                        }
+                        Act::GalleryUpdate(file) => {
+                            events.push(Event::PackGalleryUpdate(file.clone()))
+                        }
+                        Act::GalleryMore => events.push(Event::PackGalleryMore),
+                        Act::GalleryRetry => events.push(Event::PackGalleryRetry),
                         Act::Done => {
                             self.focus = None;
                             self.focus_from_keyboard = false;
