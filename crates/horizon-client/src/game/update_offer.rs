@@ -71,7 +71,7 @@ fn now() -> u64 {
 /// A repository's latest release, as GitHub's API serves it.
 fn latest(url: &str, current: &str) -> Result<serde_json::Value, String> {
     let text = ureq::get(url)
-        .set("User-Agent", &format!("Starling/{current}"))
+        .set("User-Agent", &format!("Rezyth/{current}"))
         .set("Accept", "application/vnd.github+json")
         .timeout(Duration::from_secs(15))
         .call()
@@ -195,7 +195,7 @@ impl Game<'_> {
                     Ok(release) => {
                         if let Some(r) = &release {
                             log::info!(
-                                "Horizon: Starling {} is out (this is {current})",
+                                "Horizon: Rezyth Launcher {} is out (this is {current})",
                                 r.version
                             );
                         }
@@ -204,7 +204,7 @@ impl Game<'_> {
                             .unwrap_or_else(PoisonError::into_inner)
                             .release = release;
                     }
-                    Err(e) => log::info!("Horizon: could not look for a newer Starling: {e}"),
+                    Err(e) => log::info!("Horizon: could not look for a newer Rezyth Launcher: {e}"),
                 });
             return;
         }
@@ -263,23 +263,23 @@ impl Game<'_> {
         let version = &release.version;
         let (title, body, buttons): (String, String, &[&str]) = match &stage {
             Stage::Ask => (
-                format!("Starling {version} is out"),
+                format!("Rezyth Launcher {version} is out"),
                 format!(
-                    "Update now? Starling downloads it ({} MB) and Android installs it over this \
+                    "Update now? Rezyth Launcher downloads it ({} MB) and Android installs it over this \
                      one: your worlds and settings stay.",
                     mb(release.size)
                 ),
                 &["Update", "Tomorrow", "No"],
             ),
             Stage::Downloading => (
-                format!("Downloading Starling {version}"),
+                format!("Downloading Rezyth Launcher {version}"),
                 format!("{} of {} MB", mb(done), mb(total)),
                 &["Cancel"],
             ),
             Stage::Installing => (
-                format!("Install Starling {version}"),
+                format!("Install Rezyth Launcher {version}"),
                 "Android asks to install the update (the first time, to allow installs from \
-                 Starling). Once it is in, open Starling again."
+                 Rezyth Launcher). Once it is in, open Rezyth Launcher again."
                     .into(),
                 &["Install", "Later"],
             ),

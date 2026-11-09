@@ -139,7 +139,7 @@ jobs:
         with:
           name: woven-apk
           path: |
-            ${{ runner.temp }}/woven/starling-*.apk
+            ${{ runner.temp }}/woven/rezyth-*.apk
             ${{ runner.temp }}/woven/build.json
           if-no-files-found: error
           retention-days: 30

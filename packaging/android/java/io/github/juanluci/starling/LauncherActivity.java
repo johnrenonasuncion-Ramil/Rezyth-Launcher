@@ -62,7 +62,7 @@ public final class LauncherActivity extends Activity {
         } else if (file != null) {
             final AlertDialog copying =
                     new AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                            .setMessage("Handing the file to Starling...")
+                            .setMessage("Handing the file to Rezyth Launcher...")
                             .setCancelable(false)
                             .show();
             receive(this, file, new Runnable() {

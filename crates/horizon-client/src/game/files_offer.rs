@@ -61,7 +61,7 @@ pub(super) fn texts(stage: Stage) -> [&'static str; 4] {
     match stage {
         Stage::Ask => [
             "Keep your files where you can reach them",
-            "Starling can keep your worlds, packs, mods and screenshots in a Starling folder on \
+            "Rezyth Launcher can keep your worlds, packs, mods and screenshots in a Rezyth folder on \
              your phone's storage, which any file manager (and a computer over USB) opens. \
              Android will ask you to allow access to files for that.",
             "Set up",
@@ -69,13 +69,13 @@ pub(super) fn texts(stage: Stage) -> [&'static str; 4] {
         ],
         Stage::Waiting => [
             "Allow access to files",
-            "Turn on the switch for Starling in the screen that opened, then come back here.",
+            "Turn on the switch for Rezyth Launcher in the screen that opened, then come back here.",
             "Open it again",
             "Not now",
         ],
         Stage::Restart => [
             "All set",
-            "Restart Starling to move your worlds, packs and settings into the Starling folder. \
+            "Restart Rezyth Launcher to move your worlds, packs and settings into the Rezyth folder. \
              It copies them first: nothing is lost.",
             "Restart now",
             "Later",
@@ -88,7 +88,7 @@ fn card_texts(card: Card) -> [&'static str; 4] {
         Card::Folder(stage) => texts(stage),
         Card::Horizon(false) => [
             "Coming from Horizon Android?",
-            "Horizon Android is part of Starling now: bring your worlds and resource packs over. \
+            "Horizon Android is part of Rezyth Launcher now: bring your worlds and resource packs over. \
              Close Horizon Android first, then, in the folder that opens, tap Use this folder and \
              Allow. They are copied: Horizon Android keeps its own.",
             "Bring them over",

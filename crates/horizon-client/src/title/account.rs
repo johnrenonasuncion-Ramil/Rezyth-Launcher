@@ -73,7 +73,7 @@ fn lines(state: &State) -> Vec<(String, u32)> {
             (code.clone(), yellow()),
             (String::new(), 0),
             (
-                "Starling carries on by itself once you have signed in there.".into(),
+                "Rezyth Launcher carries on by itself once you have signed in there.".into(),
                 gray(),
             ),
         ],

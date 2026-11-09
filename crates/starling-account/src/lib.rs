@@ -241,7 +241,7 @@ fn oauth_error(v: &Value) -> String {
         Some("bad_verification_code") => "The sign-in code was not recognised. Start again.".into(),
         Some("invalid_grant") => SIGN_IN_AGAIN.into(),
         Some("invalid_client" | "unauthorized_client") => {
-            "Microsoft refused Starling's app registration (client ID).".into()
+            "Microsoft refused Rezyth Launcher's app registration (client ID).".into()
         }
         Some(other) => format!("Microsoft sign-in failed ({other})."),
         None => "Microsoft sign-in failed.".into(),
@@ -400,7 +400,7 @@ fn minecraft_login(ep: &Endpoints, ms_access: &str) -> Result<Minecraft, String>
         }),
         // An Azure app Mojang has not approved (Minecraft API access) is refused.
         (403, _) => Err(
-            "The Minecraft services refused Starling: its app is not approved by Mojang.".into(),
+            "The Minecraft services refused Rezyth Launcher: its app is not approved by Mojang.".into(),
         ),
         (429, _) => Err("Too many sign-ins in a short time. Wait a minute and try again.".into()),
         _ => Err("The Minecraft services refused the sign-in.".into()),

@@ -244,7 +244,7 @@ fn texts(step: &Step) -> (&'static str, String, Option<String>) {
         #[cfg(target_os = "android")]
         Step::Horizon(false) => (
             "Coming from Horizon Android?",
-            "Horizon Android is part of Starling now: bring your worlds and resource packs over. \
+            "Horizon Android is part of Rezyth Launcher now: bring your worlds and resource packs over. \
              Close Horizon Android first, then, in the folder that opens, tap Use this folder and \
              Allow."
                 .into(),
@@ -259,9 +259,9 @@ fn texts(step: &Step) -> (&'static str, String, Option<String>) {
             None,
         ),
         Step::Start => (
-            "Set up Starling",
+            "Set up Rezyth Launcher",
             "Sign in with the Microsoft account that owns Minecraft: Java Edition, or play \
-             offline: Starling downloads the game from Mojang and prepares it on this phone, once \
+             offline: Rezyth Launcher downloads the game from Mojang and prepares it on this phone, once \
              (about 1.5 GB, a few minutes)."
                 .into(),
             None,
@@ -273,11 +273,11 @@ fn texts(step: &Step) -> (&'static str, String, Option<String>) {
                 .into(),
             None,
         ),
-        Step::Talking => ("Set up Starling", "Talking to Microsoft...".into(), None),
+        Step::Talking => ("Set up Rezyth Launcher", "Talking to Microsoft...".into(), None),
         Step::Code { link, .. } => (
             "Sign in with Microsoft",
             format!("On {link}, enter this code:"),
-            Some("Starling goes on by itself once you have signed in.".into()),
+            Some("Rezyth Launcher goes on by itself once you have signed in.".into()),
         ),
         Step::Download([files, files_total, bytes, bytes_total]) => (
             "Downloading the game",
@@ -300,11 +300,11 @@ fn texts(step: &Step) -> (&'static str, String, Option<String>) {
         Step::Unpacking => ("Preparing the game", "Unpacking Java.".into(), None),
         Step::Preparing(line) => (
             "Preparing the game",
-            "This takes a few minutes. Keep Starling open.".into(),
+            "This takes a few minutes. Keep Rezyth Launcher open.".into(),
             Some(line.clone()),
         ),
         Step::Done => (
-            "Starting Starling",
+            "Starting Rezyth Launcher",
             "The game files are ready.".into(),
             None,
         ),

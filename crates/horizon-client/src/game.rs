@@ -21672,8 +21672,8 @@ impl Loading {
         let detail = if horizon_client::platform::registered() {
             // Android: the prepared folder, zipped, comes in through "Open with" or the picker.
             format!(
-                "{failure}\n\nStarling needs the Minecraft resources horizon-prepare makes from your \
-                 own copy of the game. Zip that folder, then open the zip with Starling from your \
+                "{failure}\n\nRezyth Launcher needs the Minecraft resources horizon-prepare makes from your \
+                 own copy of the game. Zip that folder, then open the zip with Rezyth Launcher from your \
                  file manager, or tap anywhere here to pick it."
             )
         } else {

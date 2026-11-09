@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starling with native mods (docs/starling-native-mods.md): the mods' horizon-mixins bundles
+# Rezyth Launcher with native mods (docs/starling-native-mods.md): the mods' horizon-mixins bundles
 # applied to Starling's source, built as a release is (build_apk.py, the fast profile). Runs on
 # the build VM and on GitHub's runners (.github/workflows/native-mods.yml).
 #
@@ -134,14 +134,14 @@ rsync -r --checksum --delete --exclude /target/ --exclude "/$manifest" \
 git -C "$source" show "HEAD:$manifest" > "$work/manifest"
 cmp -s "$work/manifest" "$build/$manifest" || cp "$work/manifest" "$build/$manifest"
 
-rm -f "$build"/target/android/starling-*.apk
+rm -f "$build"/target/android/rezyth-*.apk
 # NATIVE_LIBRARY_ONLY: the library is all the game downloads, and the APK takes time to make.
 (cd "$build" && python3 packaging/android/build_apk.py --profile "$profile" \
   ${NATIVE_LIBRARY_ONLY:+--library-only})
 
 library=$build/target/android/libhorizon_android.so
 cp "$library" "$out/libhorizon_android.so"
-[ -n "${NATIVE_LIBRARY_ONLY:-}" ] || cp "$build"/target/android/starling-*-arm64-v8a.apk "$out/"
+[ -n "${NATIVE_LIBRARY_ONLY:-}" ] || cp "$build"/target/android/rezyth-*-arm64-v8a.apk "$out/"
 python3 - "$build" "$work/mods" "$out" "$key" "$commit" "$profile" "$MIXINS_REV" <<'EOF'
 import hashlib, json, pathlib, re, sys, tomllib
 build, mods, out, key, commit, profile, mixins = sys.argv[1:]

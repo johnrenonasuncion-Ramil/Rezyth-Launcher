@@ -394,8 +394,19 @@ fn game_folder(private: &Path, notes: &mut Vec<String>) -> PathBuf {
     let Some(shared) = SHARED_FOLDER.get() else {
         return private.to_path_buf();
     };
-    let earlier = shared.with_file_name("Horizon");
-    if !shared.exists() && earlier.join("options.txt").exists() {
+    // This fork's folder before the name changed (the Starling folder, its Dev and Preview
+    // variants too), or Horizon Android's before that: the first with a game folder in it
+    // takes the new name.
+    let previous = shared
+        .file_name()
+        .and_then(|name| name.to_str())
+        .and_then(|name| name.strip_prefix("Rezyth"))
+        .map(|variant| shared.with_file_name(format!("Starling{variant}")));
+    let earlier = previous
+        .into_iter()
+        .chain(std::iter::once(shared.with_file_name("Horizon")))
+        .find(|path| !shared.exists() && path.join("options.txt").exists());
+    if let Some(earlier) = earlier {
         match std::fs::rename(&earlier, shared) {
             Ok(()) => notes.push(format!(
                 "Horizon: renamed {} to {}",

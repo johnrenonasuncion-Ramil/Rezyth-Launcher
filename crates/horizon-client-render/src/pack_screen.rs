@@ -28,9 +28,9 @@ pub enum Compat {
 fn drop_info(data: bool) -> Text {
     if cfg!(target_os = "android") {
         Text::literal(if data {
-            "Put data packs in Starling/datapacks, mods in Starling/horizon-mods"
+            "Put data packs in Rezyth/datapacks, mods in Rezyth/horizon-mods"
         } else {
-            "Put packs in Starling/resourcepacks"
+            "Put packs in Rezyth/resourcepacks"
         })
     } else {
         tr("pack.dropInfo")

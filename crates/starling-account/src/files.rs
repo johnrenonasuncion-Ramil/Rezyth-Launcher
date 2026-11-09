@@ -270,7 +270,7 @@ pub fn download(
         };
         if sha1 != pinned {
             return Err(format!(
-                "The {v} version file lists another {key} jar than Starling pins."
+                "The {v} version file lists another {key} jar than Rezyth Launcher pins."
             ));
         }
         Ok(Item {

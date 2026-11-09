@@ -133,7 +133,7 @@ fn fetch_once(
     if fetched != runtime.size || digest != runtime.sha256 {
         let _ = std::fs::remove_file(&part);
         return Err(Failure::Final(format!(
-            "{NAME} is not the file Starling expects (its hash differs)."
+            "{NAME} is not the file Rezyth Launcher expects (its hash differs)."
         )));
     }
     std::fs::rename(&part, path).map_err(|e| disk(format!("{}: {e}", path.display())))
