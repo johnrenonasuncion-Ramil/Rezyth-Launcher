@@ -856,7 +856,14 @@ impl Loading {
                 | Event::ToggleRecording
                 | Event::ExportRepro
                 | Event::ListMusicTracks
-                | Event::PlayMusicTrack(..) => {}
+                | Event::PlayMusicTrack(..)
+                // The gallery's events are answered before this match
+                // (`pack_gallery_event`).
+                | Event::ListPackGallery
+                | Event::PackGalleryInstall(_)
+                | Event::PackGalleryUpdate(_)
+                | Event::PackGalleryMore
+                | Event::PackGalleryRetry => {}
             }
         }
     }
