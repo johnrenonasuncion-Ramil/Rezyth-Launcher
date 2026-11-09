@@ -163,6 +163,35 @@ association, `StarlingVisuals.zip`, the `STARLING_*` secret names and the update
 green: `android.yml` run **42561604025** and `weave.yml` run **42561592346** at `6b6e34847`
 (artifacts `rezyth-apk` and `woven-apk`, both `rezyth-0.2.3-arm64-v8a.apk`).
 
+## Resource pack gallery (Modrinth)
+
+The resource pack screen has a **Download Packs...** button to the left of Open
+Pack Folder; it opens an options page that searches Modrinth's resource packs
+(resource packs only), installs one into `resourcepacks/` with its SHA-512
+checked, auto-enables it (the selection gains it and the rebuilt screen commits
+it on Done) and checks the packs installed from the gallery for updates
+(`pack-gallery.json` in the game folder remembers what each file came from; a
+newer version for the game's own version wins). The page is a normal options
+list: a search box (a pause after typing starts the search), a row per result
+with Install / Installed / Downloading n%, author and downloads under it,
+update rows, Load More and a Modrinth credit line. The vanilla resource pack
+screen is untouched — the button is drawn and clicked by the options layer
+(`PackScreen::gallery_button` gives its rect), so `test_pack_screen_parity.py`'s
+draw-call oracle still holds.
+
+Where it lives: the gallery state and the Modrinth answers
+(`horizon-client-render/src/pack_gallery.rs`); the workers, downloads, sidecar,
+update check and auto-enable (`horizon-client/src/game/pack_gallery.rs`, one
+`GalleryOps` per options UI: the game's `Game` and the title's `Loading`); the
+page (`Page::PackGallery`), its rows, search box, acts/events and the
+pack-screen button (`options_ui.rs`); the button's rect and the (unchanged)
+draws (`pack_screen.rs`); `horizon.pack_gallery.*` in the bundled `en_us.json`.
+
+Verified green: `android.yml` run **42666756002** at `0cc25e9a9` (artifact
+`rezyth-apk`, 32.0 MB, `rezyth-0.2.3-arm64-v8a.apk`) and `weave.yml` run
+**42668749214** at `14ae55366` over the same code (artifact `woven-apk`,
+33.7 MB, all 33 native mods woven).
+
 ## Verify
 
 ```sh
