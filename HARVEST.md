@@ -149,6 +149,20 @@ CI: `android.yml` run **42457716326** built the APK green at `a848813fc`.
    Visuality Horizon and Horizon Physics. The weave also drove the stale `Cargo.lock` fix, the
    `thread_local!` move out of `game.rs`’s top level (the compiler’s macro policy) and five
    `native_mod_adapt` rules.
+
+## Rebrand (Rezyth Launcher)
+
+The app is Rezyth Launcher with the applicationId `android.horizon.ramil` (commit `6b6e34847`):
+the label, the shared-storage folder (`Rezyth`, `RezythDev`/`RezythPreview` for the variants),
+the APK names (`rezyth-*.apk`), the `rezyth-apk` artifact and every user-visible string. The CI
+builds the app itself now (no Preview suffix: this repository is the app's own). The
+shared-folder migration takes a `Starling` (or `Horizon` Android) folder over on the first
+start. Kept on purpose: the internal Java package and JNI entry points, the `.starling` file
+association, `StarlingVisuals.zip`, the `STARLING_*` secret names and the update feed's
+`starling-*` asset matching (the upstream repositories it asks publish those names). Verified
+green: `android.yml` run **42561604025** and `weave.yml` run **42561592346** at `6b6e34847`
+(artifacts `rezyth-apk` and `woven-apk`, both `rezyth-0.2.3-arm64-v8a.apk`).
+
 ## Verify
 
 ```sh
