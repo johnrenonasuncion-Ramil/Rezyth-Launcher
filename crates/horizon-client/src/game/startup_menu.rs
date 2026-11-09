@@ -681,6 +681,16 @@ impl Loading {
         self.settings.save(&Game::options_path());
     }
 
+    /// The `OptionsUi` a gallery event works on: the startup menu's (the
+    /// title has its own) or the game's.
+    pub(super) fn gallery_ui_mut(&mut self, menu: bool) -> &mut horizon_client::options_ui::OptionsUi {
+        if menu {
+            &mut self.menu.options
+        } else {
+            &mut self.ui.options
+        }
+    }
+
     pub(super) fn open_menu_options(&mut self, page: Page) {
         self.menu.options.open_at(false, page);
         self.menu.options.languages = horizon_client::lang::available(&[&self.menu.root]);
@@ -692,6 +702,9 @@ impl Loading {
 
     fn menu_option_events(&mut self, events: Vec<Event>) {
         for event in events {
+            if self.pack_gallery_event(true, &event) {
+                continue;
+            }
             match event {
                 Event::Changed => {
                     self.save_menu_settings();
@@ -722,6 +735,7 @@ impl Loading {
                     let _ = std::fs::create_dir_all(&dir);
                     packs::open_folder(&dir);
                 }
+                Event::OpenUri(url) => packs::open_uri(&url),
                 Event::DataPacks(ids) => {
                     let resources = self.vanilla_root.clone();
                     if let Some(title) = &mut self.menu.title {
@@ -1366,6 +1380,7 @@ impl Loading {
 
     pub(super) fn draw_menu(&mut self, batch: &mut HudBatch) {
         self.menu_button_image();
+        self.poll_pack_gallery(true);
         let logs = horizon_client::logging::recent_lines();
         let Some(gui) = &self.gui else {
             // The pack's screens do not exist yet: the boot screen holds the

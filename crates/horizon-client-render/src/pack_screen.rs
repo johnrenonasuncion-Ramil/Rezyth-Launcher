@@ -425,11 +425,27 @@ impl PackScreen {
         [(cell(tw), 4), (cell(dw), 17), (cell(200), 30)]
     }
     /// The footer's two buttons.
-    fn footer(&self) -> [(i32, i32); 2] {
+    pub fn footer(&self) -> [(i32, i32); 2] {
         let frame = self.width.max(308);
         let x = (0.5 * (frame - 308) as f32) as i32;
         let y = self.height - 33 + (0.5f32 * 13.0).round() as i32;
         [(x, y), (x + 158, y)]
+    }
+    /// The Modrinth gallery button, to the left of Open Pack Folder: the
+    /// options layer draws and clicks it (`options_ui`), so this screen's own
+    /// draws stay the vanilla ones. `(x, y, width)`, or None when the screen
+    /// is too narrow or shows data packs.
+    pub fn gallery_button(&self) -> Option<(i32, i32, i32)> {
+        if self.data {
+            return None;
+        }
+        let [(fx, fy), _] = self.footer();
+        if fx < 68 {
+            return None;
+        }
+        let x = (fx - 158).max(2);
+        let w = (fx - x - 6).clamp(60, 150);
+        Some((x, fy, w))
     }
     /// `repositionElements`.
     fn reposition(&mut self, m: &Measure) {

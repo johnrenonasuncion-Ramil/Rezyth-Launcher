@@ -261,6 +261,7 @@ mod no_resources;
 mod ominous_item_spawner;
 mod options;
 mod own_skin;
+mod pack_gallery;
 mod packs;
 mod pad;
 mod pad_menu;
@@ -2351,6 +2352,8 @@ struct Game<'a> {
     pack_reload: Option<packs::PackReload>,
     /// A server's resource packs (game/server_packs.rs).
     server_packs: server_packs::ServerPackState,
+    /// The Modrinth gallery's workers and their channel (game/pack_gallery.rs).
+    pack_gallery: pack_gallery::PackGallery,
     /// The link a chat click asks to open (`ConfirmLinkScreen`).
     link_prompt: Option<String>,
     /// A command the player didn't type, waiting for their answer
@@ -19042,6 +19045,7 @@ impl<'a> Game<'a> {
             pack_folder: None,
             pack_reload: None,
             server_packs: Default::default(),
+            pack_gallery: Default::default(),
             link_prompt: None,
             command_prompt: None,
             code_of_conduct: None,

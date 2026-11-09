@@ -1475,6 +1475,9 @@ pub enum Page {
     Language,
     Font,
     Packs,
+    /// The Modrinth resource-pack gallery (`pack_gallery`): search, install
+    /// and update packs from inside the resource packs screen.
+    PackGallery,
     Mods,
     /// A native mod's settings page: its index in `mods.installed`.
     NativeMod(usize),
@@ -1610,6 +1613,14 @@ enum Act {
     PlayMusicTrack(String, String),
     /// The Music page: turn this track off, or back on.
     MusicTrackOn(String, bool),
+    /// The gallery: install result `.0`, open its Modrinth page, install the
+    /// newer version of the installed file `.0`, the next page of results,
+    /// and a search again after a failure.
+    GalleryInstall(usize),
+    GalleryOpen(usize),
+    GalleryUpdate(String),
+    GalleryMore,
+    GalleryRetry,
 }
 enum WKind {
     Button {
@@ -1762,6 +1773,19 @@ pub enum Event {
     ListMusicTracks,
     /// A Music page row: play this track of this event now.
     PlayMusicTrack(String, String),
+    /// The pack gallery opened: search Modrinth and check the installed packs
+    /// for updates.
+    ListPackGallery,
+    /// Install gallery result `.0`.
+    PackGalleryInstall(usize),
+    /// Install the newer version of the installed file `.0`.
+    PackGalleryUpdate(String),
+    /// The gallery's next page of results.
+    PackGalleryMore,
+    /// Search again after a failure.
+    PackGalleryRetry,
+    /// Open `https://…` in the browser (a gallery pack's Modrinth page).
+    OpenUri(String),
 }
 /// A row of the Music page: the track, and the pool it is played from.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -1838,6 +1862,8 @@ pub struct OptionsUi {
     pub languages: Vec<LanguageInfo>,
     language_choice: Option<String>,
     language_search: ui::EditBox,
+    /// The gallery's search box.
+    gallery_search: ui::EditBox,
     pub(crate) settings_search: ui::EditBox,
     /// What the custom button on its page sends.
     custom_send: ui::EditBox,
@@ -1850,6 +1876,9 @@ pub struct OptionsUi {
     pub pack_selection: Vec<String>,
     /// The open pack screen, made at its first frame.
     pub pack_screen: Option<crate::pack_screen::PackScreen>,
+    /// The Modrinth gallery's state (`crate::pack_gallery`), filled by the
+    /// game (`game/pack_gallery.rs`).
+    pub gallery: crate::pack_gallery::Gallery,
     /// The Packs page is Create World's Data Packs screen on this folder.
     data_pack_dir: Option<std::path::PathBuf>,
     /// The game's resources, for the built-in data pack's icon.
@@ -1951,6 +1980,9 @@ impl Default for OptionsUi {
         let mut custom_send = ui::EditBox::new(0.0, 0.0, 310.0, 20.0);
         custom_send.max_length = 256;
         custom_send.focused = false;
+        let mut gallery_search = ui::EditBox::new(0.0, 0.0, 200.0, 15.0);
+        gallery_search.max_length = 64;
+        gallery_search.focused = false;
         Self {
             stack: vec![Page::Main],
             scroll: 0.0,
@@ -1966,10 +1998,12 @@ impl Default for OptionsUi {
             languages: Vec::new(),
             language_choice: None,
             language_search: search,
+            gallery_search,
             settings_search,
             custom_send,
             back_to_editor: false,
             painter: Painter::default(),
+            gallery: Default::default(),
             pack_infos: Vec::new(),
             pack_selection: Vec::new(),
             pack_screen: None,
@@ -2084,6 +2118,16 @@ fn blank_slot(w: f32) -> Widget {
         },
         list: false,
         row: 0,
+    }
+}
+/// A downloads count as the gallery's rows show it: 12.4M, 8.1k, 512.
+fn count_text(count: u64) -> String {
+    if count >= 1_000_000 {
+        format!("{:.1}M", count as f64 / 1_000_000.0)
+    } else if count >= 1_000 {
+        format!("{:.1}k", count as f64 / 1_000.0)
+    } else {
+        count.to_string()
     }
 }
 /// Page `at` of the options of the Horizon pack `s.shader_packs[i]`: the pack's own layout,
@@ -2439,6 +2483,7 @@ impl OptionsUi {
                 .pack_screen
                 .as_ref()
                 .is_some_and(|p| p.search_focused()),
+            Page::PackGallery => self.gallery_search.focused,
             Page::Skin => self.skin.name.focused,
             Page::CustomButton(_) => self.custom_send.focused,
             _ => self.settings_search_active(),
@@ -2452,6 +2497,7 @@ impl OptionsUi {
         match self.page() {
             Page::Language => on(&self.language_search),
             Page::Packs => self.pack_screen.as_ref().is_some_and(|p| p.search_at(x, y)),
+            Page::PackGallery => on(&self.gallery_search),
             Page::Skin => on(&self.skin.name),
             Page::CustomButton(_) => on(&self.custom_send),
             _ => self.settings_search_active() && on(&self.settings_search),
@@ -2518,6 +2564,11 @@ impl OptionsUi {
         }
         self.pack_infos = infos;
     }
+    /// The pack selection changed without the screen (the gallery enables a
+    /// pack): the rebuilt screen carries it on its Done.
+    pub fn reselect(&mut self) {
+        self.pack_reselected = true;
+    }
     pub fn page(&self) -> Page {
         *self.stack.last().unwrap_or(&Page::Main)
     }
@@ -2528,6 +2579,7 @@ impl OptionsUi {
         self.resource_error.is_none()
             && match self.page() {
                 Page::Language => true,
+                Page::PackGallery => true,
                 Page::Packs => self
                     .pack_screen
                     .as_ref()
@@ -2636,6 +2688,9 @@ impl OptionsUi {
             self.language_search.set_value("");
             self.center_language = true;
         }
+        if page == Page::PackGallery {
+            self.gallery_search.focused = false;
+        }
         if page == Page::Packs {
             self.pack_screen = None;
         }
@@ -2730,6 +2785,7 @@ impl OptionsUi {
             Page::SplitProfiles => "horizon.pages.split_profiles",
             Page::SplitSetup => "horizon.pages.split_setup",
             Page::Music => "horizon.pages.music",
+            Page::PackGallery => "horizon.pack_gallery.title",
         }
     }
     fn scrollbar_x(&self, width: f32) -> f32 {
@@ -2863,6 +2919,141 @@ impl OptionsUi {
                     }
                 }
                 flush(&mut rows, &mut section);
+                rows
+            }
+            Page::PackGallery => {
+                let mut rows = Vec::new();
+                if !self.gallery.warning.is_empty() {
+                    rows.push(Row::Warning(self.gallery.warning.clone()));
+                }
+                if !self.gallery.error.is_empty() {
+                    rows.push(Row::Warning(self.gallery.error.clone()));
+                    rows.push(Row::Buttons(
+                        button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("horizon.pack_gallery.retry"),
+                            Act::GalleryRetry,
+                        ),
+                        None,
+                    ));
+                    return rows;
+                }
+                if self.gallery.status == crate::pack_gallery::Status::Loading
+                    && self.gallery.results.is_empty()
+                {
+                    rows.push(Row::Header("horizon.pack_gallery.loading"));
+                    return rows;
+                }
+                if !self.gallery.updates.is_empty() {
+                    rows.push(Row::Header("horizon.pack_gallery.updates"));
+                    for update in self.gallery.updates.values() {
+                        let label = Text::translate(
+                            "horizon.pack_gallery.update_of",
+                            &[
+                                Text::literal(update.title.clone()),
+                                Text::literal(update.version_name.clone()),
+                            ],
+                        );
+                        rows.push(Row::Buttons(
+                            button(
+                                0.0,
+                                0.0,
+                                150.0,
+                                label,
+                                Act::GalleryUpdate(update.file.clone()),
+                            ),
+                            None,
+                        ));
+                    }
+                }
+                for (i, pack) in self.gallery.results.iter().enumerate() {
+                    let installing = self.gallery.downloading.get(&pack.project_id);
+                    let installed = self
+                        .gallery
+                        .installed
+                        .values()
+                        .any(|p| p.project_id == pack.project_id);
+                    let action = if let Some((done, total)) = installing {
+                        let percent = done * 100 / total.max(1);
+                        let label = Text::translate(
+                            "horizon.pack_gallery.downloading",
+                            &[Text::literal(format!("{percent}%"))],
+                        );
+                        inactive(button(0.0, 0.0, 150.0, label, Act::GalleryInstall(i)))
+                    } else if installed {
+                        inactive(button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("horizon.pack_gallery.installed"),
+                            Act::GalleryInstall(i),
+                        ))
+                    } else {
+                        button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("horizon.pack_gallery.install"),
+                            Act::GalleryInstall(i),
+                        )
+                    };
+                    rows.push(Row::Buttons(
+                        button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            Text::literal(pack.title.clone()),
+                            Act::GalleryOpen(i),
+                        ),
+                        Some(action),
+                    ));
+                    let mut note = Text::translate(
+                        "horizon.pack_gallery.by",
+                        &[Text::literal(pack.author.clone())],
+                    )
+                    .plain();
+                    note.push_str(" · ");
+                    note.push_str(
+                        &Text::translate(
+                            "horizon.pack_gallery.downloads",
+                            &[Text::literal(count_text(pack.downloads))],
+                        )
+                        .plain(),
+                    );
+                    if !pack.compatible {
+                        note.push_str(" · ");
+                        note.push_str(&tr("horizon.pack_gallery.other_versions").plain());
+                    }
+                    rows.push(Row::Note(note));
+                }
+                if self.gallery.results.is_empty()
+                    && self.gallery.status == crate::pack_gallery::Status::Ready
+                {
+                    rows.push(Row::Note(tr("horizon.pack_gallery.empty").plain()));
+                }
+                if (self.gallery.results.len() as u64) < self.gallery.total {
+                    let more = if self.gallery.status == crate::pack_gallery::Status::More {
+                        inactive(button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("horizon.pack_gallery.loading"),
+                            Act::GalleryMore,
+                        ))
+                    } else {
+                        button(
+                            0.0,
+                            0.0,
+                            150.0,
+                            tr("horizon.pack_gallery.more"),
+                            Act::GalleryMore,
+                        )
+                    };
+                    rows.push(Row::Buttons(more, None));
+                }
+                rows.push(Row::Note(tr("horizon.pack_gallery.powered").plain()));
                 rows
             }
             Page::Horizon => {
@@ -3813,6 +4004,16 @@ impl OptionsUi {
             self.settings_search.x = cx - 100.0;
             self.settings_search.y = 17.0;
         }
+        if page == Page::PackGallery {
+            self.gallery_search.x = cx - 100.0;
+            self.gallery_search.y = 17.0;
+            // What is typed is the query; a change starts a search after a
+            // pause (`Game::poll_pack_gallery`).
+            if self.gallery.query != self.gallery_search.value {
+                self.gallery.query = self.gallery_search.value.clone();
+                self.gallery.changed_at = Some(Instant::now());
+            }
+        }
         let done = |y: f32| button(cx - 100.0, y, 200.0, tr("gui.done"), Act::Done);
         // (list top, list bottom, content height)
         let (mut top, mut bottom, mut content) = (33.0, h - 33.0, 0.0);
@@ -4240,9 +4441,12 @@ impl OptionsUi {
                 if matches!(page, Page::Video | Page::Controls) {
                     top = 38.0;
                 }
+                if page == Page::PackGallery {
+                    top = 36.0;
+                }
                 out.push(Widget {
                     x: 0.0,
-                    y: if matches!(page, Page::Video | Page::Controls) {
+                    y: if matches!(page, Page::Video | Page::Controls | Page::PackGallery) {
                         4.0
                     } else {
                         12.0
@@ -4596,8 +4800,36 @@ impl OptionsUi {
             let blink = self.pack_focus.elapsed().as_millis() as u64;
             let m = crate::screen_draw::Measure(&atlas.font);
             let mouse = (cursor.0.floor() as i32, cursor.1.floor() as i32);
+            let data_packs = self.data_pack_dir.is_some();
             let packs = self.packs(atlas, (w, h));
             let mut draws = packs.draw(&m, mouse, blink, crate::hud_overlays::now_ms());
+            if !data_packs
+                && let Some((gx, gy, gw)) = packs.gallery_button()
+            {
+                let now = crate::hud_overlays::now_ms();
+                let hover = crate::screen_draw::inside(mouse, gx, gy, gw, 20);
+                crate::widgets::widget_cursor(hover, true);
+                crate::screen_draw::button(
+                    &mut draws,
+                    &m,
+                    &tr("horizon.pack_gallery.open"),
+                    gx,
+                    gy,
+                    gw,
+                    20,
+                    true,
+                    hover,
+                    now,
+                );
+                if hover {
+                    crate::screen_draw::tooltip(
+                        &mut draws,
+                        &m,
+                        &tr("horizon.pack_gallery.open.tooltip"),
+                        mouse,
+                    );
+                }
+            }
             packs.bind_icons(&mut draws, atlas, &mut batch.patches);
             crate::screen_draw::paint(batch, atlas, &draws);
             return;
@@ -4851,6 +5083,27 @@ impl OptionsUi {
             }
             self.language_search = search;
         }
+        if self.page() == Page::PackGallery {
+            let mut search = self.gallery_search.clone();
+            if self.focus == Some(FocusId::Search) {
+                search.focused = true;
+            }
+            search.draw(batch, atlas, None);
+            crate::widgets::last_narratable(|n| n.order = -1);
+            if search.value.is_empty() && !search.focused {
+                batch.text_styled(
+                    atlas,
+                    &tr("horizon.pack_gallery.search")
+                        .with_color(text::GRAY)
+                        .italic(),
+                    search.text_x(),
+                    search.text_y(),
+                    u32::MAX,
+                    true,
+                );
+            }
+            self.gallery_search = search;
+        }
         if matches!(self.page(), Page::Video | Page::Controls | Page::KeyBinds) {
             let mut search = self.settings_search.clone();
             if self.focus == Some(FocusId::Search) {
@@ -5008,6 +5261,26 @@ impl OptionsUi {
             if right {
                 return events;
             }
+            // Horizon: the gallery button the options layer draws left of Open
+            // Pack Folder. The vanilla screen stays as it is; this rect is
+            // `PackScreen::gallery_button`.
+            if self.data_pack_dir.is_none() {
+                let gallery = self
+                    .pack_screen
+                    .as_ref()
+                    .and_then(crate::pack_screen::PackScreen::gallery_button);
+                if let Some((gx, gy, gw)) = gallery
+                    && x as f64 >= f64::from(gx)
+                    && x as f64 < f64::from(gx + gw)
+                    && y as f64 >= f64::from(gy)
+                    && y as f64 < f64::from(gy + 20)
+                {
+                    events.push(Event::ButtonClick);
+                    events.push(Event::ListPackGallery);
+                    self.push(Page::PackGallery);
+                    return events;
+                }
+            }
             let m = crate::screen_draw::Measure(&atlas.font);
             let p = self.packs(atlas, size);
             if p.button_at(&m, x as f64, y as f64) {
@@ -5083,6 +5356,18 @@ impl OptionsUi {
         }
         if !drag && self.page() == Page::Language {
             let search = &mut self.language_search;
+            search.focused = ui::hovered((x, y), search.x, search.y, search.width, search.height);
+            if search.focused {
+                self.focus = Some(FocusId::Search);
+                self.focus_from_keyboard = false;
+                self.can_change_value = false;
+                search.click(atlas, x, false, false);
+                self.scroll = 0.0;
+                return events;
+            }
+        }
+        if !drag && self.page() == Page::PackGallery {
+            let search = &mut self.gallery_search;
             search.focused = ui::hovered((x, y), search.x, search.y, search.width, search.height);
             if search.focused {
                 self.focus = Some(FocusId::Search);
@@ -5221,6 +5506,20 @@ impl OptionsUi {
                             }
                             self.push(p)
                         }
+                        Act::GalleryInstall(i) => events.push(Event::PackGalleryInstall(i)),
+                        Act::GalleryOpen(i) => {
+                            if let Some(pack) = self.gallery.results.get(i) {
+                                events.push(Event::OpenUri(format!(
+                                    "https://modrinth.com/resourcepack/{}",
+                                    pack.slug
+                                )));
+                            }
+                        }
+                        Act::GalleryUpdate(file) => {
+                            events.push(Event::PackGalleryUpdate(file.clone()))
+                        }
+                        Act::GalleryMore => events.push(Event::PackGalleryMore),
+                        Act::GalleryRetry => events.push(Event::PackGalleryRetry),
                         Act::PickShaderPack(i) => {
                             let pick = match i {
                                 Some(i) => s.shader_packs.get(i).map(|p| p.file.clone()),
@@ -5815,6 +6114,7 @@ impl OptionsUi {
         self.focus_from_keyboard = false;
         self.settings_search.focused = false;
         self.language_search.focused = false;
+        self.gallery_search.focused = false;
         self.can_change_value = false;
         match page {
             Page::ShaderOptions => {
@@ -5832,6 +6132,8 @@ impl OptionsUi {
                     events.push(Event::Language(code));
                 }
             }
+            // The gallery itself keeps its results: it just goes back.
+            Page::PackGallery => {}
             Page::Packs => {
                 // PackSelectionScreen.onClose: PackSelectionModel.commit.
                 let data = self.data_pack_dir.take();
@@ -5948,6 +6250,11 @@ impl OptionsUi {
             p.type_text(&crate::screen_draw::Measure(&atlas.font), text);
             return;
         }
+        if self.page() == Page::PackGallery {
+            self.gallery_search.insert_text(text);
+            self.scroll = 0.0;
+            return;
+        }
         if self.page() == Page::Language {
             self.language_search.insert_text(text);
             self.scroll = 0.0;
@@ -5983,6 +6290,12 @@ impl OptionsUi {
         }
         if self.page() == Page::Language {
             if self.language_search.shortcut(shortcut, clipboard) {
+                self.scroll = 0.0;
+            }
+            return true;
+        }
+        if self.page() == Page::PackGallery {
+            if self.gallery_search.shortcut(shortcut, clipboard) {
                 self.scroll = 0.0;
             }
             return true;
@@ -6135,6 +6448,8 @@ impl OptionsUi {
             if key != K::Tab && key != K::ArrowDown {
                 let search = if self.page() == Page::Language {
                     &mut self.language_search
+                } else if self.page() == Page::PackGallery {
+                    &mut self.gallery_search
                 } else {
                     &mut self.settings_search
                 };
@@ -6149,13 +6464,20 @@ impl OptionsUi {
                 self.scroll = 0.0;
                 return Vec::new();
             }
-        } else if self.page() == Page::Language && self.focus.is_none() {
-            if !self.language_search.key(key, false, shift)
+        } else if matches!(self.page(), Page::Language | Page::PackGallery)
+            && self.focus.is_none()
+        {
+            let search = if self.page() == Page::Language {
+                &mut self.language_search
+            } else {
+                &mut self.gallery_search
+            };
+            if !search.key(key, false, shift)
                 && let Some(t) = text
             {
                 let typed: String = t.chars().filter(|c| !c.is_control()).collect();
                 if !typed.is_empty() {
-                    self.language_search.insert_text(&typed);
+                    search.insert_text(&typed);
                 }
             }
             self.scroll = 0.0;
@@ -6205,11 +6527,14 @@ impl OptionsUi {
 
         // Gather focusables on the current page
         let (widgets, top, bottom, content) = self.layout(s, self.size.0, self.size.1);
-        let has_search = (self.page() == Page::Language) || self.settings_search_active();
+        let has_search = matches!(self.page(), Page::Language | Page::PackGallery)
+            || self.settings_search_active();
         let mut focusables: Vec<(FocusId, [f32; 4], bool)> = Vec::new();
         if has_search {
             let search = if self.page() == Page::Language {
                 &self.language_search
+            } else if self.page() == Page::PackGallery {
+                &self.gallery_search
             } else {
                 &self.settings_search
             };

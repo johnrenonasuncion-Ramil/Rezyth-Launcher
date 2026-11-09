@@ -17,7 +17,7 @@ pub use horizon_client_render::{
     hdr_calibration, hud, hud_layout, hud_overlays, inventory_effects, java_text, jigsaw_block,
     json_folder, level_loading, light, lod, logging, menu_blur, mesher, minimap, mipmap, mod_list,
     model_library, models, multiline_edit, native_emissive, offline_name, options_file,
-    options_fixes, options_ui, overlay, own_buttons, own_skin, pack_screen, packs, par, particles,
+    options_fixes, options_ui, overlay, own_buttons, own_skin, pack_gallery, pack_screen, packs, par, particles,
     poi_sections, post_chain, potent_sulfur, preedit, providers, screen_draw, screen_effects,
     sculk, section_mask, server_terrain, settings, shader_options, shader_pack_list, signs, skins,
     sound_engine, sound_events, sound_preview, spans, split_layout, split_map, split_profiles,

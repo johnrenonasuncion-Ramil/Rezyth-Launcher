@@ -74,6 +74,7 @@ pub mod options_ui;
 pub mod overlay;
 pub mod own_buttons;
 pub mod own_skin;
+pub mod pack_gallery;
 pub mod pack_screen;
 pub mod packs;
 pub mod par;

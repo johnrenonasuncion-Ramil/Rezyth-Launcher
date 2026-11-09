@@ -240,6 +240,7 @@ impl Game<'_> {
     }
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
         self.watch_pack_folder();
+        self.poll_pack_gallery(false);
         let mut ui = std::mem::take(&mut self.ui.options);
         ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
         self.ui.options = ui;
@@ -380,6 +381,9 @@ impl Game<'_> {
     }
     pub(super) fn handle_option_events(&mut self, events: Vec<Event>) -> Result<()> {
         for e in events {
+            if self.pack_gallery_event(false, &e) {
+                continue;
+            }
             match e {
                 Event::ButtonClick => self.audio.play_button_click(),
                 Event::Changed => {
@@ -434,6 +438,7 @@ impl Game<'_> {
                     self.reload_packs();
                 }
                 Event::OpenPackFolder => self.open_game_folder(&super::packs::packs_dir()),
+                Event::OpenUri(url) => super::packs::open_uri(&url),
                 Event::OpenModFolder => {
                     self.open_game_folder(&Self::game_dir().join(horizon_client::mod_list::DIR))
                 }
