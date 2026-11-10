@@ -165,32 +165,39 @@ green: `android.yml` run **42561604025** and `weave.yml` run **42561592346** at 
 
 ## Resource pack gallery (Modrinth)
 
-The resource pack screen has a **Download Packs...** button to the left of Open
-Pack Folder; it opens an options page that searches Modrinth's resource packs
-(resource packs only), installs one into `resourcepacks/` with its SHA-512
-checked, auto-enables it (the selection gains it and the rebuilt screen commits
-it on Done) and checks the packs installed from the gallery for updates
-(`pack-gallery.json` in the game folder remembers what each file came from; a
-newer version for the game's own version wins). The page is a normal options
-list: a search box (a pause after typing starts the search), a row per result
-with Install / Installed / Downloading n%, author and downloads under it,
-update rows, Load More and a Modrinth credit line. The vanilla resource pack
-screen is untouched — the button is drawn and clicked by the options layer
-(`PackScreen::gallery_button` gives its rect), so `test_pack_screen_parity.py`'s
-draw-call oracle still holds.
+The resource pack screen's footer is three buttons — **Download Packs...**,
+Open Pack Folder and Done — centred as one group (150 wide each when the frame
+has room, narrower on phones); Download Packs opens an options page that
+searches Modrinth's resource packs (resource packs only), installs one into
+`resourcepacks/` with its SHA-512 checked, auto-enables it (the selection gains
+it and the rebuilt screen commits it on Done) and checks the packs installed
+from the gallery for updates (`pack-gallery.json` in the game folder remembers
+what each file came from; a newer version for the game's own version wins). The
+page is a normal options list: a search box (a pause after typing starts the
+search), a row per result laid out **Icon > Name > Download** — the pack's
+Modrinth icon is downloaded once per search (its URL also kept in the sidecar,
+so update rows have one before a search) and written into an atlas pack-icon
+slot as the row is drawn, with `unknown_pack` until it arrives; the name button
+opens the pack's Modrinth page, the 86-pixel download button shows Install /
+Installed / the download's percentage, author and downloads run under them, and
+update rows carry an Update button. Then Load More and a Modrinth credit line.
+The screen's gallery mode is on for resource packs and off for Create World's
+data packs, so the vanilla path — the parity fixture's included — stays byte
+for byte as it was and `test_pack_screen_parity.py`'s draw-call oracle holds.
 
-Where it lives: the gallery state and the Modrinth answers
-(`horizon-client-render/src/pack_gallery.rs`); the workers, downloads, sidecar,
-update check and auto-enable (`horizon-client/src/game/pack_gallery.rs`, one
-`GalleryOps` per options UI: the game's `Game` and the title's `Loading`); the
-page (`Page::PackGallery`), its rows, search box, acts/events and the
-pack-screen button (`options_ui.rs`); the button's rect and the (unchanged)
-draws (`pack_screen.rs`); `horizon.pack_gallery.*` in the bundled `en_us.json`.
+Where it lives: the gallery state, the icons and the Modrinth answers
+(`horizon-client-render/src/pack_gallery.rs`); the workers, icon downloads,
+downloads, sidecar, update check and auto-enable
+(`horizon-client/src/game/pack_gallery.rs`, one `GalleryOps` per options UI:
+the game's `Game` and the title's `Loading`); the page (`Page::PackGallery`),
+its rows, search box, acts/events and the icon-row drawing (`options_ui.rs`);
+the `gallery` footer mode and `Action::OpenGallery` (`pack_screen.rs`);
+`horizon.pack_gallery.*` in the bundled `en_us.json`.
 
-Verified green: `android.yml` run **42666756002** at `0cc25e9a9` (artifact
-`rezyth-apk`, 32.0 MB, `rezyth-0.2.3-arm64-v8a.apk`) and `weave.yml` run
-**42668749214** at `14ae55366` over the same code (artifact `woven-apk`,
-33.7 MB, all 33 native mods woven).
+Verified green: `android.yml` run **42743845481** at `73d41562d` (the icons and
+the centred footer; artifact `rezyth-apk`), on top of the gallery's own runs
+**42666756002** at `0cc25e9a9` and `weave.yml` **42668749214** at `14ae55366`
+(artifact `woven-apk`, 33.7 MB, all 33 native mods woven).
 
 ## Verify
 
