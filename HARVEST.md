@@ -230,7 +230,8 @@ so those rows stay inert (they still show Volt's labels and descriptions) and
 the two actions are no-ops; everything else mirrors the reference.
 
 Verified green: `android.yml` run **42896093289** at `70bd540c0` (the whole
-port, artifact `rezyth-apk`), plus the ledger commit's own run below.
+port) and run **42898376706** at `4854259fa` (the Volt button face, the restored
+keybind test and this ledger); artifact `rezyth-apk` both times.
 
 ## Verify
 
