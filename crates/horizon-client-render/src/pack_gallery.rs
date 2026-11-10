@@ -2,7 +2,8 @@
 //! Packs`): the state the page draws, and the Modrinth answers it reads. The
 //! network, the workers and the sidecar of what was installed are the game's
 //! (`game/pack_gallery.rs`); this half never touches the disk.
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+use std::sync::Arc;
 use std::time::Instant;
 
 /// How many packs one search page holds (Modrinth's `limit`).
@@ -35,6 +36,16 @@ pub struct Gallery {
     pub updates: BTreeMap<String, Update>,
     /// When the installed packs were checked for updates (the game's).
     pub checked_at: Option<Instant>,
+    /// The icon URL of each row, by Modrinth project id (from a search or the
+    /// installed packs' `pack-gallery.json`), which the game downloads
+    /// (`game/pack_gallery.rs`).
+    pub icon_urls: BTreeMap<String, String>,
+    /// The icons downloaded so far, by project id: `PACK_ICON_SIZE` square
+    /// RGBA, as the pack screen's (`pack_screen::load_icon`).
+    pub icons: BTreeMap<String, Arc<[u8]>>,
+    /// The projects whose icon was asked for already: a failed one is not
+    /// asked again until a new search lists it.
+    pub icons_requested: BTreeSet<String>,
 }
 
 /// Where the gallery's search is.
@@ -63,6 +74,8 @@ pub struct Pack {
     pub compatible: bool,
     /// The Modrinth version id a search would install (`hit.latest_version`).
     pub latest: String,
+    /// Its icon (`hit.icon_url`): the row shows it beside the name.
+    pub icon: Option<String>,
 }
 
 /// A pack installed from the gallery.
@@ -73,6 +86,9 @@ pub struct Installed {
     pub title: String,
     pub project_id: String,
     pub version_id: String,
+    /// The icon the row showed (`Pack.icon`), kept in the sidecar so update
+    /// rows have one before a search.
+    pub icon: Option<String>,
 }
 
 /// A newer version of an installed pack.
@@ -159,6 +175,10 @@ fn pack_of(hit: &serde_json::Value) -> Option<Pack> {
         versions,
         compatible,
         latest: hit["latest_version"].as_str().unwrap_or_default().to_owned(),
+        icon: hit["icon_url"]
+            .as_str()
+            .filter(|url| url.starts_with("https://"))
+            .map(str::to_owned),
     })
 }
 
@@ -247,7 +267,8 @@ mod tests {
                     "description": "A higher resolution default look",
                     "downloads": 12345678,
                     "versions": ["1.21", "26.3"],
-                    "latest_version": "ver1"
+                    "latest_version": "ver1",
+                    "icon_url": "https://cdn.modrinth.com/data/abc123/icon.png"
                 },
                 {
                     "project_id": "def456",
@@ -255,7 +276,8 @@ mod tests {
                     "title": "Old Pack",
                     "author": "Someone",
                     "versions": ["1.20.1"],
-                    "latest_version": "ver2"
+                    "latest_version": "ver2",
+                    "icon_url": ""
                 }
             ],
             "total_hits": 42
@@ -266,9 +288,15 @@ mod tests {
         assert_eq!(packs[0].project_id, "abc123");
         assert_eq!(packs[0].title, "Faithful 32x");
         assert_eq!(packs[0].downloads, 12345678);
+        assert_eq!(
+            packs[0].icon.as_deref(),
+            Some("https://cdn.modrinth.com/data/abc123/icon.png")
+        );
         assert!(packs[0].compatible);
         assert_eq!(packs[0].latest, "ver1");
         assert!(!packs[1].compatible);
+        // An empty or non-HTTPS icon is no icon: the row keeps its fallback.
+        assert_eq!(packs[1].icon, None);
     }
 
     #[test]

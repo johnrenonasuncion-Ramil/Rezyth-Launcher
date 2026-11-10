@@ -605,6 +605,7 @@
   "horizon.pack_gallery.search": "Search Modrinth",
   "horizon.pack_gallery.install": "Install",
   "horizon.pack_gallery.installed": "Installed",
+  "horizon.pack_gallery.update": "Update",
   "horizon.pack_gallery.updates": "Updates",
   "horizon.pack_gallery.update_of": "Update %s to %s",
   "horizon.pack_gallery.downloading": "Downloading %s",

@@ -13,7 +13,10 @@ use horizon_client::settings::Settings;
 use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::mpsc::{Receiver, Sender},
+    sync::{
+        Arc,
+        mpsc::{Receiver, Sender},
+    },
     time::{Duration, Instant},
 };
 
@@ -49,6 +52,11 @@ pub(super) enum Msg {
     },
     Updates {
         updates: Vec<gallery::Update>,
+    },
+    /// A row's icon downloaded (`None`: it did not decode).
+    Icon {
+        project: String,
+        pixels: Option<Arc<[u8]>>,
     },
 }
 
@@ -128,6 +136,7 @@ impl GalleryOps {
         for msg in msgs {
             changed |= self.apply(msg, ui, settings, root, server);
         }
+        self.request_icons(ui);
         changed
     }
 
@@ -159,6 +168,7 @@ impl GalleryOps {
                         ui.gallery.total = total;
                         ui.gallery.searched = query;
                         ui.gallery.error.clear();
+                        refresh_icons(ui);
                     }
                     Err(error) => {
                         log::warn!("Horizon: the Modrinth search failed: {error}");
@@ -192,6 +202,14 @@ impl GalleryOps {
                 ui.gallery.updates = updates.into_iter().map(|u| (u.file.clone(), u)).collect();
                 false
             }
+            Msg::Icon { project, pixels } => {
+                if let Some(pixels) = pixels
+                    && ui.gallery.icon_urls.contains_key(&project)
+                {
+                    ui.gallery.icons.insert(project, pixels);
+                }
+                false
+            }
         }
     }
 
@@ -207,6 +225,7 @@ impl GalleryOps {
             .iter()
             .map(|record| (record.file.clone(), record.clone()))
             .collect();
+        refresh_icons(ui);
         if !records.is_empty()
             && self
                 .checked
@@ -282,9 +301,10 @@ impl GalleryOps {
         let project_id = pack.project_id.clone();
         let title = pack.title.clone();
         let latest = pack.latest.clone();
+        let icon = pack.icon.clone();
         let _ = std::thread::Builder::new()
             .name("pack-gallery-install".into())
-            .spawn(move || run_install(tx, project_id, title, fetch_version(&latest), None));
+            .spawn(move || run_install(tx, project_id, title, icon, fetch_version(&latest), None));
     }
 
     /// Install the update an installed pack has.
@@ -309,10 +329,41 @@ impl GalleryOps {
         let tx = self.tx.clone();
         let project_id = update.project_id.clone();
         let title = update.title.clone();
+        let icon = ui
+            .gallery
+            .installed
+            .get(local)
+            .and_then(|record| record.icon.clone())
+            .or_else(|| ui.gallery.icon_urls.get(&update.project_id).cloned());
         let replace = Some(local.to_owned());
         let _ = std::thread::Builder::new()
             .name("pack-gallery-install".into())
-            .spawn(move || run_install(tx, project_id, title, Ok(file), replace));
+            .spawn(move || run_install(tx, project_id, title, icon, Ok(file), replace));
+    }
+
+    /// Ask for the icons the rows show but do not have yet, one download per
+    /// project. A project is asked for once: a failed icon is not asked again
+    /// until a new search lists it.
+    fn request_icons(&mut self, ui: &mut OptionsUi) {
+        let mut wanted = Vec::new();
+        for (project, url) in &ui.gallery.icon_urls {
+            if ui.gallery.icons.contains_key(project)
+                || ui.gallery.icons_requested.contains(project)
+            {
+                continue;
+            }
+            wanted.push((project.clone(), url.clone()));
+        }
+        for (project, url) in wanted {
+            ui.gallery.icons_requested.insert(project.clone());
+            let tx = self.tx.clone();
+            let _ = std::thread::Builder::new()
+                .name("pack-gallery-icon".into())
+                .spawn(move || {
+                    let pixels = fetch_icon(&url);
+                    let _ = tx.send(Msg::Icon { project, pixels });
+                });
+        }
     }
 }
 
@@ -338,6 +389,11 @@ fn finish(
         ui.gallery.installed.values().cloned().collect()
     };
     write_index(&installed);
+    if let Some(icon) = &record.icon {
+        ui.gallery
+            .icon_urls
+            .insert(record.project_id.clone(), icon.clone());
+    }
     if let Some(old) = &replace
         && old != &record.file
     {
@@ -447,6 +503,7 @@ fn run_install(
     tx: Sender<Msg>,
     project_id: String,
     title: String,
+    icon: Option<String>,
     file: Result<gallery::FileRef, String>,
     replace: Option<String>,
 ) {
@@ -463,6 +520,7 @@ fn run_install(
                     title,
                     project_id,
                     version_id,
+                    icon,
                 },
                 replace,
             });
@@ -583,6 +641,28 @@ fn sha512_of(path: &Path) -> Result<String, String> {
     Ok(hash.finalize().iter().map(|b| format!("{b:02x}")).collect())
 }
 
+/// Rebuild the rows' icon URLs from the results and the installed packs, and
+/// drop the icons no row shows any more.
+fn refresh_icons(ui: &mut OptionsUi) {
+    let mut urls = std::collections::BTreeMap::new();
+    for pack in &ui.gallery.results {
+        if let Some(icon) = &pack.icon {
+            urls.insert(pack.project_id.clone(), icon.clone());
+        }
+    }
+    for record in ui.gallery.installed.values() {
+        if let Some(icon) = &record.icon {
+            urls.insert(record.project_id.clone(), icon.clone());
+        }
+    }
+    ui.gallery.icon_urls = urls;
+    let keep = ui.gallery.icon_urls.clone();
+    ui.gallery.icons.retain(|project, _| keep.contains_key(project));
+    ui.gallery
+        .icons_requested
+        .retain(|project| keep.contains_key(project));
+}
+
 fn agent() -> ureq::Agent {
     ureq::AgentBuilder::new()
         .timeout_connect(Duration::from_secs(15))
@@ -598,6 +678,35 @@ fn request(url: &str) -> Result<String, String> {
         .map_err(|e| format!("Modrinth: {e}"))?
         .into_string()
         .map_err(|e| format!("Modrinth: {e}"))
+}
+
+/// The most bytes an icon may take: Modrinth's are small.
+const MAX_ICON: u64 = 1024 * 1024;
+
+/// A row's icon from Modrinth, decoded to the pack screen's square.
+fn fetch_icon(url: &str) -> Option<Arc<[u8]>> {
+    if !url.starts_with("https://") {
+        return None;
+    }
+    let response = agent()
+        .get(url)
+        .set("User-Agent", USER_AGENT)
+        .call()
+        .ok()?;
+    let mut body = response.into_reader();
+    let mut data = Vec::new();
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = body.read(&mut buffer).ok()?;
+        if read == 0 {
+            break;
+        }
+        data.extend_from_slice(&buffer[..read]);
+        if data.len() as u64 > MAX_ICON {
+            return None;
+        }
+    }
+    horizon_client::pack_screen::load_icon(&data)
 }
 
 /// The game folder's `pack-gallery.json`.
@@ -624,6 +733,7 @@ fn read_index() -> Vec<gallery::Installed> {
                 title: pack["title"].as_str().unwrap_or_default().to_owned(),
                 project_id: pack["project_id"].as_str()?.to_owned(),
                 version_id: pack["version_id"].as_str().unwrap_or_default().to_owned(),
+                icon: pack["icon"].as_str().map(str::to_owned),
             })
         })
         .collect()
@@ -638,6 +748,7 @@ fn write_index(installed: &[gallery::Installed]) {
                 "title": pack.title,
                 "project_id": pack.project_id,
                 "version_id": pack.version_id,
+                "icon": pack.icon,
             })
         })
         .collect();

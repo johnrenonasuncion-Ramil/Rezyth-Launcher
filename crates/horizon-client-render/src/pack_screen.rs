@@ -322,6 +322,8 @@ struct Confirm {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Action {
     None,
+    /// The Download Packs button (the gallery; Horizon's).
+    OpenGallery,
     /// The Open Pack Folder button.
     OpenFolder,
     /// The Done button (`onClose`: commit).
@@ -349,6 +351,9 @@ pub struct PackScreen {
     icons: HashMap<String, Arc<[u8]>>,
     /// Data packs and world mods (Create New World's) rather than resource packs.
     pub data: bool,
+    /// Horizon's Modrinth gallery: the footer is Download Packs, Open Pack
+    /// Folder and Done, centred as one group. Off, the screen is vanilla.
+    pub gallery: bool,
 }
 
 fn tr(key: &str) -> Text {
@@ -391,6 +396,7 @@ impl PackScreen {
             confirm: None,
             changed: false,
             data: false,
+            gallery: false,
         };
         s.reposition(m);
         s.populate(None);
@@ -431,21 +437,22 @@ impl PackScreen {
         let y = self.height - 33 + (0.5f32 * 13.0).round() as i32;
         [(x, y), (x + 158, y)]
     }
-    /// The Modrinth gallery button, to the left of Open Pack Folder: the
-    /// options layer draws and clicks it (`options_ui`), so this screen's own
-    /// draws stay the vanilla ones. `(x, y, width)`, or None when the screen
-    /// is too narrow or shows data packs.
-    pub fn gallery_button(&self) -> Option<(i32, i32, i32)> {
-        if self.data {
-            return None;
+    /// The footer's buttons as `(x, y, width)`: Open Pack Folder and Done at
+    /// vanilla's places, and with the gallery all three — Download Packs,
+    /// Open Pack Folder, Done — centred as one group, each 150 wide when the
+    /// frame has room for them.
+    fn footer_rects(&self) -> Vec<(i32, i32, i32)> {
+        let frame = self.width.max(308);
+        let y = self.height - 33 + (0.5f32 * 13.0).round() as i32;
+        if !self.gallery {
+            let x = (0.5 * (frame - 308) as f32) as i32;
+            return vec![(x, y, 150), (x + 158, y, 150)];
         }
-        let [(fx, fy), _] = self.footer();
-        if fx < 68 {
-            return None;
-        }
-        let x = (fx - 158).max(2);
-        let w = (fx - x - 6).clamp(60, 150);
-        Some((x, fy, w))
+        let gap = 8;
+        let w = 150.min((frame - 16 - 2 * gap) / 3);
+        let total = 3 * w + 2 * gap;
+        let x0 = (frame - total) / 2;
+        (0..3).map(|i| (x0 + i * (w + gap), y, w)).collect()
     }
     /// `repositionElements`.
     fn reposition(&mut self, m: &Measure) {
@@ -560,13 +567,14 @@ impl PackScreen {
     /// Whether a left click activates a footer or confirmation button.
     /// Pack entries and the search field do not play widget click sounds.
     pub fn button_at(&self, m: &Measure, x: f64, y: f64) -> bool {
-        let buttons = if let Some(c) = &self.confirm {
-            self.confirm_layout(m, c).2
-        } else {
-            self.footer()
-        };
-        buttons.into_iter().any(|(bx, by)| {
-            x >= bx as f64 && y >= by as f64 && x < (bx + 150) as f64 && y < (by + 20) as f64
+        if let Some(c) = &self.confirm {
+            let buttons = self.confirm_layout(m, c).2;
+            return buttons.into_iter().any(|(bx, by)| {
+                x >= bx as f64 && y >= by as f64 && x < (bx + 150) as f64 && y < (by + 20) as f64
+            });
+        }
+        self.footer_rects().into_iter().any(|(bx, by, bw)| {
+            x >= bx as f64 && y >= by as f64 && x < (bx + bw) as f64 && y < (by + 20) as f64
         })
     }
     /// A left click (`Screen.mouseClicked`).
@@ -627,13 +635,16 @@ impl PackScreen {
             }
             return Action::None;
         }
-        for (i, (bx, by)) in self.footer().into_iter().enumerate() {
-            if x >= bx as f64 && y >= by as f64 && x < (bx + 150) as f64 && y < (by + 20) as f64 {
+        let folder = usize::from(self.gallery);
+        for (i, (bx, by, bw)) in self.footer_rects().into_iter().enumerate() {
+            if x >= bx as f64 && y >= by as f64 && x < (bx + bw) as f64 && y < (by + 20) as f64 {
                 self.set_focus(Focus::Button(i));
-                return if i == 0 {
+                return if i == folder {
                     Action::OpenFolder
-                } else {
+                } else if i == folder + 1 {
                     Action::Done
+                } else {
+                    Action::OpenGallery
                 };
             }
         }
@@ -913,27 +924,29 @@ impl PackScreen {
         for side in 0..2 {
             self.draw_list(&mut out, m, side, mouse);
         }
-        self.draw_footer(
-            &mut out,
-            m,
-            mouse,
-            now_ms,
-            [&tr("pack.openFolder"), &tr("gui.done")],
-        );
+        let open_folder = tr("pack.openFolder");
+        let done = tr("gui.done");
+        if self.gallery {
+            let gallery = tr("horizon.pack_gallery.open");
+            self.draw_footer(&mut out, m, mouse, now_ms, &[&gallery, &open_folder, &done]);
+        } else {
+            self.draw_footer(&mut out, m, mouse, now_ms, &[&open_folder, &done]);
+        }
         out
     }
-    /// The footer's two buttons, "Open Pack Folder" and "Done", over their
-    /// labels; a label wider than its button scrolls with the clock.
+    /// The footer's buttons over their labels; a label wider than its button
+    /// scrolls with the clock.
     fn draw_footer(
         &self,
         out: &mut Vec<Draw>,
         m: &Measure,
         mouse: (i32, i32),
         now_ms: i64,
-        labels: [&Text; 2],
+        labels: &[&Text],
     ) {
-        for (i, ((bx, by), label)) in self.footer().into_iter().zip(labels).enumerate() {
-            let hover = d::inside(mouse, bx, by, 150, 20);
+        let folder = usize::from(self.gallery);
+        for (i, ((bx, by, bw), label)) in self.footer_rects().into_iter().zip(labels).enumerate() {
+            let hover = d::inside(mouse, bx, by, bw, 20);
             // The cursor follows the mouse; the highlight also keyboard focus.
             crate::widgets::widget_cursor(hover, true);
             d::button(
@@ -942,18 +955,18 @@ impl PackScreen {
                 label,
                 bx,
                 by,
-                150,
+                bw,
                 20,
                 true,
                 hover || self.focus == Focus::Button(i),
                 now_ms,
             );
-            if i == 0 {
+            if i == folder {
                 crate::widgets::last_narratable(|n| {
                     n.hint = Some(tr("pack.folderInfo").plain());
                 });
             }
-            if i == 0 && hover {
+            if i == folder && hover {
                 d::tooltip(out, m, &tr("pack.folderInfo"), mouse);
             }
         }
@@ -1323,7 +1336,7 @@ mod footer_label_tests {
         let m = Measure(&atlas.font);
         let screen = PackScreen::new(&m, Text::literal("Packs"), 480, 320, false, Vec::new(), &[]);
         let mut out = Vec::new();
-        screen.draw_footer(&mut out, &m, (0, 0), now_ms, [open_folder, done]);
+        screen.draw_footer(&mut out, &m, (0, 0), now_ms, &[open_folder, done]);
         (out, screen.footer())
     }
     /// Every label drawn in `[bx + 2, bx + 148] x [by, by + 20]` of its button:

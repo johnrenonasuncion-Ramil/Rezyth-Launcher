@@ -8,7 +8,7 @@ pub use crate::settings::Opt;
 
 use crate::{
     gamepad::{self, GlyphStyle},
-    hud::{HudAtlas, HudBatch, rgba},
+    hud::{HudAtlas, HudBatch, PACK_ICON_SIZE, PACK_ICON_SLOTS, rgba},
     keybinds::{self, CATEGORIES, KeyBinds, MAPPINGS},
     lang::{self, LanguageInfo},
     own_buttons,
@@ -1618,6 +1618,8 @@ enum Act {
     /// and a search again after a failure.
     GalleryInstall(usize),
     GalleryOpen(usize),
+    /// A project's Modrinth page, by id (an update row's name).
+    GalleryPage(String),
     GalleryUpdate(String),
     GalleryMore,
     GalleryRetry,
@@ -1651,6 +1653,9 @@ enum WKind {
         selected: bool,
         code: String,
     },
+    /// A gallery row's Modrinth icon: `gallery.icons[project]` written into a
+    /// pack icon slot as the row is drawn.
+    Icon { project: String },
 }
 struct Widget {
     x: f32,
@@ -2256,6 +2261,15 @@ enum Row {
     Canvas(u32),
     /// A line of red text: what was refused.
     Warning(String),
+    /// A gallery row: its icon, the name (which opens the pack on Modrinth),
+    /// the download or update button and a grey note under them.
+    GalleryPack {
+        project: String,
+        name: String,
+        open: Act,
+        action: Widget,
+        note: String,
+    },
 }
 /// A widget's tooltip (`setTooltip`), unwrapped: drawn while hovered, and
 /// its narration's hint.
@@ -2949,23 +2963,19 @@ impl OptionsUi {
                 if !self.gallery.updates.is_empty() {
                     rows.push(Row::Header("horizon.pack_gallery.updates"));
                     for update in self.gallery.updates.values() {
-                        let label = Text::translate(
-                            "horizon.pack_gallery.update_of",
-                            &[
-                                Text::literal(update.title.clone()),
-                                Text::literal(update.version_name.clone()),
-                            ],
-                        );
-                        rows.push(Row::Buttons(
-                            button(
+                        rows.push(Row::GalleryPack {
+                            project: update.project_id.clone(),
+                            name: update.title.clone(),
+                            open: Act::GalleryPage(update.project_id.clone()),
+                            action: button(
                                 0.0,
                                 0.0,
-                                150.0,
-                                label,
+                                86.0,
+                                tr("horizon.pack_gallery.update"),
                                 Act::GalleryUpdate(update.file.clone()),
                             ),
-                            None,
-                        ));
+                            note: update.version_name.clone(),
+                        });
                     }
                 }
                 for (i, pack) in self.gallery.results.iter().enumerate() {
@@ -2981,12 +2991,12 @@ impl OptionsUi {
                             "horizon.pack_gallery.downloading",
                             &[Text::literal(format!("{percent}%"))],
                         );
-                        inactive(button(0.0, 0.0, 150.0, label, Act::GalleryInstall(i)))
+                        inactive(button(0.0, 0.0, 86.0, label, Act::GalleryInstall(i)))
                     } else if installed {
                         inactive(button(
                             0.0,
                             0.0,
-                            150.0,
+                            86.0,
                             tr("horizon.pack_gallery.installed"),
                             Act::GalleryInstall(i),
                         ))
@@ -2994,21 +3004,11 @@ impl OptionsUi {
                         button(
                             0.0,
                             0.0,
-                            150.0,
+                            86.0,
                             tr("horizon.pack_gallery.install"),
                             Act::GalleryInstall(i),
                         )
                     };
-                    rows.push(Row::Buttons(
-                        button(
-                            0.0,
-                            0.0,
-                            150.0,
-                            Text::literal(pack.title.clone()),
-                            Act::GalleryOpen(i),
-                        ),
-                        Some(action),
-                    ));
                     let mut note = Text::translate(
                         "horizon.pack_gallery.by",
                         &[Text::literal(pack.author.clone())],
@@ -3026,7 +3026,13 @@ impl OptionsUi {
                         note.push_str(" · ");
                         note.push_str(&tr("horizon.pack_gallery.other_versions").plain());
                     }
-                    rows.push(Row::Note(note));
+                    rows.push(Row::GalleryPack {
+                        project: pack.project_id.clone(),
+                        name: pack.title.clone(),
+                        open: Act::GalleryOpen(i),
+                        action,
+                        note,
+                    });
                 }
                 if self.gallery.results.is_empty()
                     && self.gallery.status == crate::pack_gallery::Status::Ready
@@ -4514,6 +4520,50 @@ impl OptionsUi {
                             }
                             y += 25.0;
                         }
+                        Row::GalleryPack {
+                            project,
+                            name,
+                            open,
+                            mut action,
+                            note,
+                        } => {
+                            // Icon, then the name (which opens the pack), then
+                            // the download button at the right edge, with a
+                            // grey note from the name to the edge under them.
+                            let (icon_x, icon_y) = (cx - 155.0, y + 3.0);
+                            out.push(Widget {
+                                x: icon_x,
+                                y: icon_y,
+                                w: 32.0,
+                                h: 32.0,
+                                kind: WKind::Icon { project },
+                                list: false,
+                                row: 0,
+                            });
+                            let action_w = 86.0;
+                            let name_x = icon_x + 32.0 + 6.0;
+                            let name_w = 310.0 - 32.0 - 6.0 - 6.0 - action_w;
+                            let note_w = 310.0 - 32.0 - 6.0;
+                            out.push(button(name_x, y + 2.0, name_w, Text::literal(name), open));
+                            action.x = cx + 155.0 - action_w;
+                            action.y = y + 2.0;
+                            action.w = action_w;
+                            out.push(action);
+                            out.push(Widget {
+                                x: name_x,
+                                y: y + 23.0,
+                                w: note_w,
+                                h: 9.0,
+                                kind: WKind::Text {
+                                    text: Text::literal(clipped(&note, 44)),
+                                    color: 0xFFA0A0A0,
+                                    centered: false,
+                                },
+                                list: false,
+                                row: 0,
+                            });
+                            y += 38.0;
+                        }
                         Row::Field => {
                             out.push(Widget {
                                 x: cx - 155.0,
@@ -4802,34 +4852,8 @@ impl OptionsUi {
             let mouse = (cursor.0.floor() as i32, cursor.1.floor() as i32);
             let data_packs = self.data_pack_dir.is_some();
             let packs = self.packs(atlas, (w, h));
+            packs.gallery = !data_packs;
             let mut draws = packs.draw(&m, mouse, blink, crate::hud_overlays::now_ms());
-            if !data_packs
-                && let Some((gx, gy, gw)) = packs.gallery_button()
-            {
-                let now = crate::hud_overlays::now_ms();
-                let hover = crate::screen_draw::inside(mouse, gx, gy, gw, 20);
-                crate::widgets::widget_cursor(hover, true);
-                crate::screen_draw::button(
-                    &mut draws,
-                    &m,
-                    &tr("horizon.pack_gallery.open"),
-                    gx,
-                    gy,
-                    gw,
-                    20,
-                    true,
-                    hover,
-                    now,
-                );
-                if hover {
-                    crate::screen_draw::tooltip(
-                        &mut draws,
-                        &m,
-                        &tr("horizon.pack_gallery.open.tooltip"),
-                        mouse,
-                    );
-                }
-            }
             packs.bind_icons(&mut draws, atlas, &mut batch.patches);
             crate::screen_draw::paint(batch, atlas, &draws);
             return;
@@ -4855,6 +4879,9 @@ impl OptionsUi {
         // The widget a keyboard-focused tooltip belongs to: `MenuTooltipPositioner`
         // keeps it against that widget, not at the pointer.
         let mut tooltip_rect: Option<[f32; 4]> = None;
+        // Each drawn gallery icon takes the next pack icon slot, as the pack
+        // screen's `bind_icons` gives one to each icon it draws.
+        let mut icon_slot = 0usize;
         for (wd_idx, wd) in widgets.iter().enumerate() {
             if !visible(wd) {
                 continue;
@@ -5018,6 +5045,45 @@ impl OptionsUi {
                         );
                     } else {
                         batch.text_styled(atlas, text, wd.x, wd.y, *color, true);
+                    }
+                }
+                WKind::Icon { project } => {
+                    // A downloaded icon goes into a pack icon slot for this
+                    // frame, as the pack screen writes the packs' own icons;
+                    // without one, vanilla's `unknown_pack` stands in.
+                    let sprite = format!("horizon/pack-icon{}", icon_slot % PACK_ICON_SLOTS);
+                    let rect = atlas.sprites.get(&sprite).copied();
+                    match (rect, self.gallery.icons.get(project)) {
+                        (Some(rect), Some(pixels)) => {
+                            batch.patches.push(crate::font::Patch {
+                                x: (rect.u0 * atlas.width as f32).round() as u32,
+                                y: (rect.v0 * atlas.height as f32).round() as u32,
+                                width: PACK_ICON_SIZE,
+                                height: PACK_ICON_SIZE,
+                                rgba: pixels.to_vec(),
+                            });
+                            ui::sprite_sized(
+                                batch,
+                                atlas,
+                                &sprite,
+                                wd.x,
+                                wd.y,
+                                wd.w,
+                                wd.h,
+                                u32::MAX,
+                            );
+                            icon_slot += 1;
+                        }
+                        _ => ui::sprite_sized(
+                            batch,
+                            atlas,
+                            "misc/unknown_pack",
+                            wd.x,
+                            wd.y,
+                            wd.w,
+                            wd.h,
+                            u32::MAX,
+                        ),
                     }
                 }
                 WKind::LanguageRow {
@@ -5261,28 +5327,6 @@ impl OptionsUi {
             if right {
                 return events;
             }
-            // Horizon: the gallery button the options layer draws left of Open
-            // Pack Folder. The vanilla screen stays as it is; this rect is
-            // `PackScreen::gallery_button`.
-            if self.data_pack_dir.is_none() {
-                let gallery = self
-                    .pack_screen
-                    .as_ref()
-                    .and_then(crate::pack_screen::PackScreen::gallery_button);
-                if let Some((gx, gy, gw)) = gallery {
-                    let (px, py) = (f64::from(x), f64::from(y));
-                    if px >= f64::from(gx)
-                        && px < f64::from(gx + gw)
-                        && py >= f64::from(gy)
-                        && py < f64::from(gy + 20)
-                    {
-                        events.push(Event::ButtonClick);
-                        events.push(Event::ListPackGallery);
-                        self.push(Page::PackGallery);
-                        return events;
-                    }
-                }
-            }
             let m = crate::screen_draw::Measure(&atlas.font);
             let p = self.packs(atlas, size);
             if p.button_at(&m, x as f64, y as f64) {
@@ -5294,6 +5338,10 @@ impl OptionsUi {
                 self.pack_focus = Instant::now();
             }
             match action {
+                crate::pack_screen::Action::OpenGallery => {
+                    events.push(Event::ListPackGallery);
+                    self.push(Page::PackGallery);
+                }
                 crate::pack_screen::Action::OpenFolder => events.push(match &self.data_pack_dir {
                     Some(dir) => Event::OpenDataPackFolder(dir.clone()),
                     None => Event::OpenPackFolder,
@@ -5517,6 +5565,9 @@ impl OptionsUi {
                                 )));
                             }
                         }
+                        Act::GalleryPage(project) => events.push(Event::OpenUri(format!(
+                            "https://modrinth.com/project/{project}"
+                        ))),
                         Act::GalleryUpdate(file) => {
                             events.push(Event::PackGalleryUpdate(file.clone()))
                         }
@@ -6058,6 +6109,10 @@ impl OptionsUi {
                     &self.pack_selection,
                 );
                 screen.changed = std::mem::take(&mut self.pack_reselected);
+                // The gallery's Download Packs button shares the footer only
+                // on the resource pack screen; Create World's data packs stay
+                // vanilla.
+                screen.gallery = self.data_pack_dir.is_none();
                 self.pack_screen = Some(screen);
             }
         }
@@ -6721,6 +6776,9 @@ impl OptionsUi {
                                 )));
                             }
                         }
+                        Act::GalleryPage(project) => events.push(Event::OpenUri(format!(
+                            "https://modrinth.com/project/{project}"
+                        ))),
                         Act::GalleryUpdate(file) => {
                             events.push(Event::PackGalleryUpdate(file.clone()))
                         }
