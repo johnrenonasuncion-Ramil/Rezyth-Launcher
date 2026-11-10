@@ -1164,17 +1164,42 @@ impl Line {
 /// describes the hovered setting. `list_x`, `list_w`, `top` and `bottom` are
 /// the list's view.
 #[derive(Clone, Copy, Debug)]
-struct Columns {
-    side_x: f32,
-    side_y: f32,
-    plate: [f32; 4],
-    dock: [f32; 4],
-    list_x: f32,
-    list_w: f32,
-    top: f32,
-    bottom: f32,
+pub struct Columns {
+    pub side_x: f32,
+    pub side_y: f32,
+    pub plate: [f32; 4],
+    pub dock: [f32; 4],
+    pub list_x: f32,
+    pub list_w: f32,
+    pub top: f32,
+    pub bottom: f32,
 }
 impl Columns {
+    /// The Volt Settings/Mod Menu split: the sidebar as a share of the whole
+    /// width, the plate centred up to 560 px across.
+    pub fn volt(w: f32, h: f32) -> Self {
+        let gap = 8.0;
+        let max_total = 560.0;
+        let margin = ((w - max_total) * 0.5).max(8.0).floor();
+        let side_x = margin;
+        let px = side_x + style::CONTROL_W + gap;
+        let pw = (w - margin - px).max(160.0);
+        let side_y = if h >= style::TITLED { 20.0 } else { 8.0 };
+        let dock_h = if h < 210.0 { 36.0 } else { style::DOCK_H };
+        let dock = [px, h - 8.0 - dock_h, pw, dock_h];
+        let plate = [px, side_y, pw, (dock[1] - 4.0 - side_y).max(60.0)];
+        let list_x = px + 8.0;
+        Self {
+            side_x,
+            side_y,
+            plate,
+            dock,
+            list_x,
+            list_w: (pw - 16.0 - style::SCROLLER_W - 2.0).max(120.0),
+            top: side_y + 28.0,
+            bottom: plate[1] + plate[3] - 6.0,
+        }
+    }
     fn of(w: f32, h: f32) -> Self {
         let side_w = style::CONTROL_W;
         let gap = if w >= 560.0 { 16.0 } else { 8.0 };
@@ -1198,7 +1223,7 @@ impl Columns {
         }
     }
     /// The search field, under the mark.
-    fn search(&self) -> [f32; 4] {
+    pub fn search(&self) -> [f32; 4] {
         [
             self.side_x,
             self.side_y + 26.0,
@@ -1207,19 +1232,19 @@ impl Columns {
         ]
     }
     /// The search field's clear button, at its right end.
-    fn clear(&self) -> [f32; 4] {
+    pub fn clear(&self) -> [f32; 4] {
         let [x, y, w, h] = self.search();
         [x + w - h, y, h, h]
     }
     /// Room for vanilla's scroller, whose thumb is 32 high and 8 short of its track.
-    fn scrolls(&self) -> bool {
+    pub fn scrolls(&self) -> bool {
         self.bottom - self.top >= 40.0
     }
-    fn bar_x(&self) -> f32 {
+    pub fn bar_x(&self) -> f32 {
         self.plate[0] + self.plate[2] - 8.0 - style::SCROLLER_W
     }
     /// A page in the page list, under the search field.
-    fn page(&self, i: usize) -> [f32; 4] {
+    pub fn page(&self, i: usize) -> [f32; 4] {
         [
             self.side_x,
             self.side_y + 56.0 + i as f32 * 18.0,
@@ -1228,7 +1253,7 @@ impl Columns {
         ]
     }
     /// Done (`0`), and Undo over it (`1`): under the page list, level with the strip.
-    fn button(&self, i: usize) -> [f32; 4] {
+    pub fn button(&self, i: usize) -> [f32; 4] {
         let foot = self.dock[1] + self.dock[3] - style::BUTTON_H;
         let y = if i == 0 {
             foot
@@ -1238,12 +1263,12 @@ impl Columns {
         [self.side_x, y, style::CONTROL_W, style::BUTTON_H]
     }
     /// A row's control column: its button, tick box or slider.
-    fn track(&self) -> (f32, f32) {
+    pub fn track(&self) -> (f32, f32) {
         let x = self.list_x + self.list_w - style::INSET - style::CONTROL_W;
         (x, style::CONTROL_W)
     }
     /// A slider's value for the pointer at `x`: the handle's middle follows it.
-    fn slider_at(&self, x: f32) -> f32 {
+    pub fn slider_at(&self, x: f32) -> f32 {
         let (tx, tw) = self.track();
         ((x - tx - 5.0) / (tw - 10.0)).clamp(0.0, 1.0)
     }

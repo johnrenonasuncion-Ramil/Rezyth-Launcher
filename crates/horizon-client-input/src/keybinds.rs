@@ -73,13 +73,19 @@ pub const MAPPINGS: &[(&str, &str, &str)] = &[
     ("key.debug.networkCharts", "key.keyboard.3", "debug"),
     ("key.debug.lightmapTexture", "key.keyboard.4", "debug"),
     ("key.debug.improvedTransparency", "key.keyboard.x", "debug"),
+    // Native Volt actions are handled from physical inputs instead of
+    // through vanilla key translation, so rebinding them cannot remap
+    // player movement.
+    ("key.volt.freelook", "key.keyboard.left.alt", "volt_mods"),
+    ("key.volt.zoom", "key.keyboard.c", "volt_mods"),
+    ("key.volt.world_map", "key.keyboard.j", "volt_mods"),
 ];
 /// Mappings Options builds as `ToggleKeyMapping` (hold or toggle by option).
 pub fn is_toggle(name: &str) -> bool {
     matches!(name, "key.sneak" | "key.sprint" | "key.use" | "key.attack")
 }
 /// KeyMapping.Category sort order.
-pub const CATEGORIES: [&str; 8] = [
+pub const CATEGORIES: [&str; 9] = [
     "movement",
     "misc",
     "multiplayer",
@@ -88,6 +94,7 @@ pub const CATEGORIES: [&str; 8] = [
     "creative",
     "spectator",
     "debug",
+    "volt_mods",
 ];
 
 /// InputConstants key names <-> winit physical keys.

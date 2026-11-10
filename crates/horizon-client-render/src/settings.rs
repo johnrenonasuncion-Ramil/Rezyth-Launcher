@@ -882,6 +882,36 @@ pub enum Opt {
     TextureFiltering,
     /// `Options.maxAnisotropyBit`.
     MaxAnisotropy,
+    /// The ported Volt Controls Studio touch options (Rezyth's touch layout
+    /// lives in the gameplay crate, so these rows show a fixed default).
+    TouchMode,
+    TouchAnalog,
+    TouchCircleSize,
+    TouchSensitivity,
+    TouchOffhand,
+    TouchShield,
+    TouchButtonScale,
+    TouchSprintButton,
+    TouchSprintToggle,
+    AndroidGyroscope,
+    AndroidGyroSensitivity,
+    /// Built-in Controls Studio touch layout preset switcher.
+    TouchPreset,
+    /// Volt Boost's internal 3D resolution scaler (`25%..=200%`).
+    VoltResolutionScale,
+    /// The ported Volt Shaders customization sliders.
+    VoltShaderWindSpeed,
+    VoltShaderWindStrength,
+    VoltShaderShadowRichness,
+    VoltShaderTorchIntensity,
+    VoltShaderEmissiveGlow,
+    VoltShaderWaterReflection,
+    VoltShaderSunsetGlow,
+    VoltShaderVibrance,
+    VoltShaderSaturation,
+    VoltShaderContrast,
+    VoltShaderExposure,
+    VoltShaderWarmth,
 }
 
 #[cfg(test)]

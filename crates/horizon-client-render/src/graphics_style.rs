@@ -51,7 +51,7 @@ const fn hex(c: u32, a: u8) -> u32 {
 /// The plate and the strip: the page's dark, see-through, so the world shows behind them.
 const GLASS: u32 = hex(B.page, 118);
 /// Their 1 px edge.
-const EDGE: u32 = hex(B.ink, 26);
+pub const EDGE: u32 = hex(B.ink, 26);
 /// A group's panel, a little lighter than the plate it sits on.
 const GROUP: u32 = hex(B.ink, 11);
 /// A hovered or focused row, lit on its group's panel.
@@ -71,6 +71,9 @@ const HANDLE: u32 = hex(B.ink, 255);
 /// The one main button.
 const FACE: u32 = hex(B.face, 255);
 const FACE_HOVER: u32 = hex(0x6a50e6, 255);
+/// The warm amber Undo of the Volt Settings dock.
+const UNDO_FACE: u32 = hex(0x6b4c1e, 235);
+const UNDO_HOVER: u32 = hex(0x886126, 250);
 /// A tick box's edge when off.
 const BOX_EDGE: u32 = hex(B.ink_soft, 89);
 const OUTLINE: u32 = hex(B.outline, 255);
@@ -109,14 +112,21 @@ pub const BUTTON_H: f32 = 20.0;
 pub const INSET: f32 = 10.0;
 
 pub fn fill(batch: &mut HudBatch, atlas: &HudAtlas, [x, y, w, h]: [f32; 4], color: u32) {
-    batch.fill(atlas, x, y, w, h, color);
+    if w > 0.0 && h > 0.0 {
+        batch.fill(atlas, x, y, w, h, color);
+    }
 }
 /// A 1 px ring inside `rect`: the keyboard or controller focus, in white as vanilla draws it.
 pub fn ring(batch: &mut HudBatch, atlas: &HudAtlas, [x, y, w, h]: [f32; 4], color: u32) {
+    if w <= 0.0 || h <= 0.0 {
+        return;
+    }
     batch.fill(atlas, x, y, w, 1.0, color);
     batch.fill(atlas, x, y + h - 1.0, w, 1.0, color);
-    batch.fill(atlas, x, y + 1.0, 1.0, h - 2.0, color);
-    batch.fill(atlas, x + w - 1.0, y + 1.0, 1.0, h - 2.0, color);
+    if h > 2.0 {
+        batch.fill(atlas, x, y + 1.0, 1.0, h - 2.0, color);
+        batch.fill(atlas, x + w - 1.0, y + 1.0, 1.0, h - 2.0, color);
+    }
 }
 /// The screen's plate, and the strip under it: dark glass with a thin edge.
 pub fn panel(batch: &mut HudBatch, atlas: &HudAtlas, rect: [f32; 4]) {
@@ -136,8 +146,27 @@ pub fn scroller(batch: &mut HudBatch, atlas: &HudAtlas, track: [f32; 4], thumb: 
     fill(batch, atlas, track, ROW_RULE);
     fill(batch, atlas, thumb, TRACK);
 }
+/// The scroller's thumb for a list of this content: its top and height, or
+/// None when everything fits.
+pub fn scrollbar_thumb(top: f32, bottom: f32, content: f32, scroll: f32) -> Option<(f32, f32)> {
+    let view = bottom - top;
+    if content <= view || view < 16.0 {
+        return None;
+    }
+    let max_bar = view - 6.0;
+    let bar = ((view * view) / content)
+        .clamp(24.0_f32.min(max_bar), max_bar)
+        .floor();
+    let max_scroll = (content - view).max(1.0);
+    let ratio = (scroll / max_scroll).clamp(0.0, 1.0);
+    let y = top + ((view - bar) * ratio).floor();
+    Some((y, bar))
+}
 /// `text` cut to `width` with an ellipsis, as a long name gives way to its control.
 pub fn fit(atlas: &HudAtlas, text: &str, width: f32) -> String {
+    if width <= 8.0 {
+        return String::new();
+    }
     if atlas.font.width(text) <= width {
         return text.to_owned();
     }
@@ -149,6 +178,27 @@ pub fn fit(atlas: &HudAtlas, text: &str, width: f32) -> String {
         out.push(c);
     }
     format!("{}...", out.trim_end())
+}
+/// `text` broken at spaces to fit `width` (the Volt Settings description dock).
+pub fn wrap_lines(atlas: &HudAtlas, text: &str, width: f32) -> Vec<String> {
+    let room = width.max(40.0);
+    let mut lines = vec![String::new()];
+    for word in text.split_whitespace() {
+        let cur = lines.last().cloned().unwrap_or_default();
+        let cand = if cur.is_empty() {
+            word.to_owned()
+        } else {
+            format!("{cur} {word}")
+        };
+        if atlas.font.width(&cand) <= room || cur.is_empty() {
+            if let Some(last) = lines.last_mut() {
+                *last = cand;
+            }
+        } else {
+            lines.push(word.to_owned());
+        }
+    }
+    lines
 }
 /// A 12 px tick box ending at `right`, centred in the row at `y`: its edge in the accent when on.
 pub fn checkbox(batch: &mut HudBatch, atlas: &HudAtlas, right: f32, y: f32, on: bool, live: bool) {
@@ -210,6 +260,93 @@ pub fn button(
     let color = if live { WHITE } else { MUTED };
     let ty = y + ((h - 8.0) / 2.0).floor();
     ui::centered_text(batch, atlas, label, x + 2.0, ty, w - 4.0, color);
+}
+/// An animated ON/OFF pill (the Volt Settings row switch).
+pub fn switch_pill(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    [x, y, w, h]: [f32; 4],
+    anim: f32,
+    on: bool,
+) {
+    let t = anim.clamp(0.0, 1.0);
+    let track_col = if on {
+        hex(0x1f9d8b, 255)
+    } else {
+        hex(0x283244, 255)
+    };
+    fill(batch, atlas, [x, y, w, h], track_col);
+    ring(
+        batch,
+        atlas,
+        [x, y, w, h],
+        if on { hex(0x4de3c8, 255) } else { BOX_EDGE },
+    );
+    let knob_w = (h - 4.0).max(6.0);
+    let travel = (w - 4.0 - knob_w).max(0.0);
+    let kx = (x + 2.0 + travel * t).round();
+    fill(batch, atlas, [kx, y + 2.0, knob_w, h - 4.0], WHITE);
+}
+/// The warm amber Undo button of the Volt Settings dock.
+pub fn undo_button(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    rect: [f32; 4],
+    label: &Text,
+    hover: bool,
+) {
+    button_styled(batch, atlas, rect, label, (hover, true, false, true));
+}
+/// The Volt Settings/Mod Menu button: like [`button`], with the warm amber
+/// Undo face, the thin edge at rest and its label fitted to the button.
+pub fn volt_button(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    rect: [f32; 4],
+    label: &Text,
+    (hover, live, primary): (bool, bool, bool),
+) {
+    button_styled(batch, atlas, rect, label, (hover, live, primary, false));
+}
+fn button_styled(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    rect: [f32; 4],
+    label: &Text,
+    (hover, live, primary, warn): (bool, bool, bool, bool),
+) {
+    let [x, y, w, h] = rect;
+    let face = if !live {
+        WELL
+    } else if warn {
+        if hover { UNDO_HOVER } else { UNDO_FACE }
+    } else if primary {
+        if hover { FACE_HOVER } else { FACE }
+    } else if hover {
+        BUTTON_HOVER
+    } else {
+        BUTTON
+    };
+    fill(batch, atlas, rect, face);
+    if hover && live {
+        ring(batch, atlas, rect, WHITE);
+    } else {
+        ring(batch, atlas, rect, EDGE);
+    }
+    let color = if live { WHITE } else { MUTED };
+    let ty = y + ((h - 8.0) / 2.0).floor();
+    fitted_centered(batch, atlas, label, [x + 3.0, ty, w - 6.0], color);
+}
+fn fitted_centered(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    text: &Text,
+    [left, y, width]: [f32; 3],
+    color: u32,
+) {
+    let plain = text.plain();
+    let fitted = fit(atlas, &plain, width);
+    ui::centered_text(batch, atlas, &Text::literal(fitted), left, y, width, color);
 }
 /// A slider: its value over a thin track filled in the accent up to the handle at `position`.
 pub fn slider(

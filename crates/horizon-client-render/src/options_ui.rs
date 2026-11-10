@@ -332,6 +332,34 @@ impl Opt {
             Opt::SharePresence => "options.sharePresence",
             Opt::DirectionalAudio => "options.directionalAudio",
             Opt::MusicToast => "options.musicToast",
+            // The ported Volt Controls Studio touch options. Rezyth's touch
+            // layout lives in the gameplay crate, so these rows stay static.
+            Opt::TouchMode => "Control scheme",
+            Opt::TouchAnalog => "360-degree movement",
+            Opt::TouchCircleSize => "Touch circle size",
+            Opt::TouchSensitivity => "Touch sensitivity",
+            Opt::TouchOffhand => "Swap hands button",
+            Opt::TouchShield => "Raise shield with",
+            Opt::TouchButtonScale => "Control button size",
+            Opt::TouchSprintButton => "Sprint button",
+            Opt::TouchSprintToggle => "Toggle sprint button",
+            Opt::AndroidGyroscope => "Gyroscope aiming",
+            Opt::AndroidGyroSensitivity => "Gyroscope sensitivity",
+            Opt::TouchPreset => "volt.options.touch_preset",
+            // The ported Volt options the client bundles.
+            Opt::VoltResolutionScale => "volt.options.resolution_scale",
+            Opt::VoltShaderWindSpeed => "volt.shaders.opt.wind_speed",
+            Opt::VoltShaderWindStrength => "volt.shaders.opt.wind_strength",
+            Opt::VoltShaderShadowRichness => "volt.shaders.opt.shadow_richness",
+            Opt::VoltShaderTorchIntensity => "volt.shaders.opt.torch_intensity",
+            Opt::VoltShaderEmissiveGlow => "volt.shaders.opt.emissive_glow",
+            Opt::VoltShaderWaterReflection => "volt.shaders.opt.water_reflection",
+            Opt::VoltShaderSunsetGlow => "volt.shaders.opt.sunset_glow",
+            Opt::VoltShaderVibrance => "volt.shaders.opt.vibrance",
+            Opt::VoltShaderSaturation => "volt.shaders.opt.saturation",
+            Opt::VoltShaderContrast => "volt.shaders.opt.contrast",
+            Opt::VoltShaderExposure => "volt.shaders.opt.exposure",
+            Opt::VoltShaderWarmth => "volt.shaders.opt.warmth",
         }
     }
     pub(crate) fn kind(self, s: &Settings) -> Kind {
@@ -390,6 +418,51 @@ impl Opt {
             Opt::PadMoveDeadzone => unit(s.controller.move_deadzone, 0.0, 0.5),
             Opt::PadLookDeadzone => unit(s.controller.look_deadzone, 0.0, 0.5),
             Opt::SprintWindow => unit(s.sprint_window as f32, 0.0, 10.0),
+            // The touch layout is in the gameplay crate: the ported Controls
+            // Studio sliders show Volt's defaults and stay read-only.
+            Opt::TouchCircleSize => unit(32.0, 16.0, 64.0),
+            Opt::AndroidGyroSensitivity => unit(1.0, 0.1, 3.0),
+            Opt::TouchSensitivity => unit(1.0, 0.1, 3.0),
+            Opt::TouchButtonScale => unit(1.0, 0.5, 2.0),
+            Opt::VoltResolutionScale => {
+                unit(s.horizon.resolution_scale.clamp(25, 200) as f32, 25.0, 200.0)
+            }
+            Opt::VoltShaderWindSpeed => {
+                unit(s.extras.volt_shaders.wind_speed.clamp(25, 200) as f32, 25.0, 200.0)
+            }
+            Opt::VoltShaderWindStrength => {
+                unit(s.extras.volt_shaders.wind_strength.clamp(25, 200) as f32, 25.0, 200.0)
+            }
+            Opt::VoltShaderShadowRichness => {
+                unit(s.extras.volt_shaders.shadow_richness.clamp(0, 100) as f32, 0.0, 100.0)
+            }
+            Opt::VoltShaderTorchIntensity => {
+                unit(s.extras.volt_shaders.torch_intensity.clamp(50, 200) as f32, 50.0, 200.0)
+            }
+            Opt::VoltShaderEmissiveGlow => {
+                unit(s.extras.volt_shaders.emissive_glow.clamp(0, 200) as f32, 0.0, 200.0)
+            }
+            Opt::VoltShaderWaterReflection => {
+                unit(s.extras.volt_shaders.water_reflection.clamp(0, 150) as f32, 0.0, 150.0)
+            }
+            Opt::VoltShaderSunsetGlow => {
+                unit(s.extras.volt_shaders.sunset_glow.clamp(0, 200) as f32, 0.0, 200.0)
+            }
+            Opt::VoltShaderVibrance => {
+                unit(s.extras.volt_shaders.vibrance.clamp(50, 180) as f32, 50.0, 180.0)
+            }
+            Opt::VoltShaderSaturation => {
+                unit(s.extras.volt_shaders.saturation.clamp(50, 180) as f32, 50.0, 180.0)
+            }
+            Opt::VoltShaderContrast => {
+                unit(s.extras.volt_shaders.contrast.clamp(70, 150) as f32, 70.0, 150.0)
+            }
+            Opt::VoltShaderExposure => {
+                unit(s.extras.volt_shaders.exposure.clamp(70, 150) as f32, 70.0, 150.0)
+            }
+            Opt::VoltShaderWarmth => {
+                unit(s.extras.volt_shaders.warmth.clamp(-50, 50) as f32, -50.0, 50.0)
+            }
             _ => Kind::Cycle,
         }
     }
@@ -454,6 +527,17 @@ impl Opt {
             Opt::NotificationDisplayTime => Some(95),
             Opt::PadMoveDeadzone | Opt::PadLookDeadzone => Some(50),
             Opt::SprintWindow => Some(10),
+            // The ported Volt sliders step through their own value lists.
+            Opt::VoltResolutionScale => Some(35),
+            Opt::VoltShaderWindSpeed | Opt::VoltShaderWindStrength => Some(35),
+            Opt::VoltShaderShadowRichness => Some(20),
+            Opt::VoltShaderTorchIntensity => Some(30),
+            Opt::VoltShaderEmissiveGlow => Some(40),
+            Opt::VoltShaderWaterReflection => Some(30),
+            Opt::VoltShaderSunsetGlow => Some(40),
+            Opt::VoltShaderVibrance | Opt::VoltShaderSaturation => Some(65),
+            Opt::VoltShaderContrast | Opt::VoltShaderExposure => Some(40),
+            Opt::VoltShaderWarmth => Some(50),
             _ => None,
         }
     }
@@ -659,6 +743,22 @@ impl Opt {
                     ],
                 )
             }
+            // Volt's touch readouts: without a touch layout in Rezyth, they
+            // show the defaults the ported rows describe.
+            Opt::TouchMode
+            | Opt::TouchAnalog
+            | Opt::TouchCircleSize
+            | Opt::TouchSensitivity
+            | Opt::TouchOffhand
+            | Opt::TouchShield
+            | Opt::TouchButtonScale
+            | Opt::TouchSprintButton
+            | Opt::TouchSprintToggle
+            | Opt::AndroidGyroscope
+            | Opt::AndroidGyroSensitivity
+            | Opt::TouchPreset => {
+                Text::literal(format!("{}: {}", lang::get(c), self.value_text(s).plain()))
+            }
             _ => generic(c, self.value_text(s)),
         }
     }
@@ -837,6 +937,75 @@ impl Opt {
                 gamepad::TextKeyboard::Horizon => "horizon.options.keyboard.horizon",
                 gamepad::TextKeyboard::Steam => "horizon.options.keyboard.steam",
             }),
+            // The ported Volt Controls Studio touch readouts. Rezyth's touch
+            // layout lives in the gameplay crate, so these show the defaults.
+            Opt::TouchMode => Text::literal("Joystick & aim crosshair"),
+            Opt::TouchAnalog => on_off(false),
+            Opt::TouchCircleSize => Text::literal("32 px"),
+            Opt::TouchSensitivity => Text::literal("100%"),
+            Opt::TouchOffhand => on_off(false),
+            Opt::TouchShield => Text::literal("Sneak"),
+            Opt::TouchButtonScale => Text::literal("100%"),
+            Opt::TouchSprintButton => on_off(true),
+            Opt::TouchSprintToggle => on_off(false),
+            Opt::AndroidGyroscope => on_off(false),
+            Opt::AndroidGyroSensitivity => Text::literal("100%"),
+            Opt::TouchPreset => Text::literal("Volt Default"),
+            // The ported Volt options.
+            Opt::VoltResolutionScale => Text::literal(format!(
+                "{}%",
+                s.horizon.resolution_scale.clamp(25, 200)
+            )),
+            Opt::VoltShaderWindSpeed => {
+                Text::literal(format!("{}%", s.extras.volt_shaders.wind_speed.clamp(25, 200)))
+            }
+            Opt::VoltShaderWindStrength => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.wind_strength.clamp(25, 200)
+            )),
+            Opt::VoltShaderShadowRichness => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.shadow_richness.clamp(0, 100)
+            )),
+            Opt::VoltShaderTorchIntensity => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.torch_intensity.clamp(50, 200)
+            )),
+            Opt::VoltShaderEmissiveGlow => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.emissive_glow.clamp(0, 200)
+            )),
+            Opt::VoltShaderWaterReflection => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.water_reflection.clamp(0, 150)
+            )),
+            Opt::VoltShaderSunsetGlow => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.sunset_glow.clamp(0, 200)
+            )),
+            Opt::VoltShaderVibrance => {
+                Text::literal(format!("{}%", s.extras.volt_shaders.vibrance.clamp(50, 180)))
+            }
+            Opt::VoltShaderSaturation => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.saturation.clamp(50, 180)
+            )),
+            Opt::VoltShaderContrast => {
+                Text::literal(format!("{}%", s.extras.volt_shaders.contrast.clamp(70, 150)))
+            }
+            Opt::VoltShaderExposure => {
+                Text::literal(format!("{}%", s.extras.volt_shaders.exposure.clamp(70, 150)))
+            }
+            Opt::VoltShaderWarmth => {
+                let w = s.extras.volt_shaders.warmth.clamp(-50, 50);
+                Text::literal(if w == 0 {
+                    "Neutral".to_owned()
+                } else if w > 0 {
+                    format!("+{w} Warm")
+                } else {
+                    format!("{w} Cool")
+                })
+            }
             _ => Text::empty(),
         }
     }
@@ -906,6 +1075,63 @@ impl Opt {
             Opt::PadMoveDeadzone => s.controller.move_deadzone = step(0.0, 50.0) / 100.0,
             Opt::PadLookDeadzone => s.controller.look_deadzone = step(0.0, 50.0) / 100.0,
             Opt::SprintWindow => s.sprint_window = step(0.0, 10.0) as i32,
+            // Rezyth's touch layout lives in the gameplay crate: the ported
+            // Controls Studio sliders stay read-only.
+            Opt::TouchCircleSize
+            | Opt::AndroidGyroSensitivity
+            | Opt::TouchSensitivity
+            | Opt::TouchButtonScale => {}
+            Opt::VoltResolutionScale => {
+                s.horizon.resolution_scale = (25.0 + step(0.0, 35.0) * 5.0) as u32;
+            }
+            Opt::VoltShaderWindSpeed => {
+                s.extras.volt_shaders.wind_speed = (25.0 + step(0.0, 35.0) * 5.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderWindStrength => {
+                s.extras.volt_shaders.wind_strength = (25.0 + step(0.0, 35.0) * 5.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderShadowRichness => {
+                s.extras.volt_shaders.shadow_richness = (step(0.0, 20.0) * 5.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderTorchIntensity => {
+                s.extras.volt_shaders.torch_intensity = (50.0 + step(0.0, 30.0) * 5.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderEmissiveGlow => {
+                s.extras.volt_shaders.emissive_glow = (step(0.0, 40.0) * 5.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderWaterReflection => {
+                s.extras.volt_shaders.water_reflection = (step(0.0, 30.0) * 5.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderSunsetGlow => {
+                s.extras.volt_shaders.sunset_glow = (step(0.0, 40.0) * 5.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderVibrance => {
+                s.extras.volt_shaders.vibrance = (50.0 + step(0.0, 65.0) * 2.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderSaturation => {
+                s.extras.volt_shaders.saturation = (50.0 + step(0.0, 65.0) * 2.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderContrast => {
+                s.extras.volt_shaders.contrast = (70.0 + step(0.0, 40.0) * 2.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderExposure => {
+                s.extras.volt_shaders.exposure = (70.0 + step(0.0, 40.0) * 2.0) as u16;
+                s.extras.volt_shaders.mark_custom();
+            }
+            Opt::VoltShaderWarmth => {
+                s.extras.volt_shaders.warmth = (-50.0 + step(0.0, 50.0) * 2.0) as i16;
+                s.extras.volt_shaders.mark_custom();
+            }
             _ => {}
         }
         if self.affects_preset() {
@@ -1141,6 +1367,16 @@ impl Opt {
                     .unwrap_or(0) as u8;
                 s.controller.keyboard = all[usize::from(next(i, 3))];
             }
+            // Rezyth's touch layout lives in the gameplay crate: the ported
+            // Controls Studio switches stay read-only.
+            Opt::TouchMode
+            | Opt::TouchAnalog
+            | Opt::TouchOffhand
+            | Opt::TouchShield
+            | Opt::TouchSprintButton
+            | Opt::TouchSprintToggle
+            | Opt::AndroidGyroscope
+            | Opt::TouchPreset => {}
             _ => {}
         }
         if self.affects_preset() {
@@ -1508,6 +1744,8 @@ pub enum Page {
     /// The Volt Settings hub and its Boost page.
     VoltSettings,
     VoltBoost,
+    /// The Volt Mod Menu (the hub's Extras tab opens it).
+    VoltModMenu,
     /// CreditsAndAttributionScreen.
     Credits,
     /// Horizon Settings: every page Horizon adds, as a mod's settings
@@ -1884,6 +2122,10 @@ pub struct OptionsUi {
     /// The Modrinth gallery's state (`crate::pack_gallery`), filled by the
     /// game (`game/pack_gallery.rs`).
     pub gallery: crate::pack_gallery::Gallery,
+    /// The split-pane Volt Settings screen (the hub's eight tabs).
+    pub volt_glass: crate::volt_settings_ui::VoltSettingsUi,
+    /// The pure-Rust Mod Menu the hub's Extras tab opens.
+    pub mod_menu: crate::volt_mods::ModMenuUi,
     /// The Packs page is Create World's Data Packs screen on this folder.
     data_pack_dir: Option<std::path::PathBuf>,
     /// The game's resources, for the built-in data pack's icon.
@@ -2009,6 +2251,8 @@ impl Default for OptionsUi {
             back_to_editor: false,
             painter: Painter::default(),
             gallery: Default::default(),
+            volt_glass: Default::default(),
+            mod_menu: Default::default(),
             pack_infos: Vec::new(),
             pack_selection: Vec::new(),
             pack_screen: None,
@@ -2793,6 +3037,7 @@ impl OptionsUi {
             Page::Extras => "horizon.pages.extras",
             Page::VoltSettings => "horizon.pages.volt",
             Page::VoltBoost => "horizon.volt.boost",
+            Page::VoltModMenu => "volt.mods.title",
             Page::Credits => "credits_and_attribution.screen.title",
             Page::Horizon => "horizon.pages.settings",
             Page::Agent => "horizon.pages.agent",
@@ -4858,6 +5103,15 @@ impl OptionsUi {
             crate::screen_draw::paint(batch, atlas, &draws);
             return;
         }
+        if self.page() == Page::VoltSettings {
+            self.volt_glass.binding = self.selected_key;
+            self.volt_glass.draw(s, batch, atlas, cursor, self.in_world);
+            return;
+        }
+        if self.page() == Page::VoltModMenu {
+            self.mod_menu.draw(s, batch, atlas, cursor, self.in_world);
+            return;
+        }
         let (widgets, top, bottom, content) = self.layout(s, w, h);
         self.size = (w, h);
         let in_world = self.in_world;
@@ -5348,6 +5602,61 @@ impl OptionsUi {
                 }),
                 crate::pack_screen::Action::Done => events.extend(self.back(s)),
                 crate::pack_screen::Action::None => {}
+            }
+            return events;
+        }
+        if self.page() == Page::VoltSettings {
+            use crate::volt_settings_ui::VoltUiAction;
+            if self.selected_key.is_some() && !drag {
+                let button = if right {
+                    winit::event::MouseButton::Right
+                } else {
+                    winit::event::MouseButton::Left
+                };
+                return self.bind_mouse(s, button);
+            }
+            let mut events = Vec::new();
+            for action in self
+                .volt_glass
+                .click(s, (x, y), size, framebuffer, drag, right)
+            {
+                match action {
+                    VoltUiAction::ButtonClick => events.push(Event::ButtonClick),
+                    VoltUiAction::Changed => events.push(Event::Changed),
+                    VoltUiAction::SliderDrag => events.push(Event::SliderDrag),
+                    VoltUiAction::BindKey(name) => self.selected_key = Some(name),
+                    VoltUiAction::OpenModMenu => self.push(Page::VoltModMenu),
+                    VoltUiAction::OpenVideoSettings => self.push(Page::Graphics),
+                    VoltUiAction::OpenShaderPacks => {
+                        self.push(Page::ShaderPacks);
+                        events.push(Event::ListShaderPacks);
+                    }
+                    VoltUiAction::OpenPadBinds => self.push(Page::PadBinds),
+                    VoltUiAction::OpenAgent => self.push(Page::Agent),
+                    VoltUiAction::OpenTouchEditor => {
+                        #[cfg(target_os = "android")]
+                        events.push(Event::TouchLayout);
+                    }
+                    // The world map and waypoint manager are gameplay screens
+                    // this port does not carry yet.
+                    VoltUiAction::OpenWorldMap | VoltUiAction::OpenWaypointsManager => {}
+                    VoltUiAction::Done => events.extend(self.back(s)),
+                }
+            }
+            return events;
+        }
+        if self.page() == Page::VoltModMenu {
+            use crate::volt_mods::ModMenuAction;
+            let mut events = Vec::new();
+            for action in self.mod_menu.click(s, atlas, (x, y), size, drag, right) {
+                match action {
+                    ModMenuAction::ButtonClick => events.push(Event::ButtonClick),
+                    ModMenuAction::Changed => events.push(Event::Changed),
+                    ModMenuAction::OpenFolder => events.push(Event::OpenModFolder),
+                    ModMenuAction::OpenKeyBinds => self.push(Page::KeyBinds),
+                    ModMenuAction::OpenWorldMap => {}
+                    ModMenuAction::Done => events.extend(self.back(s)),
+                }
             }
             return events;
         }
@@ -5966,6 +6275,14 @@ impl OptionsUi {
             let actions = self.graphics.wheel(s, size, cursor, framebuffer, amount);
             return self.graphics_events(s, actions);
         }
+        if self.page() == Page::VoltSettings {
+            self.volt_glass.scroll(s, size, amount);
+            return Vec::new();
+        }
+        if self.page() == Page::VoltModMenu {
+            self.mod_menu.scroll(s, size, cursor, amount);
+            return Vec::new();
+        }
         let plain = self.resource_error.is_none()
             && !(self.pack_screen.is_some() && self.stack.last() == Some(&Page::Packs));
         // The "Scroll wheel changes settings" extra off: the wheel only scrolls.
@@ -6301,6 +6618,14 @@ impl OptionsUi {
         if self.resource_error.is_some() {
             return;
         }
+        if self.page() == Page::VoltSettings {
+            self.volt_glass.type_text(text);
+            return;
+        }
+        if self.page() == Page::VoltModMenu {
+            self.mod_menu.type_text(text);
+            return;
+        }
         if self.page() == Page::Packs
             && let Some(p) = &mut self.pack_screen
         {
@@ -6338,6 +6663,14 @@ impl OptionsUi {
     ) -> bool {
         if self.resource_error.is_some() || self.selected_key.is_some() {
             return false;
+        }
+        if self.page() == Page::VoltSettings && self.volt_glass.typing() {
+            let _ = self.volt_glass.search.shortcut(shortcut, clipboard);
+            return true;
+        }
+        if self.page() == Page::VoltModMenu && self.mod_menu.typing() {
+            let _ = self.mod_menu.search.shortcut(shortcut, clipboard);
+            return true;
         }
         if self.page() == Page::Packs
             && let Some(p) = &mut self.pack_screen
@@ -6476,6 +6809,56 @@ impl OptionsUi {
                     .to_owned()
             };
             return self.bind_key(s, value);
+        }
+        if self.page() == Page::VoltSettings {
+            use crate::volt_settings_ui::VoltUiAction;
+            let (actions, consumed) = self.volt_glass.key(s, key, text, shift);
+            let mut events = Vec::new();
+            for action in actions {
+                match action {
+                    VoltUiAction::ButtonClick => events.push(Event::ButtonClick),
+                    VoltUiAction::Changed => events.push(Event::Changed),
+                    VoltUiAction::SliderDrag => events.push(Event::SliderDrag),
+                    VoltUiAction::BindKey(name) => self.selected_key = Some(name),
+                    VoltUiAction::OpenModMenu => self.push(Page::VoltModMenu),
+                    VoltUiAction::OpenVideoSettings => self.push(Page::Graphics),
+                    VoltUiAction::OpenShaderPacks => {
+                        self.push(Page::ShaderPacks);
+                        events.push(Event::ListShaderPacks);
+                    }
+                    VoltUiAction::OpenPadBinds => self.push(Page::PadBinds),
+                    VoltUiAction::OpenAgent => self.push(Page::Agent),
+                    VoltUiAction::OpenTouchEditor => {
+                        #[cfg(target_os = "android")]
+                        events.push(Event::TouchLayout);
+                    }
+                    VoltUiAction::OpenWorldMap | VoltUiAction::OpenWaypointsManager => {}
+                    VoltUiAction::Done => events.extend(self.back(s)),
+                }
+            }
+            if !consumed && key == K::Escape {
+                events.extend(self.back(s));
+            }
+            return events;
+        }
+        if self.page() == Page::VoltModMenu {
+            use crate::volt_mods::ModMenuAction;
+            let (actions, consumed) = self.mod_menu.key(s, key, text, shift);
+            let mut events = Vec::new();
+            for action in actions {
+                match action {
+                    ModMenuAction::ButtonClick => events.push(Event::ButtonClick),
+                    ModMenuAction::Changed => events.push(Event::Changed),
+                    ModMenuAction::OpenFolder => events.push(Event::OpenModFolder),
+                    ModMenuAction::OpenKeyBinds => self.push(Page::KeyBinds),
+                    ModMenuAction::OpenWorldMap => {}
+                    ModMenuAction::Done => events.extend(self.back(s)),
+                }
+            }
+            if !consumed && key == K::Escape {
+                events.extend(self.back(s));
+            }
+            return events;
         }
         if self.page() == Page::SplitProfiles && self.split_profiles.key(key, text) {
             return Vec::new();
