@@ -3203,18 +3203,15 @@ mod tests {
         assert!(parsed.mod_catalog.better_ping_show_bars);
     }
 
-    // Omitted: `mod_keybindings_survive_options_round_trip` set and read
-    // `key.volt.zoom` / `key.volt.freelook`, but Rezyth's `KeyBinds` only
-    // accepts names in `crates/horizon-client-input/src/keybinds.rs`'s
-    // `MAPPINGS`, which has no `key.volt.*` entries yet (Volt added three:
-    // zoom, freelook, world_map). It can be restored once those mappings are
-    // ported, verbatim from the reference:
-    //     let mut settings = Settings::default();
-    //     settings.keys.set("key.volt.zoom", "key.keyboard.v");
-    //     settings.keys.set("key.volt.freelook", "key.mouse.4");
-    //     let restored = Settings::parse(&settings.serialize());
-    //     assert_eq!(restored.keys.get("key.volt.zoom"), "key.keyboard.v");
-    //     assert_eq!(restored.keys.get("key.volt.freelook"), "key.mouse.4");
+    #[test]
+    fn mod_keybindings_survive_options_round_trip() {
+        let mut settings = Settings::default();
+        settings.keys.set("key.volt.zoom", "key.keyboard.v");
+        settings.keys.set("key.volt.freelook", "key.mouse.4");
+        let restored = Settings::parse(&settings.serialize());
+        assert_eq!(restored.keys.get("key.volt.zoom"), "key.keyboard.v");
+        assert_eq!(restored.keys.get("key.volt.freelook"), "key.mouse.4");
+    }
 
     #[test]
     fn appleskin_preview_options_persist() {

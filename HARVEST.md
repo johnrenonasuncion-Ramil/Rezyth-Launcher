@@ -199,6 +199,39 @@ the centred footer; artifact `rezyth-apk`), on top of the gallery's own runs
 **42666756002** at `0cc25e9a9` and `weave.yml` **42668749214** at `14ae55366`
 (artifact `woven-apk`, 33.7 MB, all 33 native mods woven).
 
+## Volt Settings hub (the full screen from Volt Launcher)
+
+The **Volt Settings** button (the in-game Options row and the main menu) now opens
+Volt Launcher 0.9.9's split-pane frosted-glass screen itself: the left rail with
+`Volt Settings`, its search field and the eight smooth-gliding tabs (Boost,
+Visuals, Shaders, HUD & QoL, Chat & Voice, Maps, Controls, Extras), the right
+glass groups with checkboxes, sliders, `< value >` cyclers and action buttons,
+the bottom description + Cost dock, and the warm amber Undo / violet Done pair.
+The Extras tab's Mod Menu opens the second screen: the pure-Rust 49-mod catalog
+with its pixel-art logos, categories, per-mod config rows and engine sync.
+
+Where it lives (all ported from `entitybrian69-bit/Volt-launcher`,
+`arena/0cae2b73-volt-launcher`): `options_volt_pages.rs` (the `VoltAct` actions,
+sections and row lists); `volt_settings_ui.rs` (the screen: layout, animations,
+draw/click/key/scroll/type-text, `VoltUiAction`); `volt_mods.rs` (catalog,
+`upstream_icon` logos, `VoltModCatalogState`, `apply_mod_to_engine` /
+`sync_catalog_from_engine`, `ModMenuUi`); `volt_qol.rs` (the QoL/Chat/Visuals/
+Boost+/Mods config structs and enums); `horizon-shader-api/src/volt_shaders.rs`
+(`VoltShadersConfig`, profiles and enums); the mod logos in
+`crates/horizon-client-render/assets/mod_icons/` (18 PNGs + licences/sources).
+Rezyth's `Extras` gained the 40 backing fields (minimap, waypoints, perf HUD,
+the Volt configs, `mod_catalog`), the 25 shader/perf `Item`s and the 28
+Minimap/Waypoint `Item`s with their rows, cycles and persistence; `settings.rs`
+gained the 25 `Opt`s (shader sliders, touch presets, resolution scale); the
+options UI wires `Page::VoltSettings` to the screen and adds `Page::VoltModMenu`
+for the Mod Menu; `key.volt.zoom/freelook/world_map` joined the key binds.
+Rezyth has no touch-settings store and no world-map/waypoints-manager screens,
+so those rows stay inert (they still show Volt's labels and descriptions) and
+the two actions are no-ops; everything else mirrors the reference.
+
+Verified green: `android.yml` run **42896093289** at `70bd540c0` (the whole
+port, artifact `rezyth-apk`), plus the ledger commit's own run below.
+
 ## Verify
 
 ```sh

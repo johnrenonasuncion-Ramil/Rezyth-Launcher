@@ -1157,7 +1157,7 @@ impl VoltSettingsUi {
         let done_hov = ui::hovered(cursor, done_rect[0], done_rect[1], done_rect[2], done_rect[3]);
         crate::widgets::record(&done_lbl.plain(), done_rect, true);
         crate::widgets::target(done_rect);
-        style::button(batch, atlas, done_rect, &done_lbl, (done_hov, true, true));
+        style::volt_button(batch, atlas, done_rect, &done_lbl, (done_hov, true, true));
 
         if self.changed {
             let undo_rect = cols.button(1);
@@ -1219,7 +1219,7 @@ impl VoltSettingsUi {
 
         if switch.is_none() && slider.is_none() && value.is_none() {
             let wide = [left, control[1], right - left, style::CONTROL_H];
-            style::button(batch, atlas, wide, &Text::literal(name), (lit, true, false));
+            style::volt_button(batch, atlas, wide, &Text::literal(name), (lit, true, false));
         } else {
             let value = value.unwrap_or_default();
             let vw = atlas.font.width(&value);
