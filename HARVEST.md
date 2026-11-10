@@ -233,6 +233,26 @@ Verified green: `android.yml` run **42896093289** at `70bd540c0` (the whole
 port) and run **42898376706** at `4854259fa` (the Volt button face, the restored
 keybind test and this ledger); artifact `rezyth-apk` both times.
 
+## Android signing: one key, so updates install
+
+Every build of this repository now signs with one stable debug keystore, set as the
+repository secret `STARLING_DEBUG_KEYSTORE_BASE64` (JKS, alias `horizon-debug`,
+password `android`, CN=Horizon Android debug, cert SHA-256
+`39:93:CE:E1:7F:D5:26:D1:A7:C0:88:42:D2:D8:B3:7A:58:6F:54:C0:1E:88:99:A7:34:E4:2C:D0:84:A7:AA:66`).
+The secret had never been set, so `build_apk.py` generated a throwaway keystore on
+every run: each APK had a different signature and Android refused to update over the
+last one. The workflow now fails when the secret is missing on this repository's own
+builds (a fork's pull request keeps its throwaway key and gets a warning), prints the
+keystore's certificate as it unpacks, and `build_apk.py` runs `apksigner verify
+--print-certs`, so every run's log names its signer. An app installed from an older,
+throwaway-signed build must be uninstalled once; from then on every build updates over
+the last. The native-mod APKs (`native_build.sh`) run after the same unpack step and
+use the same key.
+
+Verified: `android.yml` runs **42911549966** and **42912956822** at `f21b1b1e2`, two
+independent builds, both `Signer #1 certificate SHA-256 digest:
+3993cee17fd526d1a7c08842d2d8b37a586f54c01e8899a734e42cd084a7aa66`.
+
 ## Verify
 
 ```sh
