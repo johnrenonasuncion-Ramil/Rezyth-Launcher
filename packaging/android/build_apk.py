@@ -236,7 +236,9 @@ def sign(build_tools, aligned, apk, out):
         "--key-pass", "env:HORIZON_ANDROID_KEY_PASSWORD",
         "--out", apk, aligned, env=env,
     )
-    run(apksigner, "verify", apk)
+    # --print-certs names the key every build was signed with, so an update that cannot install
+    # over the last build can be traced to a changed signing key straight from the run's log.
+    run(apksigner, "verify", "--print-certs", apk)
 
 
 def main():

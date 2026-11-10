@@ -95,14 +95,25 @@ jobs:
           free -h
           echo "CARGO_BUILD_JOBS=3" >> "$GITHUB_ENV"
       # Where build_apk.py keeps its debug key (alias horizon-debug, password android).
+      # Every build of this repository must sign with this one key: a different key on any run
+      # makes the APK refuse to install over the last (INSTALL_FAILED_UPDATE_INCOMPATIBLE). A
+      # fork's pull request has no secret and keeps the script's throwaway key.
       - name: Unpack the debug key
         if: env.RELEASE_BUILD != 'true'
         env:
           KEYSTORE: ${{ secrets.STARLING_DEBUG_KEYSTORE_BASE64 }}
         run: |
-          test -n "$KEYSTORE" || exit 0
+          if [ -z "$KEYSTORE" ]; then
+            if [ "${{ github.event_name }}" != "pull_request" ] && [ "${{ github.repository }}" = "johnrenonasuncion-Ramil/Rezyth-Launcher" ]; then
+              echo "STARLING_DEBUG_KEYSTORE_BASE64 is not set: builds of this repository must share one signing key or their updates cannot install over a previous build."
+              exit 1
+            fi
+            echo "::warning title=Signing key::STARLING_DEBUG_KEYSTORE_BASE64 is not set: this APK is signed with a throwaway key and will NOT install over a previous build."
+            exit 0
+          fi
           mkdir -p target/android
           echo "$KEYSTORE" | base64 -d > target/android/debug.keystore
+          keytool -list -keystore target/android/debug.keystore -storepass android 2>/dev/null | grep -E 'horizon-debug|SHA256' || true
       - name: Build the APK
         env:
           HORIZON_ANDROID_KEY_ALIAS: ${{ env.RELEASE_BUILD == 'true' && secrets.STARLING_KEY_ALIAS || 'horizon-debug' }}
