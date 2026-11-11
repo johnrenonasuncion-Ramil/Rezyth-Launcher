@@ -269,6 +269,24 @@ up to 4 MiB and logs the URL when tries run out; the draw side is unchanged
 `unknown_pack` only until pixels arrive). Verified green: `android.yml` run
 **42938084338** at `f93da8f56`.
 
+## Settings screens: vanilla Minecraft styling
+
+The split-pane design module (`graphics_style.rs`, shared by the Horizon
+Graphics screens, every Volt Settings tab and the Mod Menu) now draws vanilla
+Minecraft's widgets instead of the frosted-glass controls, with every size,
+position and layout call untouched. Plates and the description dock tile
+vanilla's list background (`menu_list_background` / its in-world variant; the
+call sites pass `in_world`) and group panels are gone, as vanilla option lists
+have none; buttons (Done, Undo, row buttons) are the grey vanilla button
+sprite with its highlighted and disabled states and scrolling label; cycle
+buttons are vanilla buttons labelled `< value >`; sliders are vanilla's
+track/handle sprites with the value centred; checkboxes and the Mod Menu's
+ON/OFF switch are vanilla's checkbox sprites; scrollbars use vanilla's
+scroller sprites; the search box is the vanilla text field; separators are
+black rules and the accent/hover/selection colours are vanilla's whites,
+greys and dark selection fill. Verified green: `android.yml` run
+**43110705093** at `c2cd36be8`.
+
 ## Volt Settings icons in the title and pause rows
 
 The title screen's icon row (Friends, Language, Accessibility) and the pause
