@@ -11,10 +11,11 @@ use horizon_client::pack_gallery as gallery;
 use horizon_client::packs::Pack;
 use horizon_client::settings::Settings;
 use std::{
+    collections::BTreeMap,
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::{
-        Arc,
+        Arc, OnceLock,
         mpsc::{Receiver, Sender},
     },
     time::{Duration, Instant},
@@ -24,6 +25,14 @@ use std::{
 const DEBOUNCE: Duration = Duration::from_millis(450);
 /// How long an update check's answer is trusted before it is asked again.
 const UPDATE_EVERY: Duration = Duration::from_secs(60);
+/// At most this many icon downloads at once: a page of results should not
+/// open two dozen connections together on a phone.
+const ICON_LANES: usize = 4;
+/// An icon that failed (a dropped mobile connection, a rate limit) is fetched
+/// again up to this many times.
+const ICON_RETRIES: u8 = 3;
+/// With at least this long between tries.
+const ICON_RETRY_AFTER: Duration = Duration::from_secs(3);
 /// Who Modrinth sees: it asks for the app and where to reach its makers.
 const USER_AGENT: &str = "Rezyth-Launcher (github.com/johnrenonasuncion-Ramil/Rezyth-Launcher)";
 /// The sidecar of what the gallery installed, in the game folder.
@@ -67,6 +76,10 @@ pub(super) struct GalleryOps {
     rx: Receiver<Msg>,
     generation: u64,
     checked: Option<Instant>,
+    /// The icon downloads running now.
+    icons_in_flight: usize,
+    /// The icons that failed: how many tries, and when the last one was.
+    icons_failed: BTreeMap<String, (u8, Instant)>,
 }
 
 impl GalleryOps {
@@ -77,6 +90,8 @@ impl GalleryOps {
             rx,
             generation: 0,
             checked: None,
+            icons_in_flight: 0,
+            icons_failed: BTreeMap::new(),
         }
     }
 }
@@ -162,6 +177,9 @@ impl GalleryOps {
                     Ok((found, total)) => {
                         if offset == 0 {
                             ui.gallery.results = found;
+                            // A fresh search is also a fresh start for the
+                            // icons whose tries had run out.
+                            self.icons_failed.clear();
                         } else {
                             ui.gallery.results.extend(found);
                         }
@@ -203,10 +221,35 @@ impl GalleryOps {
                 false
             }
             Msg::Icon { project, pixels } => {
-                if let Some(pixels) = pixels
-                    && ui.gallery.icon_urls.contains_key(&project)
-                {
-                    ui.gallery.icons.insert(project, pixels);
+                self.icons_in_flight = self.icons_in_flight.saturating_sub(1);
+                match pixels {
+                    Some(pixels) if ui.gallery.icon_urls.contains_key(&project) => {
+                        ui.gallery.icons.insert(project.clone(), pixels);
+                        self.icons_failed.remove(&project);
+                    }
+                    // Downloaded, but no row shows it any more: let a later
+                    // listing ask again.
+                    Some(_) => {
+                        ui.gallery.icons_requested.remove(&project);
+                    }
+                    None => {
+                        // A dropped phone connection or a rate limit must not
+                        // leave the row on the fallback for good: ask again
+                        // until the tries run out.
+                        ui.gallery.icons_requested.remove(&project);
+                        let failed = self
+                            .icons_failed
+                            .entry(project.clone())
+                            .or_insert((0, Instant::now()));
+                        failed.0 = failed.0.saturating_add(1);
+                        failed.1 = Instant::now();
+                        if failed.0 >= ICON_RETRIES {
+                            log::warn!(
+                                "Horizon: the icon of {project} did not download in {} tries",
+                                failed.0
+                            );
+                        }
+                    }
                 }
                 false
             }
@@ -341,10 +384,17 @@ impl GalleryOps {
             .spawn(move || run_install(tx, project_id, title, icon, Ok(file), replace));
     }
 
-    /// Ask for the icons the rows show but do not have yet, one download per
-    /// project. A project is asked for once: a failed icon is not asked again
-    /// until a new search lists it.
+    /// Ask for the icons the rows show but do not have yet, a few at a time: a
+    /// lane frees up as each answer arrives, so a page of results never opens
+    /// twenty connections together. A failed icon is tried again a few times
+    /// apart; after that it keeps the fallback until a new search lists it.
     fn request_icons(&mut self, ui: &mut OptionsUi) {
+        self.icons_failed
+            .retain(|project, _| ui.gallery.icon_urls.contains_key(project));
+        if self.icons_in_flight >= ICON_LANES {
+            return;
+        }
+        let now = Instant::now();
         let mut wanted = Vec::new();
         for (project, url) in &ui.gallery.icon_urls {
             if ui.gallery.icons.contains_key(project)
@@ -352,17 +402,38 @@ impl GalleryOps {
             {
                 continue;
             }
+            if let Some((tries, at)) = self.icons_failed.get(project)
+                && (*tries >= ICON_RETRIES || now.duration_since(*at) < ICON_RETRY_AFTER)
+            {
+                continue;
+            }
             wanted.push((project.clone(), url.clone()));
         }
-        for (project, url) in wanted {
+        for (project, url) in wanted
+            .into_iter()
+            .take(ICON_LANES - self.icons_in_flight)
+        {
             ui.gallery.icons_requested.insert(project.clone());
             let tx = self.tx.clone();
-            let _ = std::thread::Builder::new()
+            let asked = project.clone();
+            let spawned = std::thread::Builder::new()
                 .name("pack-gallery-icon".into())
                 .spawn(move || {
                     let pixels = fetch_icon(&url);
-                    let _ = tx.send(Msg::Icon { project, pixels });
+                    if pixels.is_none() {
+                        log::debug!("Horizon: the pack icon at {url} was not fetched");
+                    }
+                    let _ = tx.send(Msg::Icon {
+                        project: asked,
+                        pixels,
+                    });
                 });
+            if spawned.is_ok() {
+                self.icons_in_flight += 1;
+            } else {
+                // No thread: let the next frame ask again.
+                ui.gallery.icons_requested.remove(&project);
+            }
         }
     }
 }
@@ -663,11 +734,16 @@ fn refresh_icons(ui: &mut OptionsUi) {
         .retain(|project| keep.contains_key(project));
 }
 
-fn agent() -> ureq::Agent {
-    ureq::AgentBuilder::new()
-        .timeout_connect(Duration::from_secs(15))
-        .timeout_read(Duration::from_secs(30))
-        .build()
+/// The HTTP agent every request shares: its keep-alive connections save a TLS
+/// handshake per request, which a page of icon downloads feels.
+fn agent() -> &'static ureq::Agent {
+    static AGENT: OnceLock<ureq::Agent> = OnceLock::new();
+    AGENT.get_or_init(|| {
+        ureq::AgentBuilder::new()
+            .timeout_connect(Duration::from_secs(15))
+            .timeout_read(Duration::from_secs(30))
+            .build()
+    })
 }
 
 fn request(url: &str) -> Result<String, String> {
@@ -680,8 +756,10 @@ fn request(url: &str) -> Result<String, String> {
         .map_err(|e| format!("Modrinth: {e}"))
 }
 
-/// The most bytes an icon may take: Modrinth's are small.
-const MAX_ICON: u64 = 1024 * 1024;
+/// The most bytes an icon may take: Modrinth's largest are 1024x1024 PNGs of a
+/// few hundred KiB, and a cap below that silently dropped those rows to the
+/// fallback texture.
+const MAX_ICON: u64 = 4 * 1024 * 1024;
 
 /// A row's icon from Modrinth, decoded to the pack screen's square.
 fn fetch_icon(url: &str) -> Option<Arc<[u8]>> {
