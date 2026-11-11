@@ -269,6 +269,21 @@ up to 4 MiB and logs the URL when tries run out; the draw side is unchanged
 `unknown_pack` only until pixels arrive). Verified green: `android.yml` run
 **42938084338** at `f93da8f56`.
 
+## Volt Settings icons in the title and pause rows
+
+The title screen's icon row (Friends, Language, Accessibility) and the pause
+menu's (report bugs, send feedback, friends, player reporting) each gain a Volt
+Settings button: a fourth and fifth icon that draws the 20x20 sprite from the
+user's `button.zip` over its 20x20 button and opens the split-pane screen. The
+sprite is bundled as `crates/horizon-client-render/assets/volt_settings.png`
+and decoded into the HUD atlas as `gui/sprites/icon/volt_settings`
+(`hud.rs`). The title's icon keeps id 9 and returns `Action::VoltSettings`,
+with the full-width "Volt Settings..." button below Options and Quit Game
+removed; the pause icon (always active, id 16) opens the options at
+`Page::VoltSettings`, and both rows' narration, tooltips, focus ids and the
+tests pinning their geometry are updated. Verified green: `android.yml` run
+**43024144898** at `8fa62bde3`.
+
 ## Volt Settings: no Shaders or Controls tabs
 
 The split-pane hub's sidebar is down to six options — Boost, Visuals,
@@ -282,6 +297,23 @@ master, shader-pack and video-settings entries, Maps keeps its minimap/waypoint
 rows, and the standalone Controller/Pad Binds screen and the touch systems stay
 reachable from the rest of the options menu. Verified green: `android.yml` run
 **42996117474** at `e622fdc5b`.
+
+## Title and pause: the Volt Settings icon button
+
+The two icon rows both gained Horizon's own button, drawn with the sprite
+from the user's `button.zip` (a 20x20 glyph, shipped as
+`crates/horizon-client-render/assets/volt_settings.png` and packed into the
+HUD atlas as `gui/sprites/icon/volt_settings`): the title screen's row is now
+Friends, Language, Accessibility, Volt Settings (`title.rs`, ids 5-7 and 9,
+recentred to `cx - 46 + i*24`), and the pause menu's is Bugs, Feedback,
+Friends, Player Reporting, Volt Settings (`game/screens.rs`, ids 12, 13, 10,
+15, 16, recentred to `x0 + 48 + i*24`). The Volt icon opens the split-pane
+Volt Settings screen in both places (`Action::VoltSettings` from the title,
+`open_options_at(false, Page::VoltSettings)` from the pause menu), carries
+the `horizon.pages.volt` tooltip/narration, and sits in keyboard and
+controller focus from the pause menu. The title screen's full-width
+"Volt Settings..." button is removed. Verified green: `android.yml` run
+**43024144898** at `8fa62bde3`.
 
 ## Verify
 
