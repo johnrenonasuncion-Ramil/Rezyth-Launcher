@@ -1,6 +1,6 @@
 //! Volt 0.9.9 Split-Pane Frosted-Glass `Volt Settings` UI (`volt_settings_ui`)
 //! matching Image 1: left sidebar (`Volt / Volt Settings`, `Search options`,
-//! 8 smooth-gliding category tabs, warm amber `Undo` + violet `Done`), right
+//! 6 smooth-gliding category tabs, warm amber `Undo` + violet `Done`), right
 //! frosted glass groups with checkboxes, sliders, `< value >` cyclers & action
 //! buttons, and bottom description + `Cost` dock.
 
@@ -24,23 +24,19 @@ pub enum VoltTab {
     #[default]
     Boost,
     Visuals,
-    Shaders,
     HudQol,
     ChatVoice,
     Maps,
-    Controls,
     Extras,
 }
 
 impl VoltTab {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 6] = [
         Self::Boost,
         Self::Visuals,
-        Self::Shaders,
         Self::HudQol,
         Self::ChatVoice,
         Self::Maps,
-        Self::Controls,
         Self::Extras,
     ];
 
@@ -48,11 +44,9 @@ impl VoltTab {
         match self {
             Self::Boost => "Boost",
             Self::Visuals => "Visuals",
-            Self::Shaders => "Shaders",
             Self::HudQol => "HUD & QoL",
             Self::ChatVoice => "Chat & Voice",
             Self::Maps => "Maps",
-            Self::Controls => "Controls",
             Self::Extras => "Extras",
         }
     }
@@ -61,11 +55,9 @@ impl VoltTab {
         match self {
             Self::Boost => "Resolution Scaler (25%..=200%), Volt Boost FPS profiles (LOD kept OFF) & Vulkan culling.",
             Self::Visuals => "Volt Shaders gateway, Connected Glass, Better Grass, 3D Items, Fullbright & Dynamic Lights.",
-            Self::Shaders => "Native WGSL Volt Shaders (Potato..Custom, Moving Vegetation, BSL & Complementary lighting).",
             Self::HudQol => "PvP HUDs, Zoomify, Freelook, Viewmodel customization, Sound Physics & Mod Menu.",
             Self::ChatVoice => "3D Positional Proximity Voice Chat, Chat Heads, timestamps & spam compaction.",
             Self::Maps => "Xaero's Minimap, Xaero's World Map & 3D world waypoints.",
-            Self::Controls => "Controls Studio presets (Pojav, Zalith, FCL, PvP Claw), touch layout & gamepads.",
             Self::Extras => "Mod Menu (49 native Rust mods), Shader Packs, Video Settings, inventory & system tools.",
         }
     }
@@ -82,8 +74,6 @@ pub enum VoltRowKind {
     OpenShaderPacks,
     OpenWorldMap,
     OpenWaypointsManager,
-    OpenPadBinds,
-    OpenTouchEditor,
     OpenAgent,
 }
 
@@ -125,8 +115,6 @@ pub enum VoltUiAction {
     OpenShaderPacks,
     OpenWorldMap,
     OpenWaypointsManager,
-    OpenPadBinds,
-    OpenTouchEditor,
     OpenAgent,
     Done,
 }
@@ -271,117 +259,7 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
         ),
     ];
 
-    // 3. SHADERS (Standing rule: when Enable Shaders is OFF, hide ALL child customization controls!)
-    let shaders_groups = if !s.extras.volt_shaders.enabled {
-        vec![(
-            "Volt Native WGSL Shaders",
-            vec![e_ext(ExtraItem::VoltShaderEnable, None)],
-        )]
-    } else {
-        vec![
-            (
-                "Master & Profiles",
-                vec![
-                    e_ext(ExtraItem::VoltShaderEnable, Medium),
-                    e_ext(ExtraItem::VoltShaderProfile, Medium),
-                    e_volt(VoltAct::ShaderStyle, Low),
-                    e_volt(VoltAct::ShaderEyeComfort, None),
-                    e_ext(ExtraItem::VoltShaderReset, None),
-                ],
-            ),
-            (
-                "Moving Vegetation & Wind",
-                vec![
-                    e_ext(ExtraItem::VoltShaderWavePlants, Low),
-                    e_ext(ExtraItem::VoltShaderWaveLeaves, Low),
-                    e_ext(ExtraItem::VoltShaderWaveWater, Low),
-                    e_ext(ExtraItem::VoltShaderStormWind, None),
-                    e_opt(
-                        Opt::VoltShaderWindSpeed,
-                        None,
-                        "Controls waving speed of grass, crops, vines and tree leaves.",
-                    ),
-                    e_opt(
-                        Opt::VoltShaderWindStrength,
-                        None,
-                        "Controls sway amplitude of foliage in calm and stormy weather.",
-                    ),
-                ],
-            ),
-            (
-                "BSL & Complementary Lighting & PBR",
-                vec![
-                    e_ext(ExtraItem::VoltShaderSunShading, Low),
-                    e_ext(ExtraItem::VoltShaderFoliageGlow, Low),
-                    e_opt(
-                        Opt::VoltShaderShadowRichness,
-                        Low,
-                        "Controls ambient shadow depth on unlit block faces.",
-                    ),
-                    e_volt(VoltAct::ShaderAutoPbr, Low),
-                    e_volt(VoltAct::ShaderGlowingOres, Low),
-                    e_volt(VoltAct::ShaderOreGlow, None),
-                    e_volt(VoltAct::ShaderCloudShadows, Low),
-                    e_ext(ExtraItem::VoltShaderRainWetness, Low),
-                    e_ext(ExtraItem::VoltShaderTorchStyle, None),
-                    e_opt(
-                        Opt::VoltShaderTorchIntensity,
-                        None,
-                        "Controls block-light warmth and falloff strength.",
-                    ),
-                    e_opt(
-                        Opt::VoltShaderEmissiveGlow,
-                        Low,
-                        "Controls self-illumination boost on lava, lanterns and glowing blocks.",
-                    ),
-                ],
-            ),
-            (
-                "Atmosphere, Clouds & Aurora",
-                vec![
-                    e_volt(VoltAct::ShaderCloudsMode, Low),
-                    e_volt(VoltAct::ShaderCloudCoverage, None),
-                    e_ext(ExtraItem::VoltShaderCustomSky, Low),
-                    e_ext(ExtraItem::VoltShaderSunHalo, Low),
-                    e_ext(ExtraItem::VoltShaderAurora, Low),
-                    e_volt(VoltAct::ShaderNightSkyPlus, Low),
-                    e_volt(VoltAct::ShaderRainbow, Low),
-                    e_ext(ExtraItem::VoltShaderDepthHaze, None),
-                    e_opt(
-                        Opt::VoltShaderSunsetGlow,
-                        None,
-                        "Golden-hour horizon warmth at sunrise and sunset.",
-                    ),
-                ],
-            ),
-            (
-                "Water & Post-Processing",
-                vec![
-                    e_ext(ExtraItem::VoltShaderWaterRipples, Low),
-                    e_volt(VoltAct::ShaderWaterFoam, Low),
-                    e_ext(ExtraItem::VoltShaderWaterGlint, Low),
-                    e_ext(ExtraItem::VoltShaderClearWater, None),
-                    e_ext(ExtraItem::VoltShaderUnderwaterRefract, Low),
-                    e_opt(
-                        Opt::VoltShaderWaterReflection,
-                        Medium,
-                        "Sky and sun reflection strength across water surfaces.",
-                    ),
-                    e_ext(ExtraItem::VoltShaderTonemap, None),
-                    e_ext(ExtraItem::VoltShaderBloom, Medium),
-                    e_ext(ExtraItem::VoltShaderSunRays, Medium),
-                    e_ext(ExtraItem::VoltShaderVignette, None),
-                    e_opt(Opt::VoltShaderVibrance, None, "Smart color boost preserving skin and sky tones."),
-                    e_opt(Opt::VoltShaderSaturation, None, "Global color saturation."),
-                    e_opt(Opt::VoltShaderContrast, None, "Midtone contrast curve."),
-                    e_opt(Opt::VoltShaderExposure, None, "Overall shader brightness exposure."),
-                    e_opt(Opt::VoltShaderWarmth, None, "Color temperature balance."),
-                ],
-            ),
-        ]
-    };
-
-    // 4. HUD & QoL
+    // 3. HUD & QoL
     let mut hud_groups = vec![
         (
             "Built-in Mod Menu & PvP HUDs",
@@ -413,7 +291,7 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
         hud_groups.push((sec_name, acts.iter().map(|&a| e_volt(a, None)).collect()));
     }
 
-    // 5. CHAT & VOICE
+    // 4. CHAT & VOICE
     let mut chat_groups = vec![(
         "Chat Mods",
         vec![e_mod(VoltModId::ChatHeads, None), e_mod(VoltModId::BetterPingDisplay, None)],
@@ -422,7 +300,7 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
         chat_groups.push((sec_name, acts.iter().map(|&a| e_volt(a, Low)).collect()));
     }
 
-    // 6. MAPS & WAYPOINTS
+    // 5. MAPS & WAYPOINTS
     let mut map_rows = vec![
         e_mod(VoltModId::XaerosMinimap, Low),
         e_mod(VoltModId::XaerosWorldMap, Low),
@@ -453,52 +331,7 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
         ("3D World Waypoints", wp_rows),
     ];
 
-    // 7. CONTROLS (Touch Presets + Gamepad)
-    let mut touch_vec = vec![
-        e_opt(
-            Opt::TouchPreset,
-            None,
-            "One-tap mobile HUD layout presets: Pojav, Zalith, FCL, PvP Claw & Volt Default.",
-        ),
-        e_opt(Opt::TouchMode, None, "Touch aiming & interaction scheme."),
-        e_opt(Opt::TouchSensitivity, None, "Touch camera look sensitivity."),
-        e_opt(Opt::TouchButtonScale, None, "Scale of on-screen touch action buttons."),
-        e_opt(Opt::TouchCircleSize, None, "Size of the touch interaction circle."),
-        e_opt(Opt::TouchAnalog, None, "Smooth 360-degree analog joystick movement."),
-        e_opt(Opt::TouchOffhand, None, "Show quick offhand swap button on touch HUD."),
-        e_opt(Opt::TouchShield, None, "Show dedicated Shield guard button on touch HUD."),
-        e_opt(Opt::TouchSprintButton, None, "Show dedicated Sprint button on touch HUD."),
-        e_opt(Opt::TouchSprintToggle, None, "Latch Sprint on tap instead of holding."),
-        e_opt(Opt::AndroidGyroscope, None, "Precision gyroscope motion aiming on Android."),
-        e_opt(Opt::AndroidGyroSensitivity, None, "Gyroscope aiming speed."),
-    ];
-    if cfg!(target_os = "android") {
-        touch_vec.push(VoltEntry {
-            kind: VoltRowKind::OpenTouchEditor,
-            cost: None,
-            desc: "Drag, resize and customize every on-screen touch button directly.",
-        });
-    }
-    let controls_groups = vec![
-        ("Touch Controls & Presets", touch_vec),
-        (
-            "Controller & Gamepad",
-            vec![
-                VoltEntry {
-                    kind: VoltRowKind::OpenPadBinds,
-                    cost: None,
-                    desc: "Configure controller button bindings.",
-                },
-                e_opt(Opt::PadEnabled, None, "Enable gamepad / controller input."),
-                e_opt(Opt::PadLookSensitivity, None, "Controller right-stick look speed."),
-                e_opt(Opt::PadVibration, None, "Controller haptic rumble feedback."),
-                e_opt(Opt::PadMoveDeadzone, None, "Left stick inner deadzone."),
-                e_opt(Opt::PadLookDeadzone, None, "Right stick inner deadzone."),
-            ],
-        ),
-    ];
-
-    // 8. EXTRAS
+    // 6. EXTRAS
     let mut ext_rows = vec![
         VoltEntry {
             kind: VoltRowKind::OpenModMenu,
@@ -534,11 +367,9 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
     vec![
         (VoltTab::Boost, boost_groups),
         (VoltTab::Visuals, visuals_groups),
-        (VoltTab::Shaders, shaders_groups),
         (VoltTab::HudQol, hud_groups),
         (VoltTab::ChatVoice, chat_groups),
         (VoltTab::Maps, maps_groups),
-        (VoltTab::Controls, controls_groups),
         (VoltTab::Extras, extras_groups),
     ]
 }
@@ -634,8 +465,6 @@ fn entry_parts(kind: VoltRowKind, s: &Settings, binding: Option<&'static str>) -
         VoltRowKind::OpenShaderPacks => ("Browse External Shader Packs...".to_owned(), None),
         VoltRowKind::OpenWorldMap => ("Open Xaero's World Map...".to_owned(), None),
         VoltRowKind::OpenWaypointsManager => ("Manage Saved World Waypoints...".to_owned(), None),
-        VoltRowKind::OpenPadBinds => ("Controller Button Binds...".to_owned(), None),
-        VoltRowKind::OpenTouchEditor => ("Customize Touch Layout...".to_owned(), None),
         VoltRowKind::OpenAgent => ("AI Agent Settings...".to_owned(), None),
     }
 }
@@ -1424,12 +1253,6 @@ impl VoltSettingsUi {
             VoltRowKind::OpenWaypointsManager => {
                 vec![VoltUiAction::ButtonClick, VoltUiAction::OpenWaypointsManager]
             }
-            VoltRowKind::OpenPadBinds => {
-                vec![VoltUiAction::ButtonClick, VoltUiAction::OpenPadBinds]
-            }
-            VoltRowKind::OpenTouchEditor => {
-                vec![VoltUiAction::ButtonClick, VoltUiAction::OpenTouchEditor]
-            }
             VoltRowKind::OpenAgent => vec![VoltUiAction::ButtonClick, VoltUiAction::OpenAgent],
             VoltRowKind::Opt(opt) => {
                 if opt.slider_position(s).is_some() {
@@ -1535,23 +1358,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn all_eight_tabs_build_rows_and_shaders_gate_children_when_off() {
-        let mut s = Settings::default();
+    fn all_six_tabs_build_rows() {
+        let s = Settings::default();
         let mut ui = VoltSettingsUi::default();
-        assert_eq!(VoltTab::ALL.len(), 8);
+        assert_eq!(VoltTab::ALL.len(), 6);
         for tab in VoltTab::ALL {
             ui.tab = tab;
             let (_, rows, content) = ui.layout(&s, 854.0, 480.0);
             assert!(!rows.is_empty(), "{tab:?} must expose rows");
             assert!(content > 0.0);
         }
-        // Enable Shaders defaults to OFF and hides child shader controls until turned ON.
-        assert!(!s.extras.volt_shaders.enabled);
-        ui.tab = VoltTab::Shaders;
-        let (_, off_rows, _) = ui.layout(&s, 854.0, 480.0);
-        s.extras.volt_shaders.enabled = true;
-        let (_, on_rows, _) = ui.layout(&s, 854.0, 480.0);
-        assert!(on_rows.len() > off_rows.len() + 10);
     }
 
     #[test]

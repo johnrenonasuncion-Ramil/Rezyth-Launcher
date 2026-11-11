@@ -5631,12 +5631,7 @@ impl OptionsUi {
                         self.push(Page::ShaderPacks);
                         events.push(Event::ListShaderPacks);
                     }
-                    VoltUiAction::OpenPadBinds => self.push(Page::PadBinds),
                     VoltUiAction::OpenAgent => self.push(Page::Agent),
-                    VoltUiAction::OpenTouchEditor => {
-                        #[cfg(target_os = "android")]
-                        events.push(Event::TouchLayout);
-                    }
                     // The world map and waypoint manager are gameplay screens
                     // this port does not carry yet.
                     VoltUiAction::OpenWorldMap | VoltUiAction::OpenWaypointsManager => {}
@@ -6826,12 +6821,7 @@ impl OptionsUi {
                         self.push(Page::ShaderPacks);
                         events.push(Event::ListShaderPacks);
                     }
-                    VoltUiAction::OpenPadBinds => self.push(Page::PadBinds),
                     VoltUiAction::OpenAgent => self.push(Page::Agent),
-                    VoltUiAction::OpenTouchEditor => {
-                        #[cfg(target_os = "android")]
-                        events.push(Event::TouchLayout);
-                    }
                     VoltUiAction::OpenWorldMap | VoltUiAction::OpenWaypointsManager => {}
                     VoltUiAction::Done => events.extend(self.back(s)),
                 }
