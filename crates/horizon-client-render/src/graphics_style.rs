@@ -1,13 +1,11 @@
-//! The look of Horizon's graphics settings screen, in one place: sizes,
-//! colours and the controls it draws with. The screen (`graphics_ui`) only
-//! lays out rows and handles input; a menu theme replaces this module.
-//!
-//! It takes the design system's Blocks palette (`horizon_theme::BLOCKS_DARK`,
-//! `docs/design-system.md`) in a lighter form: square panels of dark glass
-//! with a thin edge, so the world shows through, flat controls, and the violet
-//! face on the one main button, in vanilla's font.
+//! The look of the split-pane settings screens (`graphics_ui`,
+//! `volt_settings_ui`, `volt_mods`), in one place: sizes and the controls they
+//! draw with, styled as vanilla Minecraft's own widgets — the grey buttons,
+//! sliders, text field, checkboxes and scrollbars, vanilla's text colours and
+//! the tiled list background — while the screens keep their layout.
+
 use crate::{
-    hud::{HudAtlas, HudBatch},
+    hud::{HudAtlas, HudBatch, rgba},
     text::Text,
     ui,
 };
@@ -48,45 +46,29 @@ impl Cost {
 const fn hex(c: u32, a: u8) -> u32 {
     (a as u32) << 24 | (c & 0xff) << 16 | (c >> 8 & 0xff) << 8 | (c >> 16 & 0xff)
 }
-/// The plate and the strip: the page's dark, see-through, so the world shows behind them.
-const GLASS: u32 = hex(B.page, 118);
-/// Their 1 px edge.
-pub const EDGE: u32 = hex(B.ink, 26);
-/// A group's panel, a little lighter than the plate it sits on.
-const GROUP: u32 = hex(B.ink, 11);
-/// A hovered or focused row, lit on its group's panel.
-pub const HOVER: u32 = hex(B.ink, 18);
-/// The open page in the page list.
-pub const OPEN: u32 = hex(B.ink, 26);
-/// The rule under the plate's heading, and between two rows of a group.
-pub const HEAD_RULE: u32 = hex(B.ink, 31);
-pub const ROW_RULE: u32 = hex(B.ink, 15);
-/// Fields, boxes and the value stepper: sunk, see-through.
-const WELL: u32 = hex(B.outline, 102);
-/// A button, a slider's track, the scroller's thumb.
-const BUTTON: u32 = hex(B.ink, 20);
-const BUTTON_HOVER: u32 = hex(B.ink, 41);
-const TRACK: u32 = hex(B.ink, 64);
-const HANDLE: u32 = hex(B.ink, 255);
-/// The one main button.
-const FACE: u32 = hex(B.face, 255);
-const FACE_HOVER: u32 = hex(0x6a50e6, 255);
-/// The warm amber Undo of the Volt Settings dock.
-const UNDO_FACE: u32 = hex(0x6b4c1e, 235);
-const UNDO_HOVER: u32 = hex(0x886126, 250);
-/// A tick box's edge when off.
-const BOX_EDGE: u32 = hex(B.ink_soft, 89);
-const OUTLINE: u32 = hex(B.outline, 255);
-pub const ACCENT: u32 = hex(B.accent, 255);
+/// The extra ring over the search field at rest: the vanilla text field's own
+/// sprite is its edge, so the ring draws none.
+pub const EDGE: u32 = 0;
+/// A hovered or focused row: vanilla's light wash over the list.
+pub const HOVER: u32 = rgba(255, 255, 255, 30);
+/// The open page in the page list: the dark fill of a selected vanilla list
+/// entry (the screens add its white outline).
+pub const OPEN: u32 = rgba(0, 0, 0, 140);
+/// The rule under the plate's heading, and between two rows of a group:
+/// vanilla's separators are black.
+pub const HEAD_RULE: u32 = rgba(0, 0, 0, 255);
+pub const ROW_RULE: u32 = rgba(0, 0, 0, 200);
+/// Vanilla has no accent colour; its highlights are white.
+pub const ACCENT: u32 = u32::MAX;
 /// Vanilla's white text, and its grey for what can't be used now.
 pub const WHITE: u32 = u32::MAX;
-pub const MUTED: u32 = hex(B.muted, 255);
+pub const MUTED: u32 = rgba(160, 160, 160, 255);
 /// A page that isn't open, a value at rest.
-pub const SOFT: u32 = hex(B.ink_soft, 255);
+pub const SOFT: u32 = rgba(224, 224, 224, 255);
 /// Vanilla's grey for a tooltip's lines under its first (`ChatFormatting.GRAY`).
-pub const GREY: u32 = hex(0xaaaaaa, 255);
-/// A light veil over the backdrop, under the panels.
-pub const VEIL: u32 = hex(B.page, 77);
+pub const GREY: u32 = rgba(170, 170, 170, 255);
+/// No veil: `ui::menu_background` already darkens the screen the vanilla way.
+pub const VEIL: u32 = 0;
 
 /// Sizes in GUI pixels.
 /// Shorter screens than this (a 720p window at scale 3) keep a narrower margin on top.
@@ -128,23 +110,58 @@ pub fn ring(batch: &mut HudBatch, atlas: &HudAtlas, [x, y, w, h]: [f32; 4], colo
         batch.fill(atlas, x + w - 1.0, y + 1.0, 1.0, h - 2.0, color);
     }
 }
-/// The screen's plate, and the strip under it: dark glass with a thin edge.
-pub fn panel(batch: &mut HudBatch, atlas: &HudAtlas, rect: [f32; 4]) {
-    fill(batch, atlas, rect, GLASS);
-    ring(batch, atlas, rect, EDGE);
+/// The screen's plate, and the strip under it: vanilla's tiled list
+/// background (`OptionsSubScreen`'s list, the world list).
+pub fn panel(batch: &mut HudBatch, atlas: &HudAtlas, [x, y, w, h]: [f32; 4], in_world: bool) {
+    let sprite = if in_world {
+        "gui/inworld_menu_list_background"
+    } else {
+        "gui/menu_list_background"
+    };
+    if atlas.sprites.contains_key(sprite) {
+        ui::tiled(batch, atlas, sprite, x, y, w, h, 32.0, u32::MAX);
+    } else {
+        fill(batch, atlas, [x, y, w, h], rgba(0, 0, 0, 120));
+    }
 }
-/// A group's panel on the plate, its rows on it.
-pub fn group(batch: &mut HudBatch, atlas: &HudAtlas, rect: [f32; 4]) {
-    fill(batch, atlas, rect, GROUP);
+/// Vanilla's option lists have no group panels: the rows on the list
+/// background, and their hover, are the whole look.
+pub fn group(_batch: &mut HudBatch, _atlas: &HudAtlas, _rect: [f32; 4]) {}
+/// A vanilla text field's background (the search box).
+pub fn well(batch: &mut HudBatch, atlas: &HudAtlas, [x, y, w, h]: [f32; 4]) {
+    ui::nine_slice(
+        batch,
+        atlas,
+        "gui/sprites/widget/text_field",
+        x,
+        y,
+        w,
+        h,
+        u32::MAX,
+    );
 }
-/// A sunk well: the search field, the value stepper.
-pub fn well(batch: &mut HudBatch, atlas: &HudAtlas, rect: [f32; 4]) {
-    fill(batch, atlas, rect, WELL);
-}
-/// The scroller: a faint track and its thumb.
+/// The scroller: vanilla's track and thumb sprites.
 pub fn scroller(batch: &mut HudBatch, atlas: &HudAtlas, track: [f32; 4], thumb: [f32; 4]) {
-    fill(batch, atlas, track, ROW_RULE);
-    fill(batch, atlas, thumb, TRACK);
+    ui::nine_slice(
+        batch,
+        atlas,
+        "gui/sprites/widget/scroller_background",
+        track[0],
+        track[1],
+        track[2],
+        track[3],
+        u32::MAX,
+    );
+    ui::nine_slice(
+        batch,
+        atlas,
+        "gui/sprites/widget/scroller",
+        thumb[0],
+        thumb[1],
+        thumb[2],
+        thumb[3],
+        u32::MAX,
+    );
 }
 /// The scroller's thumb for a list of this content: its top and height, or
 /// None when everything fits.
@@ -200,94 +217,58 @@ pub fn wrap_lines(atlas: &HudAtlas, text: &str, width: f32) -> Vec<String> {
     }
     lines
 }
-/// A 12 px tick box ending at `right`, centred in the row at `y`: its edge in the accent when on.
+/// Vanilla's checkbox: its 17 px sprite at the right of the row at `y`.
 pub fn checkbox(batch: &mut HudBatch, atlas: &HudAtlas, right: f32, y: f32, on: bool, live: bool) {
-    let rect = [right - 12.0, y + 4.0, 12.0, 12.0];
-    fill(batch, atlas, rect, WELL);
-    let edge = match (on, live) {
-        (true, true) => ACCENT,
-        (true, false) => MUTED,
-        (false, _) => BOX_EDGE,
+    let sprite = if on {
+        "gui/sprites/widget/checkbox_selected"
+    } else {
+        "gui/sprites/widget/checkbox"
     };
-    ring(batch, atlas, rect, edge);
-    if on {
-        tick(batch, atlas, rect[0] + 1.0, rect[1] + 2.0, edge);
-    }
+    let color = if live { u32::MAX } else { MUTED };
+    batch.sprite_scaled(atlas, sprite, right - 17.0, y + 1.5, 17.0, 17.0, color);
 }
-/// A pixel tick, 10 by 8, over its own shadow.
-fn tick(batch: &mut HudBatch, atlas: &HudAtlas, x: f32, y: f32, color: u32) {
-    const TICK: [&str; 8] = [
-        "         #",
-        "        ##",
-        "       ## ",
-        "#     ##  ",
-        "##   ##   ",
-        " ## ##    ",
-        "  ###     ",
-        "   #      ",
-    ];
-    for (j, row) in TICK.iter().enumerate() {
-        for (i, c) in row.chars().enumerate() {
-            if c == '#' {
-                let (px, py) = (x + i as f32, y + j as f32);
-                fill(batch, atlas, [px + 1.0, py + 1.0, 1.0, 1.0], OUTLINE);
-                fill(batch, atlas, [px, py, 1.0, 1.0], color);
-            }
-        }
-    }
-}
-/// A flat button with its label centred: Undo, Calibrate..., and Done in the
-/// violet (`primary`). Pointed at or focused, vanilla's white edge.
+/// A vanilla button: the grey widget, its label centred and scrolling when it
+/// is wider than the button. `primary` is kept for the callers' tuple; vanilla
+/// has one button look.
 pub fn button(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
-    rect: [f32; 4],
+    [x, y, w, h]: [f32; 4],
     label: &Text,
-    (hover, live, primary): (bool, bool, bool),
+    (hover, live, _primary): (bool, bool, bool),
 ) {
-    let [x, y, w, h] = rect;
-    let face = match (live, primary, hover) {
-        (false, _, _) => WELL,
-        (true, true, false) => FACE,
-        (true, true, true) => FACE_HOVER,
-        (true, false, false) => BUTTON,
-        (true, false, true) => BUTTON_HOVER,
+    let sprite = if !live {
+        "gui/sprites/widget/button_disabled"
+    } else if hover {
+        "gui/sprites/widget/button_highlighted"
+    } else {
+        "gui/sprites/widget/button"
     };
-    fill(batch, atlas, rect, face);
-    if hover && live {
-        ring(batch, atlas, rect, WHITE);
-    }
+    let sprite = ui::button_take(sprite, x.round() as i32, y.round() as i32);
+    ui::nine_slice(batch, atlas, &sprite, x, y, w, h, u32::MAX);
     let color = if live { WHITE } else { MUTED };
     let ty = y + ((h - 8.0) / 2.0).floor();
-    ui::centered_text(batch, atlas, label, x + 2.0, ty, w - 4.0, color);
+    ui::scrolling_text(batch, atlas, label, x + 2.0, x + w - 2.0, y, y + h, ty, color);
 }
-/// An animated ON/OFF pill (the Volt Settings row switch).
+/// The ON/OFF row control is a vanilla checkbox (the pill becomes the sprite,
+/// centred on the box it used to fill).
 pub fn switch_pill(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
     [x, y, w, h]: [f32; 4],
-    anim: f32,
+    _anim: f32,
     on: bool,
 ) {
-    let t = anim.clamp(0.0, 1.0);
-    let track_col = if on {
-        hex(0x1f9d8b, 255)
+    let sprite = if on {
+        "gui/sprites/widget/checkbox_selected"
     } else {
-        hex(0x283244, 255)
+        "gui/sprites/widget/checkbox"
     };
-    fill(batch, atlas, [x, y, w, h], track_col);
-    ring(
-        batch,
-        atlas,
-        [x, y, w, h],
-        if on { hex(0x4de3c8, 255) } else { BOX_EDGE },
-    );
-    let knob_w = (h - 4.0).max(6.0);
-    let travel = (w - 4.0 - knob_w).max(0.0);
-    let kx = (x + 2.0 + travel * t).round();
-    fill(batch, atlas, [kx, y + 2.0, knob_w, h - 4.0], WHITE);
+    let sx = x + w - 17.0;
+    let sy = (y + h / 2.0 - 8.5).floor();
+    batch.sprite_scaled(atlas, sprite, sx, sy, 17.0, 17.0, u32::MAX);
 }
-/// The warm amber Undo button of the Volt Settings dock.
+/// Undo is a vanilla button, like Done.
 pub fn undo_button(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
@@ -295,10 +276,9 @@ pub fn undo_button(
     label: &Text,
     hover: bool,
 ) {
-    button_styled(batch, atlas, rect, label, (hover, true, false, true));
+    button(batch, atlas, rect, label, (hover, true, false));
 }
-/// The Volt Settings/Mod Menu button: like [`button`], with the warm amber
-/// Undo face, the thin edge at rest and its label fitted to the button.
+/// The split-pane screens' buttons, vanilla's own.
 pub fn volt_button(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
@@ -306,98 +286,52 @@ pub fn volt_button(
     label: &Text,
     (hover, live, primary): (bool, bool, bool),
 ) {
-    button_styled(batch, atlas, rect, label, (hover, live, primary, false));
+    button(batch, atlas, rect, label, (hover, live, primary));
 }
-fn button_styled(
-    batch: &mut HudBatch,
-    atlas: &HudAtlas,
-    rect: [f32; 4],
-    label: &Text,
-    (hover, live, primary, warn): (bool, bool, bool, bool),
-) {
-    let [x, y, w, h] = rect;
-    let face = if !live {
-        WELL
-    } else if warn {
-        if hover { UNDO_HOVER } else { UNDO_FACE }
-    } else if primary {
-        if hover { FACE_HOVER } else { FACE }
-    } else if hover {
-        BUTTON_HOVER
-    } else {
-        BUTTON
-    };
-    fill(batch, atlas, rect, face);
-    if hover && live {
-        ring(batch, atlas, rect, WHITE);
-    } else {
-        ring(batch, atlas, rect, EDGE);
-    }
-    let color = if live { WHITE } else { MUTED };
-    let ty = y + ((h - 8.0) / 2.0).floor();
-    fitted_centered(batch, atlas, label, [x + 3.0, ty, w - 6.0], color);
-}
-fn fitted_centered(
-    batch: &mut HudBatch,
-    atlas: &HudAtlas,
-    text: &Text,
-    [left, y, width]: [f32; 3],
-    color: u32,
-) {
-    let plain = text.plain();
-    let fitted = fit(atlas, &plain, width);
-    ui::centered_text(batch, atlas, &Text::literal(fitted), left, y, width, color);
-}
-/// A slider: its value over a thin track filled in the accent up to the handle at `position`.
+/// A vanilla slider — its 20 px track and handle over the row's control, the
+/// value centred on it.
 pub fn slider(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
-    rect: [f32; 4],
+    [x, y, w, h]: [f32; 4],
     value: &Text,
     position: f32,
     (hover, live): (bool, bool),
 ) {
-    let [x, y, w, h] = rect;
-    let color = if live { WHITE } else { MUTED };
-    ui::centered_text(batch, atlas, value, x + 2.0, y + 1.0, w - 4.0, color);
-    let line = y + h - 3.0;
-    let at = x + (position.clamp(0.0, 1.0) * (w - 4.0)).round();
-    fill(batch, atlas, [x, line, w, 2.0], TRACK);
-    fill(
+    // The vanilla slider keeps its 20 px height: centred where the row's
+    // 16 px control sits.
+    let sy = (y + h / 2.0 - 10.0).floor();
+    let handle = if live && hover {
+        "gui/sprites/widget/slider_handle_highlighted"
+    } else {
+        "gui/sprites/widget/slider_handle"
+    };
+    ui::nine_slice(
         batch,
         atlas,
-        [x, line, at - x, 2.0],
-        if live { ACCENT } else { MUTED },
+        "gui/sprites/widget/slider",
+        x,
+        sy,
+        w,
+        20.0,
+        u32::MAX,
     );
-    let handle = [at, line - 3.0, 4.0, 8.0];
-    fill(batch, atlas, handle, if live { HANDLE } else { MUTED });
-    if hover && live {
-        ring(batch, atlas, [at - 1.0, line - 4.0, 6.0, 10.0], ACCENT);
-    }
+    let hx = x + (position.clamp(0.0, 1.0) * (w - 8.0)).floor();
+    ui::nine_slice(batch, atlas, handle, hx, sy, 8.0, 20.0, u32::MAX);
+    let color = if live { WHITE } else { MUTED };
+    ui::centered_text(batch, atlas, value, x, sy + 6.0, w, color);
 }
-/// A value that a press steps through: in a well, between the arrows that say so.
+/// A cycle button is a vanilla button whose label is the value.
 pub fn cycler(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
-    rect: [f32; 4],
+    [x, y, w, h]: [f32; 4],
     value: &Text,
     (hover, live): (bool, bool),
 ) {
-    let [x, y, w, h] = rect;
-    well(batch, atlas, rect);
-    if hover && live {
-        ring(batch, atlas, rect, WHITE);
-    }
-    let ty = y + ((h - 8.0) / 2.0).floor();
-    let arrows = if hover && live { WHITE } else { MUTED };
-    batch.text_styled(atlas, &Text::literal("<"), x + 3.0, ty, arrows, true);
-    batch.text_styled(atlas, &Text::literal(">"), x + w - 8.0, ty, arrows, true);
-    let color = match (live, hover) {
-        (false, _) => MUTED,
-        (true, true) => WHITE,
-        (true, false) => SOFT,
-    };
-    batch.text_styled(atlas, value, x + 9.0, ty, color, true);
+    let sy = (y + h / 2.0 - 10.0).floor();
+    let label = Text::literal(format!("< {} >", value.plain()));
+    button(batch, atlas, [x, sy, w, 20.0], &label, (hover, live, false));
 }
 /// A screen's title, centred at the top (split-screen profiles).
 pub fn title(batch: &mut HudBatch, atlas: &HudAtlas, text: &Text) {

@@ -1538,7 +1538,7 @@ impl GraphicsUi {
 
         // The plate, with the open page's name (or the search's) over its list.
         let [px, py, pw, _] = cols.plate;
-        style::panel(batch, atlas, cols.plate);
+        style::panel(batch, atlas, cols.plate, in_world);
         let query = self.search.value.trim();
         let heading = if query.is_empty() {
             lang::get(current.unwrap_or(self.page).name())
@@ -1620,7 +1620,7 @@ impl GraphicsUi {
         );
         crate::widgets::clip_targets(mark, cols.top, cols.bottom);
         self.draw_scroller(batch, atlas, &cols, content);
-        self.draw_dock(batch, atlas, s, &cols, described, current);
+        self.draw_dock(batch, atlas, s, &cols, described, current, in_world);
 
         let hovered = |[x, y, w, h]: [f32; 4]| ui::hovered(cursor, x, y, w, h);
         let mut foot = vec![(cols.button(0), "Done", Target::Done)];
@@ -1868,9 +1868,10 @@ impl GraphicsUi {
         cols: &Columns,
         setting: Option<Setting>,
         current: Option<Page>,
+        in_world: bool,
     ) {
         let [x, y, w, _] = cols.dock;
-        style::panel(batch, atlas, cols.dock);
+        style::panel(batch, atlas, cols.dock, in_world);
         let left = x + 12.0;
         let (text, color) = match setting {
             Some(setting) => {

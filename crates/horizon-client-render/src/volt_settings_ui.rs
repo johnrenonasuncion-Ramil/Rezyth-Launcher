@@ -863,7 +863,7 @@ impl VoltSettingsUi {
 
         // Right frosted glass plate
         let [px, py, pw, _] = cols.plate;
-        style::panel(batch, atlas, cols.plate);
+        style::panel(batch, atlas, cols.plate, in_world);
         let query = self.search.value.trim();
         let heading = if query.is_empty() {
             current.unwrap_or(self.tab).name().to_owned()
@@ -978,7 +978,7 @@ impl VoltSettingsUi {
             );
         }
 
-        self.draw_dock(batch, atlas, s, &cols, described, current);
+        self.draw_dock(batch, atlas, s, &cols, described, current, in_world);
 
         // Bottom-left Undo + Done
         let done_rect = cols.button(0);
@@ -1100,9 +1100,10 @@ impl VoltSettingsUi {
         cols: &Columns,
         entry: Option<VoltEntry>,
         current: Option<VoltTab>,
+        in_world: bool,
     ) {
         let [x, y, w, h] = cols.dock;
-        style::panel(batch, atlas, cols.dock);
+        style::panel(batch, atlas, cols.dock, in_world);
         let left = x + 12.0;
         match entry {
             Some(entry) => {
