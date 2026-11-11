@@ -253,6 +253,22 @@ Verified: `android.yml` runs **42911549966** and **42912956822** at `f21b1b1e2`,
 independent builds, both `Signer #1 certificate SHA-256 digest:
 3993cee17fd526d1a7c08842d2d8b37a586f54c01e8899a734e42cd084a7aa66`.
 
+## Gallery icons: retried, throttled, and bigger
+
+Some rows in the Modrinth gallery kept the `unknown_pack` fallback (the
+cobblestone-looking texture) while others loaded. Three things fed that: a
+project was marked requested *before* its fetch and a failure was dropped, so a
+dropped mobile connection or a rate limit left the row on the fallback for the
+rest of the session; the whole page fetched at once, each icon opening its own
+`ureq` connection (a cold TLS handshake apiece); and the 1 MiB read cap
+silently discarded any icon above it. `game/pack_gallery.rs` now fetches through
+four lanes over one shared keep-alive agent, retries a failure up to three times
+three seconds apart, clears the failure counts on a fresh search, accepts icons
+up to 4 MiB and logs the URL when tries run out; the draw side is unchanged
+(`options_ui.rs` still writes the icon into an atlas pack-icon slot, with
+`unknown_pack` only until pixels arrive). Verified green: `android.yml` run
+**42938084338** at `f93da8f56`.
+
 ## Verify
 
 ```sh
