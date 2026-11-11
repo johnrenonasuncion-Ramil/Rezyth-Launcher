@@ -1566,6 +1566,11 @@ impl HudAtlas {
             edition.3 = pixels;
         }
         images.push(("horizon/white".into(), 4, 4, vec![255; 64]));
+        // Horizon's Volt Settings icon: the 20x20 sprite the title screen's
+        // and the pause menu's icon rows draw over their button.
+        if let Ok((w, h, pixels)) = decode_bytes(include_bytes!("../assets/volt_settings.png")) {
+            images.push(("gui/sprites/icon/volt_settings".into(), w, h, pixels));
+        }
         if full {
             Self::slots(&mut images, crate::trims::slot_size(root), mod_image);
             // MissingTextureAtlasSprite.generateMissingImage: 16x16, magenta

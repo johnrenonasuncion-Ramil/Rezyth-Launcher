@@ -131,24 +131,28 @@ fn feedback_link() -> &'static str {
     }
 }
 /// `PauseScreen.createPauseMenu`'s icon tooltips (`SpriteIconButton.withTootip`).
-const ICON_LABELS: [&str; 4] = [
+const ICON_LABELS: [&str; 5] = [
     "menu.reportBugs",
     "menu.sendFeedback",
     "gui.friends.open",
     "menu.playerReporting",
+    "horizon.pages.volt",
 ];
+/// Horizon's own Volt Settings icon, next to vanilla's four: its 20x20 sprite
+/// is drawn over the whole button.
+const VOLT_ICON: &str = "gui/sprites/icon/volt_settings";
 /// Whether an icon button is active: `reportBugsButton.active =
 /// !dataVersion().isSideSeries()` (26.3 is the `main` series), the feedback
 /// button always, friends when the friends list is shown.
 fn icon_active(icon: usize, friends: bool) -> bool {
     match icon {
-        0 | 1 | 3 => true,
+        0 | 1 | 3 | 4 => true,
         FRIENDS_ICON => friends,
         _ => false,
     }
 }
 fn pause_icon_focus_ids(friends: bool) -> Vec<u8> {
-    (0..4)
+    (0..5)
         .filter(|&i| icon_active(i, friends))
         .map(|i| if i == FRIENDS_ICON { 10 } else { 12 + i as u8 })
         .collect()
@@ -160,14 +164,15 @@ fn pause_icons(
     links: bool,
     additions: bool,
     split: bool,
-) -> [(f32, f32, &'static str); 4] {
+) -> [(f32, f32, &'static str); 5] {
     let (x0, y0) = pause_grid(w, h, u8::from(links || additions) + u8::from(split));
-    let (x0, y) = (x0 + 60.0, y0 + 98.0);
+    let (x0, y) = (x0 + 48.0, y0 + 98.0);
     [
         (x0, y, "gui/sprites/pause_menu/bug"),
         (x0 + 24.0, y, "gui/sprites/pause_menu/social_interactions"),
         (x0 + 48.0, y, "gui/sprites/friends/friends"),
         (x0 + 72.0, y, "gui/sprites/pause_menu/player_reporting"),
+        (x0 + 96.0, y, VOLT_ICON),
     ]
 }
 /// DeathScreen.init: a hardcore player can only spectate.
@@ -317,6 +322,7 @@ impl Game<'_> {
                     "menu.sendFeedback",
                     "",
                     "menu.playerReporting",
+                    "horizon.pages.volt",
                 ][i];
                 *n = if i == FRIENDS_ICON {
                     widgets::Narratable::named(t("gui.friends.open.narration"), n.rect, active)
@@ -328,8 +334,13 @@ impl Game<'_> {
             });
             // SpriteIconButton.CenteredIcon: the 15x15 sprite at
             // x + width / 2 - 15 / 2 in integer pixels, untinted even
-            // when the button is inactive.
-            batch.sprite_scaled(atlas, sprite, x + 3.0, y + 3.0, 15.0, 15.0, u32::MAX);
+            // when the button is inactive. Horizon's own icon is a 20x20
+            // sprite drawn over the whole button.
+            if sprite == VOLT_ICON {
+                batch.sprite_scaled(atlas, sprite, x, y, 20.0, 20.0, u32::MAX);
+            } else {
+                batch.sprite_scaled(atlas, sprite, x + 3.0, y + 3.0, 15.0, 15.0, u32::MAX);
+            }
             if hover {
                 tooltip = Some(if i == FRIENDS_ICON {
                     Text::literal(horizon_client::friends_screen::title())
@@ -371,6 +382,8 @@ impl Game<'_> {
             13 => self.confirm_trusted_link(feedback_link(), Screen::Paused),
             // PauseScreen: `new SocialInteractionsScreen(this)`.
             15 => self.open_social(true),
+            // Horizon's Volt Settings icon (the fifth in the row).
+            16 => self.open_options_at(false, horizon_client::options_ui::Page::VoltSettings),
             30 => self.open_split_settings(),
             // addCustomDialogButtons: DialogConnectionAccess.openDialog of the
             // additions dialog, from the pause menu.
@@ -418,8 +431,9 @@ impl Game<'_> {
         .find(|b| b.5 && ui::hovered(self.cursor, b.0, b.1, b.2, 20.0))
         .map(|b| b.4)
         .or_else(|| {
-            // The report bugs, feedback and player reporting icons (ids 12, 13 and 15).
-            [0, 1, 3]
+            // The report bugs, feedback, player reporting and Volt Settings
+            // icons (ids 12, 13, 15 and 16).
+            [0, 1, 3, 4]
                 .into_iter()
                 .find(|&i| ui::hovered(self.cursor, icons[i].0, icons[i].1, 20.0, 20.0))
                 .map(|i| 12 + i as u8)
@@ -886,15 +900,17 @@ mod tests {
     fn pause_icons_report_bugs_and_feedback_are_active_like_vanilla() {
         use super::{FRIENDS_ICON, icon_active};
         // PauseScreen.createPauseMenu: the bug and feedback buttons are live,
-        // friends follows its list, player reporting opens the social screen.
+        // friends follows its list, player reporting opens the social screen,
+        // and Horizon's Volt Settings icon is always live.
         assert!(icon_active(0, false) && icon_active(1, false) && icon_active(3, false));
+        assert!(icon_active(4, false) && icon_active(4, true));
         assert!(icon_active(FRIENDS_ICON, true) && !icon_active(FRIENDS_ICON, false));
     }
 
     #[test]
     fn pause_keyboard_focus_includes_the_active_icon_buttons() {
-        assert_eq!(pause_icon_focus_ids(false), [12, 13, 15]);
-        assert_eq!(pause_icon_focus_ids(true), [12, 13, 10, 15]);
+        assert_eq!(pause_icon_focus_ids(false), [12, 13, 15, 16]);
+        assert_eq!(pause_icon_focus_ids(true), [12, 13, 10, 15, 16]);
     }
 
     #[test]

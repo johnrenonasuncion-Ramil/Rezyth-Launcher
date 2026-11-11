@@ -1745,41 +1745,41 @@ impl Title {
                     ),
                 ];
                 // CommonButtons' icon buttons; Horizon's Join a Friend (an
-                // invite code) sits behind vanilla's Friends button.
-                for (i, (key, plain, id, icon)) in [
-                    ("gui.friends.open", "Friends", 5, "friends/friends"),
-                    ("options.language", "Language...", 6, "icon/language"),
+                // invite code) sits behind vanilla's Friends button, and its
+                // own Volt Settings icon next to vanilla's three (its sprite
+                // is 20x20, drawn over the whole button).
+                for (i, (key, plain, id, icon, size)) in [
+                    ("gui.friends.open", "Friends", 5, "friends/friends", 15.0),
+                    ("options.language", "Language...", 6, "icon/language", 15.0),
                     (
                         "options.accessibility",
                         "Accessibility Settings...",
                         7,
                         "icon/accessibility",
+                        15.0,
+                    ),
+                    (
+                        "horizon.pages.volt",
+                        "Volt Settings...",
+                        9,
+                        "icon/volt_settings",
+                        20.0,
                     ),
                 ]
                 .into_iter()
                 .enumerate()
                 {
                     let mut button = b(
-                        cx - 34.0 + i as f32 * 24.0,
+                        cx - 46.0 + i as f32 * 24.0,
                         y + 72.0,
                         20.0,
                         &lang::get_or(key, plain),
                         true,
                         id,
                     );
-                    button.icon = Some((icon, 15.0));
+                    button.icon = Some((icon, size));
                     buttons.push(button);
                 }
-                // Volt Boost lives behind this button, on the main menu where a
-                // player looks for it (and on the Options screen).
-                buttons.push(b(
-                    cx - 100.0,
-                    y + 120.0,
-                    200.0,
-                    &lang::get_or("horizon.pages.volt", "Volt Settings..."),
-                    true,
-                    9,
-                ));
                 // Starling's account, where the game signs in itself: in the top left corner,
                 // clear of the logo, so vanilla's buttons stay as they are.
                 if crate::accounts::in_game() {
@@ -2391,12 +2391,13 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 "accessibility.onboarding.accessibility.button.narration",
                 "options.accessibility.tooltip",
             ),
+            9 => icon("horizon.pages.volt", "horizon.pages.volt.tooltip"),
             _ => Narratable::button(b.label.clone(), rect, b.enabled),
         };
         // TitleScreen.init adds the icon row after Minecraft Realms and before
         // Options... and Quit Game, which Horizon draws first.
         narratable.order(match b.id {
-            5..=7 => 1,
+            5..=7 | 9 => 1,
             2 | 3 => 2,
             _ => 0,
         })
@@ -4735,21 +4736,23 @@ mod classic_tests {
             let buttons = title.buttons(w, h);
             let cx = (w / 2.0).floor();
             let y = (h / 4.0).floor() + 48.0;
-            for (id, x, enabled, icon) in [
-                (5, cx - 34.0, true, "friends/friends"),
-                (6, cx - 10.0, true, "icon/language"),
-                (7, cx + 14.0, true, "icon/accessibility"),
+            for (id, x, enabled, icon, size) in [
+                (5, cx - 46.0, true, "friends/friends", 15.0),
+                (6, cx - 22.0, true, "icon/language", 15.0),
+                (7, cx + 2.0, true, "icon/accessibility", 15.0),
+                (9, cx + 26.0, true, "icon/volt_settings", 20.0),
             ] {
                 let b = buttons.iter().find(|b| b.id == id).unwrap();
                 assert_eq!(
                     (b.x, b.y, b.w, b.enabled, b.icon),
-                    (x, y + 72.0, 20.0, enabled, Some((icon, 15.0)))
+                    (x, y + 72.0, 20.0, enabled, Some((icon, size)))
                 );
                 assert_eq!(
                     title.click(x + 10.0, y + 82.0, (w, h)),
                     match id {
                         6 => (Action::Language, true),
                         7 => (Action::Accessibility, true),
+                        9 => (Action::VoltSettings, true),
                         _ => (Action::None, true),
                     }
                 );
@@ -4766,7 +4769,7 @@ mod classic_tests {
             }
             // The four-pixel gaps around icons must not activate a button.
             assert_eq!(
-                title.click(cx + 12.0, y + 82.0, (w, h)),
+                title.click(cx - 24.0, y + 82.0, (w, h)),
                 (Action::None, false)
             );
             assert_eq!(
@@ -4859,7 +4862,7 @@ mod classic_tests {
                 .iter()
                 .find(|quad| quad[0].uv == [0.25 + i as f32 * 0.125, 0.0])
                 .unwrap();
-            let x = cx - 34.0 + i as f32 * 24.0 + 3.0;
+            let x = cx - 46.0 + i as f32 * 24.0 + 3.0;
             let y = (batch.height / 4.0).floor() + 48.0 + 72.0 + 3.0;
             assert_eq!(quad[0].pos, [x, y]);
             assert_eq!(quad[2].pos, [x + 15.0, y + 15.0]);
