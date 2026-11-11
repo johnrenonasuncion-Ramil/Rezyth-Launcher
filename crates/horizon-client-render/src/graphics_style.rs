@@ -50,23 +50,23 @@ const fn hex(c: u32, a: u8) -> u32 {
 /// sprite is its edge, so the ring draws none.
 pub const EDGE: u32 = 0;
 /// A hovered or focused row: vanilla's light wash over the list.
-pub const HOVER: u32 = rgba(255, 255, 255, 30);
+pub const HOVER: u32 = hex(0xffffff, 30);
 /// The open page in the page list: the dark fill of a selected vanilla list
 /// entry (the screens add its white outline).
-pub const OPEN: u32 = rgba(0, 0, 0, 140);
+pub const OPEN: u32 = hex(0x000000, 140);
 /// The rule under the plate's heading, and between two rows of a group:
 /// vanilla's separators are black.
-pub const HEAD_RULE: u32 = rgba(0, 0, 0, 255);
-pub const ROW_RULE: u32 = rgba(0, 0, 0, 200);
+pub const HEAD_RULE: u32 = hex(0x000000, 255);
+pub const ROW_RULE: u32 = hex(0x000000, 200);
 /// Vanilla has no accent colour; its highlights are white.
 pub const ACCENT: u32 = u32::MAX;
 /// Vanilla's white text, and its grey for what can't be used now.
 pub const WHITE: u32 = u32::MAX;
-pub const MUTED: u32 = rgba(160, 160, 160, 255);
+pub const MUTED: u32 = hex(0xa0a0a0, 255);
 /// A page that isn't open, a value at rest.
-pub const SOFT: u32 = rgba(224, 224, 224, 255);
+pub const SOFT: u32 = hex(0xe0e0e0, 255);
 /// Vanilla's grey for a tooltip's lines under its first (`ChatFormatting.GRAY`).
-pub const GREY: u32 = rgba(170, 170, 170, 255);
+pub const GREY: u32 = hex(0xaaaaaa, 255);
 /// No veil: `ui::menu_background` already darkens the screen the vanilla way.
 pub const VEIL: u32 = 0;
 
