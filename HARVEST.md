@@ -269,6 +269,20 @@ up to 4 MiB and logs the URL when tries run out; the draw side is unchanged
 `unknown_pack` only until pixels arrive). Verified green: `android.yml` run
 **42938084338** at `f93da8f56`.
 
+## Volt Settings: no Shaders or Controls tabs
+
+The split-pane hub's sidebar is down to six options — Boost, Visuals,
+HUD & QoL, Chat & Voice, Maps, Extras. The **Shaders** and **Controls** tabs and
+their screens are removed: the shader slider groups and the touch/gamepad groups
+are gone from `tab_groups`, `VoltTab::ALL` is six, and the
+`VoltRowKind::OpenPadBinds`/`OpenTouchEditor` rows, their `VoltUiAction`s and
+the options-layer handlers for the Pad Binds and touch-layout screens went with
+them. Nothing else changed: the Visuals tab still carries the Volt Shaders
+master, shader-pack and video-settings entries, Maps keeps its minimap/waypoint
+rows, and the standalone Controller/Pad Binds screen and the touch systems stay
+reachable from the rest of the options menu. Verified green: `android.yml` run
+**42996117474** at `e622fdc5b`.
+
 ## Verify
 
 ```sh
