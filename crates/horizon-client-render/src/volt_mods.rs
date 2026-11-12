@@ -2004,24 +2004,25 @@ const ROW_H: f32 = 28.0;
 const ROW_GAP: f32 = 3.0;
 
 // Image 2 exact dark slate + teal/mint/coral palette
-const MM_VEIL: u32 = rgb_to_hud(0x06080d, 150);
-const MM_PLATE: u32 = rgb_to_hud(0x0d121a, 236);
-const MM_EDGE: u32 = rgb_to_hud(0x253244, 220);
-const MM_INNER: u32 = rgb_to_hud(0x121924, 235);
-const MM_INNER_HOVER: u32 = rgb_to_hud(0x192332, 245);
-const MM_SEL_FILL: u32 = rgb_to_hud(0x112d35, 245);
-const MM_TEAL: u32 = rgb_to_hud(0x2dd4bf, 255);
-const MM_TEAL_BTN: u32 = rgb_to_hud(0x179b88, 255);
-const MM_TEAL_HOVER: u32 = rgb_to_hud(0x20b8a2, 255);
-const MM_MINT: u32 = rgb_to_hud(0x4ade80, 255);
-const MM_MINT_BG: u32 = rgb_to_hud(0x113628, 235);
-const MM_CORAL: u32 = rgb_to_hud(0xf07a68, 255);
-const MM_CORAL_BG: u32 = rgb_to_hud(0x3a181b, 235);
-const MM_BADGE_MOD: u32 = rgb_to_hud(0x113740, 240);
-const MM_BADGE_SLUG: u32 = rgb_to_hud(0x1b2433, 240);
-const MM_BADGE_CAT: u32 = rgb_to_hud(0x241c42, 240);
-const MM_MUTED: u32 = rgb_to_hud(0x8a99b0, 255);
-const MM_SOFT: u32 = rgb_to_hud(0xc5d0e0, 255);
+// Vanilla's own colours: dark translucent panels and selection over the list
+// background, white highlights, its green and red for on and off, and its
+// white, light-grey and grey text.
+const MM_VEIL: u32 = rgb_to_hud(0x000000, 0);
+const MM_PLATE: u32 = rgb_to_hud(0x000000, 150);
+const MM_EDGE: u32 = rgb_to_hud(0x000000, 220);
+const MM_INNER: u32 = rgb_to_hud(0x000000, 110);
+const MM_INNER_HOVER: u32 = rgb_to_hud(0xffffff, 30);
+const MM_SEL_FILL: u32 = rgb_to_hud(0x000000, 150);
+const MM_TEAL: u32 = rgb_to_hud(0xffffff, 255);
+const MM_MINT: u32 = rgb_to_hud(0x55ff55, 255);
+const MM_MINT_BG: u32 = rgb_to_hud(0x000000, 110);
+const MM_CORAL: u32 = rgb_to_hud(0xff5555, 255);
+const MM_CORAL_BG: u32 = rgb_to_hud(0x000000, 110);
+const MM_BADGE_MOD: u32 = rgb_to_hud(0x000000, 130);
+const MM_BADGE_SLUG: u32 = rgb_to_hud(0x000000, 110);
+const MM_BADGE_CAT: u32 = rgb_to_hud(0x000000, 150);
+const MM_MUTED: u32 = rgb_to_hud(0xa0a0a0, 255);
+const MM_SOFT: u32 = rgb_to_hud(0xe0e0e0, 255);
 
 impl ModMenuUi {
     pub fn open(&mut self, s: &mut Settings) {
@@ -2274,10 +2275,10 @@ impl ModMenuUi {
         let sel_on = s.extras.mod_catalog.is_on(self.selected);
         self.step_animations(raw_sel_y, sel_on);
 
-        // Outer glass modal
+        // The modal sits on vanilla's tiled list background, as the settings
+        // screens do.
         let [mx, my, mw, mh] = lay.modal;
-        batch.fill(atlas, mx, my, mw, mh, MM_PLATE);
-        style::ring(batch, atlas, lay.modal, MM_EDGE);
+        style::panel(batch, atlas, lay.modal, in_world);
         batch.fill(atlas, mx + 8.0, my + 26.0, mw - 16.0, 1.0, MM_EDGE);
 
         // Header: "Mod Menu" + "X/49 on"
@@ -2303,37 +2304,21 @@ impl ModMenuUi {
             lay.gear_btn[2],
             lay.gear_btn[3],
         );
-        batch.fill(
-            atlas,
-            lay.gear_btn[0],
-            lay.gear_btn[1],
-            lay.gear_btn[2],
-            lay.gear_btn[3],
-            if gear_hover { MM_INNER_HOVER } else { MM_INNER },
-        );
-        style::ring(batch, atlas, lay.gear_btn, MM_EDGE);
-        ui::centered_text(
+        // The quick-preset gear is a vanilla button.
+        style::button(
             batch,
             atlas,
+            lay.gear_btn,
             &Text::literal("*"),
-            lay.gear_btn[0],
-            lay.gear_btn[1] + 4.0,
-            lay.gear_btn[2],
-            if gear_hover { MM_TEAL } else { MM_SOFT },
+            (gear_hover, true, false),
         );
 
+        // The search box is the vanilla text field.
         let [sx, sy, sw, sh] = lay.search_box;
-        batch.fill(atlas, sx, sy, sw, sh, MM_INNER);
-        style::ring(
-            batch,
-            atlas,
-            lay.search_box,
-            if self.search_focused {
-                MM_TEAL
-            } else {
-                MM_EDGE
-            },
-        );
+        style::well(batch, atlas, lay.search_box);
+        if self.search_focused {
+            style::ring(batch, atlas, lay.search_box, style::WHITE);
+        }
         self.search.focused = self.search_focused;
         self.search.x = sx + 5.0;
         self.search.y = sy + 4.0;
@@ -2732,25 +2717,13 @@ impl ModMenuUi {
         let done_lbl = lang::get("gui.done");
         crate::widgets::record(&done_lbl, lay.done_btn, true);
         crate::widgets::target(lay.done_btn);
-        batch.fill(
-            atlas,
-            lay.done_btn[0],
-            lay.done_btn[1],
-            lay.done_btn[2],
-            lay.done_btn[3],
-            if dhov { MM_TEAL_HOVER } else { MM_TEAL_BTN },
-        );
-        if dhov {
-            style::ring(batch, atlas, lay.done_btn, style::WHITE);
-        }
-        ui::centered_text(
+        // Done is a vanilla button.
+        style::button(
             batch,
             atlas,
+            lay.done_btn,
             &Text::literal(done_lbl),
-            lay.done_btn[0],
-            lay.done_btn[1] + 5.0,
-            lay.done_btn[2],
-            style::WHITE,
+            (dhov, true, false),
         );
     }
 
