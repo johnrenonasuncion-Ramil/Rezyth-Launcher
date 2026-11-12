@@ -271,6 +271,16 @@ up to 4 MiB and logs the URL when tries run out; the draw side is unchanged
 
 ## Settings screens: vanilla Minecraft styling
 
+The Mod Menu (the hub's Extras tab opens it) follows the same restyle: its
+modal sits on vanilla's tiled list background, the preset gear and Done are
+vanilla buttons, the search box is the vanilla text field, and its palette is
+vanilla's — dark translucent panels, black edges/separators, white
+highlights, its green and red for on/off, and white/grey text. The 33-mod
+woven APK was rebuilt over all of it (weave run **43156179865**, artifact
+`woven-apk`), alongside the standard APK (android run **43156345217**,
+artifact `rezyth-apk`), both at `70b26855f`.
+
+
 The split-pane design module (`graphics_style.rs`, shared by the Horizon
 Graphics screens, every Volt Settings tab and the Mod Menu) now draws vanilla
 Minecraft's widgets instead of the frosted-glass controls, with every size,
