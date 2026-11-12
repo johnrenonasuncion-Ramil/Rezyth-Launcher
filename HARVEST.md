@@ -280,6 +280,18 @@ woven APK was rebuilt over all of it (weave run **43156179865**, artifact
 `woven-apk`), alongside the standard APK (android run **43156345217**,
 artifact `rezyth-apk`), both at `70b26855f`.
 
+The look's second pass roomed and enlarged the same module: rows are 24 px
+with vanilla's own 20 px button height on them (`ROW`, and `CONTROL_W`/
+`CONTROL_H` 112/16 -> 128/20), the plate and its description strip carry a
+vanilla container's black frame over a gentle wash, checkboxes centre in
+their row and use vanilla's highlighted sprites while pointed at, the
+`< value >` cycle buttons size to their text and fit it so the arrows are
+always fully visible (no more scrolling labels), and the page/tab rails take
+a vanilla list row's height on tall screens — squeezed on short ones so they
+never grow over Undo/Done. Both APKs were rebuilt over it at `f9bb02022`:
+weave run **43315607842** (artifact `woven-apk`) and android run
+**43315751964** (artifact `rezyth-apk`), both green.
+
 
 The split-pane design module (`graphics_style.rs`, shared by the Horizon
 Graphics screens, every Volt Settings tab and the Mod Menu) now draws vanilla
