@@ -129,6 +129,14 @@ EOF
 # build. horizon-android's manifest goes back to building android_lib.rs.
 build=$cache/build
 mkdir -p "$build"
+# The workflow that runs this unpacks the repository's signing key into the source tree
+# (android.yml's debug keystore, so an APK installs over the last): build_apk.py signs with
+# target/android/debug.keystore under its own ROOT, the build folder here, so the same key
+# arrives there too.
+if [ -f "$source/target/android/debug.keystore" ]; then
+  mkdir -p "$build/target/android"
+  cp "$source/target/android/debug.keystore" "$build/target/android/debug.keystore"
+fi
 rsync -r --checksum --delete --exclude /target/ --exclude "/$manifest" \
   --exclude /crates/horizon-android/plan-stub.rs "$work/stage/" "$build/"
 git -C "$source" show "HEAD:$manifest" > "$work/manifest"

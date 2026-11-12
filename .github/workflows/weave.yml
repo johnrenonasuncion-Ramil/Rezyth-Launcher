@@ -1,9 +1,11 @@
 name: weave
 # The official registry native mods (horizon-rust/horizon-mods), verified
 # against a pinned registry snapshot and woven into one engine library by
-# packaging/android/native_build.sh, then built into an APK. Dispatch-only:
-# it downloads third-party bundles and executes their build, so it never runs
-# on a push. arm64-v8a only, as this repository's APK builds are.
+# packaging/android/native_build.sh, then built into an APK signed with the
+# same key as android.yml's builds (STARLING_DEBUG_KEYSTORE_BASE64), so the
+# two install over each other. Dispatch-only: it downloads third-party
+# bundles and executes their build, so it never runs on a push. arm64-v8a
+# only, as this repository's APK builds are.
 on:
   # A change to the weave tooling or this file is a request to run it (the
   # dispatch trigger waits for this file on the default branch). The
@@ -129,6 +131,17 @@ jobs:
             --output "$RUNNER_TEMP/weave" 2> "$RUNNER_TEMP/weave-report.txt" \
             > "$RUNNER_TEMP/weave-bundles.txt"
           echo "--- weave report:"; cat "$RUNNER_TEMP/weave-report.txt"
+      # native_build.sh copies this into the build folder where build_apk.py looks; without
+      # it that script generates a throwaway key and the woven APK refuses to install over
+      # the standard one (INSTALL_FAILED_UPDATE_INCOMPATIBLE).
+      - name: Unpack the debug key
+        env:
+          KEYSTORE: ${{ secrets.STARLING_DEBUG_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KEYSTORE" || { echo "STARLING_DEBUG_KEYSTORE_BASE64 is not set"; exit 1; }
+          mkdir -p target/android
+          echo "$KEYSTORE" | base64 -d > target/android/debug.keystore
+          keytool -list -keystore target/android/debug.keystore -storepass android 2>/dev/null | grep -E 'horizon-debug|SHA256' || true
       - name: Build the APK with the woven set
         run: |
           set -euo pipefail
