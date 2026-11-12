@@ -73,7 +73,8 @@ pub const VEIL: u32 = 0;
 /// Sizes in GUI pixels.
 /// Shorter screens than this (a 720p window at scale 3) keep a narrower margin on top.
 pub const TITLED: f32 = 300.0;
-pub const ROW: f32 = 20.0;
+/// A row is 24 px with a vanilla button's own 20 px height inside it.
+pub const ROW: f32 = 24.0;
 /// A group's name over its panel, and a page's over its groups while searching.
 pub const GROUP_ROW: f32 = 14.0;
 pub const PAGE_ROW: f32 = 16.0;
@@ -82,8 +83,9 @@ pub const GROUP_GAP: f32 = 10.0;
 pub const PAGE_GAP: f32 = 6.0;
 /// The control on the right of a row (a button, a box or a slider), and the
 /// left column: the search field, the page list and the buttons.
-pub const CONTROL_W: f32 = 112.0;
-pub const CONTROL_H: f32 = 16.0;
+pub const CONTROL_W: f32 = 128.0;
+/// Vanilla's buttons and sliders are 20 px tall: the row control is too.
+pub const CONTROL_H: f32 = 20.0;
 pub const SEARCH_H: f32 = 16.0;
 /// Vanilla's scroller: the column `ui::Scroll::press` takes.
 pub const SCROLLER_W: f32 = 6.0;
@@ -123,6 +125,10 @@ pub fn panel(batch: &mut HudBatch, atlas: &HudAtlas, [x, y, w, h]: [f32; 4], in_
     } else {
         fill(batch, atlas, [x, y, w, h], rgba(0, 0, 0, 120));
     }
+    // A gentle wash for the text on the tiles, and a black frame, as vanilla's
+    // containers have.
+    fill(batch, atlas, [x, y, w, h], hex(0x000000, 60));
+    ring(batch, atlas, [x, y, w, h], hex(0x000000, 200));
 }
 /// Vanilla's option lists have no group panels: the rows on the list
 /// background, and their hover, are the whole look.
@@ -217,15 +223,26 @@ pub fn wrap_lines(atlas: &HudAtlas, text: &str, width: f32) -> Vec<String> {
     }
     lines
 }
-/// Vanilla's checkbox: its 17 px sprite at the right of the row at `y`.
-pub fn checkbox(batch: &mut HudBatch, atlas: &HudAtlas, right: f32, y: f32, on: bool, live: bool) {
-    let sprite = if on {
-        "gui/sprites/widget/checkbox_selected"
-    } else {
-        "gui/sprites/widget/checkbox"
+/// Vanilla's checkbox: its 17 px sprite at the right of the row at `y`,
+/// highlighted while `hover`ed.
+pub fn checkbox(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    right: f32,
+    y: f32,
+    on: bool,
+    live: bool,
+    hover: bool,
+) {
+    let sprite = match (on, hover) {
+        (true, true) => "gui/sprites/widget/checkbox_selected_highlighted",
+        (true, false) => "gui/sprites/widget/checkbox_selected",
+        (false, true) => "gui/sprites/widget/checkbox_highlighted",
+        (false, false) => "gui/sprites/widget/checkbox",
     };
     let color = if live { u32::MAX } else { MUTED };
-    batch.sprite_scaled(atlas, sprite, right - 17.0, y + 1.5, 17.0, 17.0, color);
+    let cy = y + (ROW - 17.0) / 2.0;
+    batch.sprite_scaled(atlas, sprite, right - 17.0, cy, 17.0, 17.0, color);
 }
 /// A vanilla button: the grey widget, its label centred and scrolling when it
 /// is wider than the button. `primary` is kept for the callers' tuple; vanilla
@@ -321,7 +338,8 @@ pub fn slider(
     let color = if live { WHITE } else { MUTED };
     ui::centered_text(batch, atlas, value, x, sy + 6.0, w, color);
 }
-/// A cycle button is a vanilla button whose label is the value.
+/// A cycle button is a vanilla button whose label is the value between its
+/// arrows, fitted so a long value never scrolls.
 pub fn cycler(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
@@ -330,7 +348,8 @@ pub fn cycler(
     (hover, live): (bool, bool),
 ) {
     let sy = (y + h / 2.0 - 10.0).floor();
-    let label = Text::literal(format!("< {} >", value.plain()));
+    let label = format!("< {} >", value.plain());
+    let label = Text::literal(fit(atlas, &label, w - 6.0));
     button(batch, atlas, [x, sy, w, 20.0], &label, (hover, live, false));
 }
 /// A screen's title, centred at the top (split-screen profiles).

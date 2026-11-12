@@ -1243,14 +1243,14 @@ impl Columns {
     pub fn bar_x(&self) -> f32 {
         self.plate[0] + self.plate[2] - 8.0 - style::SCROLLER_W
     }
-    /// A page in the page list, under the search field.
+    /// A page in the page list, under the search field: the height of a
+    /// vanilla list row, squeezed only when the screen is too short for it.
     pub fn page(&self, i: usize) -> [f32; 4] {
-        [
-            self.side_x,
-            self.side_y + 56.0 + i as f32 * 18.0,
-            style::CONTROL_W,
-            16.0,
-        ]
+        let start = self.side_y + 56.0;
+        let avail = (self.button(1)[1] - 4.0 - start).max(60.0);
+        let step = (avail / Page::ALL.len() as f32).clamp(12.0, 22.0).floor();
+        let th = (step - 2.0).clamp(10.0, 20.0);
+        [self.side_x, start + i as f32 * step, style::CONTROL_W, th]
     }
     /// Done (`0`), and Undo over it (`1`): under the page list, level with the strip.
     pub fn button(&self, i: usize) -> [f32; 4] {
@@ -1801,15 +1801,18 @@ impl GraphicsUi {
         } else {
             let value = value.unwrap_or_default();
             let vw = atlas.font.width(&value);
-            // Where the control starts, and the value's text for a slider at rest.
+            // Where the control starts, and the value's text for a slider at
+            // rest. The cycle button fits its < value > label, so the arrows
+            // never scroll.
+            let bracketed = atlas.font.width(&format!("< {value} >"));
             let start = match (switch, slider) {
                 (Some(_), _) => right - style::CONTROL_H,
                 (None, Some(_)) if active => tx,
                 (None, Some(_)) => right - vw,
-                (None, None) => right - vw - 18.0,
+                (None, None) => (right - bracketed - 18.0).max(tx),
             };
             match (switch, slider) {
-                (Some(on), _) => style::checkbox(batch, atlas, right, y, on, live),
+                (Some(on), _) => style::checkbox(batch, atlas, right, y, on, live, lit),
                 // A slider shows its track, the value on it, while it is pointed at, focused or held.
                 (None, Some(position)) => {
                     let value = Text::literal(value);
@@ -1824,7 +1827,12 @@ impl GraphicsUi {
                     style::cycler(
                         batch,
                         atlas,
-                        [start, y + 3.0, vw + 18.0, 14.0],
+                        [
+                            start,
+                            y + (style::ROW - style::CONTROL_H) / 2.0,
+                            right - start,
+                            style::CONTROL_H,
+                        ],
                         &value,
                         (lit, live),
                     );

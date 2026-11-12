@@ -666,11 +666,13 @@ impl VoltSettingsUi {
     }
 
     fn tab_rect(&self, cols: &Columns, i: usize) -> [f32; 4] {
-        // Fit all 8 tabs cleanly between the search bar and Undo/Done even at 240p GUI height
+        // Fit the tabs cleanly between the search bar and Undo/Done even at
+        // 240p GUI height; a tall screen gives them the vanilla list row's
+        // height.
         let start_y = cols.side_y + 44.0;
         let avail = (cols.button(1)[1] - 4.0 - start_y).max(96.0);
-        let step = (avail / VoltTab::ALL.len() as f32).clamp(12.0, 17.0).floor();
-        let th = (step - 1.0).clamp(11.0, 15.0);
+        let step = (avail / VoltTab::ALL.len() as f32).clamp(12.0, 22.0).floor();
+        let th = (step - 1.0).clamp(11.0, 20.0);
         [cols.side_x, start_y + i as f32 * step, style::CONTROL_W, th]
     }
 
@@ -1051,14 +1053,16 @@ impl VoltSettingsUi {
             style::volt_button(batch, atlas, wide, &Text::literal(name), (lit, true, false));
         } else {
             let value = value.unwrap_or_default();
-            let vw = atlas.font.width(&value);
+            // The cycle button is as wide as its < value > label, within the
+            // control column, so the arrows never scroll.
+            let vw = atlas.font.width(&format!("< {value} >"));
             let start = match (switch, slider) {
                 (Some(_), _) => right - style::CONTROL_H,
                 (None, Some(_)) => tx,
-                (None, None) => (right - (vw + 20.0).max(58.0)).max(tx),
+                (None, None) => (right - (vw + 20.0).max(64.0)).max(tx),
             };
             match (switch, slider) {
-                (Some(on), _) => style::checkbox(batch, atlas, right, y, on, true),
+                (Some(on), _) => style::checkbox(batch, atlas, right, y, on, true, lit),
                 (None, Some(pos)) => {
                     style::slider(
                         batch,
@@ -1073,7 +1077,12 @@ impl VoltSettingsUi {
                     style::cycler(
                         batch,
                         atlas,
-                        [start, y + 3.0, right - start, 14.0],
+                        [
+                            start,
+                            y + (style::ROW - style::CONTROL_H) / 2.0,
+                            right - start,
+                            style::CONTROL_H,
+                        ],
                         &Text::literal(value),
                         (lit, true),
                     );
