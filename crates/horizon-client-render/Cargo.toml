@@ -37,6 +37,11 @@ bytemuck = { version = "1.24", features = ["derive"] }
 cpal = { version = "0.16", optional = true }
 chrono = { version = "0.4.42", default-features = false, features = ["clock", "std"] }
 flate2 = { version = "1.1.10", default-features = false, features = ["zlib-rs", "runtime_detection"] }
+# The formats the Modrinth pack gallery's icons arrive in, beside PNG (hud.rs
+# `decode_bytes`): WebP for most, then GIF or JPEG.
+gif = "0.14"
+image-webp = "0.2"
+jpeg-decoder = "0.3"
 glam = "0.30"
 log = "0.4"
 miniz_oxide = "0.8"

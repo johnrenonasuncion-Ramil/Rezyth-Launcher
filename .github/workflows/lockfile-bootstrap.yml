@@ -1,0 +1,52 @@
+name: lockfile-bootstrap
+# TEMPORARY (its two files are removed once Cargo.lock lands): the working tree
+# this was written in has no Rust toolchain, so one runner resolves the lockfile
+# for the icon decoders horizon-client-render gained, formats the touched
+# sources, type-checks them and runs the crate's tests. The artifact carries the
+# manifests, the lockfile and the formatted sources.
+on:
+  push:
+    paths: ['.lockfile-bootstrap']
+permissions:
+  contents: read
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the ALSA and udev headers the client links against
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libasound2-dev libudev-dev
+      - name: Install Rust, rustfmt and clippy
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt --component clippy
+          rustup default stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: verify
+      - name: Resolve the lockfile for the new decoders
+        run: |
+          cargo fetch
+          cargo metadata --format-version 1 > /dev/null
+      - name: Format and type-check the touched crates
+        run: |
+          cargo fmt --all
+          cargo clippy -p horizon-client-render -p horizon-client --lib --bins --tests -- -D warnings
+      - name: Run the render crate's tests
+        run: cargo test -p horizon-client-render --lib
+      - name: Show what changed
+        if: always()
+        run: |
+          git status --short
+          git diff --stat
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lockfile
+          path: |
+            Cargo.lock
+            crates/horizon-client-render/Cargo.toml
+            crates/horizon-client-render/src/hud.rs
+            crates/horizon-client/src/game/pack_gallery.rs
+          if-no-files-found: error

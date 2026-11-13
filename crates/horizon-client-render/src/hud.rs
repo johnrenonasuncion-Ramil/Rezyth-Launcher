@@ -182,8 +182,24 @@ pub const TRIM_SLOTS: usize = 32;
 pub fn decode(path: &Path) -> Result<(u32, u32, Vec<u8>)> {
     decode_bytes(&horizon_core::prepared_files::read(path)?)
 }
-/// A PNG in memory as RGBA pixels.
+/// An image in memory as RGBA pixels: a PNG (the game's own files and
+/// vanilla's), or the WebP (most), GIF or JPEG the Modrinth pack gallery's
+/// icons arrive in (`pack_screen::load_icon`). A WebP animation or GIF decodes
+/// its first frame.
 pub fn decode_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
+    if data.starts_with(b"RIFF") && data.get(8..12) == Some(b"WEBP".as_slice()) {
+        return webp_bytes(data);
+    }
+    if data.starts_with(b"GIF87a") || data.starts_with(b"GIF89a") {
+        return gif_bytes(data);
+    }
+    if data.starts_with(&[0xFF, 0xD8, 0xFF]) {
+        return jpeg_bytes(data);
+    }
+    png_bytes(data)
+}
+/// A PNG's pixels.
+fn png_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
     let mut decoder = png::Decoder::new(std::io::Cursor::new(data));
     decoder.ignore_checksums(true);
     decoder.set_transformations(png::Transformations::EXPAND | png::Transformations::STRIP_16);
@@ -194,8 +210,77 @@ pub fn decode_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
     let mut bytes = vec![0; reader.output_buffer_size().ok_or("image too large")?];
     let info = reader.next_frame(&mut bytes)?;
     let channels = info.color_type.samples();
-    let mut rgba = Vec::with_capacity((info.width * info.height * 4) as usize);
-    for p in bytes[..info.buffer_size()].chunks_exact(channels) {
+    Ok((
+        info.width,
+        info.height,
+        to_rgba(&bytes[..info.buffer_size()], channels),
+    ))
+}
+/// A WebP's pixels (an animation's first frame), as RGBA.
+fn webp_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
+    let mut decoder = image_webp::WebPDecoder::new(std::io::Cursor::new(data))?;
+    let (width, height) = decoder.dimensions();
+    let channels = if decoder.has_alpha() { 4 } else { 3 };
+    let mut pixels = vec![0; decoder.output_buffer_size().ok_or("image too large")?];
+    decoder.read_image(&mut pixels)?;
+    Ok((width, height, to_rgba(&pixels, channels)))
+}
+/// A GIF's first frame, on a transparent canvas the size of its offsets.
+fn gif_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
+    let mut options = gif::DecodeOptions::new();
+    // A palette entry's transparency as an alpha of its own.
+    options.set_color_output(gif::ColorOutput::RGBA);
+    let mut decoder = options.read_info(std::io::Cursor::new(data))?;
+    let frame = decoder.read_next_frame()?.ok_or("the GIF has no frame")?;
+    let (width, height) = (
+        u32::from(frame.width) + u32::from(frame.left),
+        u32::from(frame.height) + u32::from(frame.top),
+    );
+    let mut rgba = vec![0; width as usize * height as usize * 4];
+    for (y, row) in frame
+        .buffer
+        .chunks_exact(frame.width as usize * 4)
+        .enumerate()
+    {
+        let at = (u32::from(frame.top) as usize + y) * width as usize * 4
+            + u32::from(frame.left) as usize * 4;
+        rgba[at..at + row.len()].copy_from_slice(row);
+    }
+    Ok((width, height, rgba))
+}
+/// A JPEG's pixels, as RGBA.
+fn jpeg_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
+    let mut decoder = jpeg_decoder::Decoder::new(std::io::Cursor::new(data));
+    let pixels = decoder.decode()?;
+    let info = decoder.info().ok_or("the JPEG has no header")?;
+    let rgba = match info.pixel_format {
+        // An Adobe CMYK JPEG: its channels are inverted, and K scales RGB.
+        jpeg_decoder::PixelFormat::CMYK32 => pixels
+            .chunks_exact(4)
+            .flat_map(|p| {
+                let k = u16::from(p[3]);
+                [
+                    ((u16::from(p[0]) * k + 127) / 255) as u8,
+                    ((u16::from(p[1]) * k + 127) / 255) as u8,
+                    ((u16::from(p[2]) * k + 127) / 255) as u8,
+                    255,
+                ]
+            })
+            .collect(),
+        jpeg_decoder::PixelFormat::L8 => to_rgba(&pixels, 1),
+        // Two-byte luminance: its high byte (JPEG is big-endian).
+        jpeg_decoder::PixelFormat::L16 => {
+            let gray: Vec<u8> = pixels.chunks_exact(2).map(|p| p[0]).collect();
+            to_rgba(&gray, 1)
+        }
+        _ => to_rgba(&pixels, 3),
+    };
+    Ok((u32::from(info.width), u32::from(info.height), rgba))
+}
+/// Pixels of `channels` (1 to 4) bytes each, as RGBA.
+fn to_rgba(pixels: &[u8], channels: usize) -> Vec<u8> {
+    let mut rgba = Vec::with_capacity(pixels.len() / channels * 4);
+    for p in pixels.chunks_exact(channels) {
         rgba.extend(match channels {
             4 => [p[0], p[1], p[2], p[3]],
             3 => [p[0], p[1], p[2], 255],
@@ -203,7 +288,7 @@ pub fn decode_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
             _ => [p[0], p[0], p[0], 255],
         });
     }
-    Ok((info.width, info.height, rgba))
+    rgba
 }
 /// The most texels of OptiFine random entity variants the entity atlas packs: 2048 rows of
 /// its 4096, which keeps the default atlas (4096x5120) under the 8192 rows many GPUs take.
@@ -3220,6 +3305,64 @@ mod tests {
         }
         let (w, h, rgba) = decode_bytes(&png).unwrap();
         assert_eq!((w, h, rgba), (2, 1, vec![255, 0, 0, 255, 0, 0, 255, 128]));
+    }
+
+    /// A 1x1 transparent GIF (the classic 42-byte file).
+    const GIF_1X1: &[u8] = &[
+        0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0xff, 0xff, 0xff, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00,
+        0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x01, 0x44, 0x00, 0x3b,
+    ];
+    /// A 1x1 baseline JPEG (160 bytes).
+    const JPEG_1X1: &[u8] = &[
+        0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x01, 0x00,
+        0x60, 0x00, 0x60, 0x00, 0x00, 0xff, 0xdb, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06, 0x07, 0x06,
+        0x05, 0x08, 0x07, 0x07, 0x07, 0x09, 0x09, 0x08, 0x0a, 0x0c, 0x14, 0x0d, 0x0c, 0x0b, 0x0b,
+        0x0c, 0x19, 0x12, 0x13, 0x0f, 0x14, 0x1d, 0x1a, 0x1f, 0x1e, 0x1d, 0x1a, 0x1c, 0x1c, 0x20,
+        0x24, 0x2e, 0x27, 0x20, 0x22, 0x2c, 0x23, 0x1c, 0x1c, 0x28, 0x37, 0x29, 0x2c, 0x30, 0x31,
+        0x34, 0x34, 0x34, 0x1f, 0x27, 0x39, 0x3d, 0x38, 0x32, 0x3c, 0x2e, 0x33, 0x34, 0x32, 0xff,
+        0xc0, 0x00, 0x0b, 0x08, 0x00, 0x01, 0x00, 0x01, 0x01, 0x01, 0x11, 0x00, 0xff, 0xc4, 0x00,
+        0x14, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x09, 0xff, 0xc4, 0x00, 0x14, 0x10, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0xda, 0x00, 0x08,
+        0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x54, 0xdf, 0xff, 0xd9,
+    ];
+
+    #[test]
+    fn a_gif_icon_decodes_to_its_frame() {
+        assert_eq!(
+            decode_bytes(GIF_1X1).expect("the GIF decodes"),
+            (1, 1, vec![0, 0, 0, 0]),
+            "a transparent pixel"
+        );
+    }
+
+    #[test]
+    fn a_webp_icon_decodes_to_its_pixels() {
+        // Modrinth serves most resource packs' icons as WebP, which the
+        // PNG-only reader dropped to the unknown_pack fallback; encode one with
+        // image-webp itself (lossless: the pixels must come back exactly).
+        let mut webp = Vec::new();
+        image_webp::WebPEncoder::new(&mut webp)
+            .encode(
+                &[255, 0, 0, 255, 0, 0, 255, 128],
+                2,
+                1,
+                image_webp::ColorType::Rgba8,
+            )
+            .expect("the WebP encodes");
+        assert_eq!(
+            decode_bytes(&webp).expect("the WebP decodes"),
+            (2, 1, vec![255, 0, 0, 255, 0, 0, 255, 128])
+        );
+    }
+
+    #[test]
+    fn a_jpeg_icon_decodes_to_its_pixels() {
+        let (w, h, rgba) = decode_bytes(JPEG_1X1).expect("the JPEG decodes");
+        assert_eq!((w, h), (1, 1));
+        assert_eq!(rgba.len(), 4);
+        assert_eq!(rgba[3], 255, "opaque");
     }
 
     #[test]

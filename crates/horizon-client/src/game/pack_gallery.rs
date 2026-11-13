@@ -259,6 +259,9 @@ impl GalleryOps {
     /// The gallery page opened: read the sidecar, look for updates and, with
     /// no results yet, search.
     fn list(&mut self, ui: &mut OptionsUi) {
+        // A fresh visit is a fresh start for the icons whose tries had run out
+        // (a fresh search clears them too, in `apply`).
+        self.icons_failed.clear();
         let dir = packs::packs_dir();
         let records: Vec<gallery::Installed> = read_index()
             .into_iter()
@@ -756,12 +759,9 @@ fn request(url: &str) -> Result<String, String> {
         .map_err(|e| format!("Modrinth: {e}"))
 }
 
-/// The most bytes an icon may take: Modrinth's largest are 1024x1024 PNGs of a
-/// few hundred KiB, and a cap below that silently dropped those rows to the
-/// fallback texture.
-const MAX_ICON: u64 = 4 * 1024 * 1024;
-
-/// A row's icon from Modrinth, decoded to the pack screen's square.
+/// A row's icon from Modrinth, decoded to the pack screen's square. The whole
+/// body is read, however large: the size cap that used to guard this dropped
+/// the rows whose icon was above it to the fallback texture for good.
 fn fetch_icon(url: &str) -> Option<Arc<[u8]>> {
     if !url.starts_with("https://") {
         return None;
@@ -780,9 +780,6 @@ fn fetch_icon(url: &str) -> Option<Arc<[u8]>> {
             break;
         }
         data.extend_from_slice(&buffer[..read]);
-        if data.len() as u64 > MAX_ICON {
-            return None;
-        }
     }
     horizon_client::pack_screen::load_icon(&data)
 }
