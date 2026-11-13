@@ -253,6 +253,26 @@ Verified: `android.yml` runs **42911549966** and **42912956822** at `f21b1b1e2`,
 independent builds, both `Signer #1 certificate SHA-256 digest:
 3993cee17fd526d1a7c08842d2d8b37a586f54c01e8899a734e42cd084a7aa66`.
 
+The weave APK was the exception: `weave.yml` never unpacked the secret, and
+`native_build.sh` builds in its own cache folder (where `build_apk.py` looks for the
+key, not the checkout's), so every woven build generated a throwaway key of its own
+(the 2026-11-12 21:59Z run signed with `d983728a...`) and could not install over the
+standard APK. `weave.yml` now unpacks the same secret to `target/android/debug.keystore`
+like android.yml, and `native_build.sh` carries the source tree's key into the build
+folder it runs in — which also makes android.yml's own native-mod builds (`native_mods:`
+input) share the key. Verified: weave run **43327935765** at `dec81bce9`, `Signer #1
+certificate SHA-256 digest: 3993cee1...`, artifact `woven-apk` — the same signer as the
+standard APK, so either installs over the other.
+
+## The woven APK is the branch's default build
+
+Every push to `feat/volt-harvest` now runs the weave workflow: its trigger's
+`paths` filter is gone, so the 33-mod APK is built automatically (the standard
+APK stays a manual dispatch on this branch), and nothing needs bumping to
+rebuild it — the `.weave-trigger` sentinel is no longer read. Verified: the
+trigger change's own push built it (weave run **43335963941** at `a60a3a3e3`),
+and a later push with no tooling in it builds it too.
+
 ## Gallery icons: retried, throttled, and bigger
 
 Some rows in the Modrinth gallery kept the `unknown_pack` fallback (the
