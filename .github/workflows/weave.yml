@@ -3,20 +3,15 @@ name: weave
 # against a pinned registry snapshot and woven into one engine library by
 # packaging/android/native_build.sh, then built into an APK signed with the
 # same key as android.yml's builds (STARLING_DEBUG_KEYSTORE_BASE64), so the
-# two install over each other. Dispatch-only: it downloads third-party
-# bundles and executes their build, so it never runs on a push. arm64-v8a
-# only, as this repository's APK builds are.
+# two install over each other. The default build of this branch: every push
+# to feat/volt-harvest runs it — it downloads third-party bundles and
+# executes their build, so it runs for that branch only. arm64-v8a only, as
+# this repository's APK builds are.
 on:
-  # A change to the weave tooling or this file is a request to run it (the
-  # dispatch trigger waits for this file on the default branch). The
-  # sentinel file reruns the same set without a tooling change.
+  # Every push builds the woven APK (the dispatch trigger waits for this file
+  # on the default branch; a dispatch can ask for another set).
   push:
     branches: [feat/volt-harvest]
-    paths:
-      - '.github/workflows/weave.yml'
-      - 'tools/native_mods/**'
-      - '.weave-trigger'
-      - '.weave-set'
   workflow_dispatch:
     inputs:
       weave_set:
