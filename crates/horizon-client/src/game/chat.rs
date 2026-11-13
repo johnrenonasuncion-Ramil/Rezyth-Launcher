@@ -1600,10 +1600,9 @@ impl Game<'_> {
                 crate::android::gallery::Outcome::Saved(name) => {
                     Text::translate("horizon.gallery.saved", &[Text::literal(name)])
                 }
-                crate::android::gallery::Outcome::Failed(error) => Text::translate(
-                    "horizon.gallery.failed",
-                    &[Text::literal(error)],
-                ),
+                crate::android::gallery::Outcome::Failed(error) => {
+                    Text::translate("horizon.gallery.failed", &[Text::literal(error)])
+                }
                 crate::android::gallery::Outcome::PermissionDenied => {
                     Text::translate("horizon.gallery.permission", &[])
                 }

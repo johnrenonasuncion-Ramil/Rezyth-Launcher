@@ -736,7 +736,13 @@ mod tests {
     #[test]
     fn waypoint_store_handles_death_limit_and_nether_sync() {
         let mut store = WaypointStore::default();
-        let id = store.add("sp:Test", "  Base  ", "minecraft:overworld", [80, 64, -160], WaypointColor::Emerald);
+        let id = store.add(
+            "sp:Test",
+            "  Base  ",
+            "minecraft:overworld",
+            [80, 64, -160],
+            WaypointColor::Emerald,
+        );
         assert_eq!(id, 1);
         assert_eq!(store.entries[0].name, "Base");
 
@@ -1560,4 +1566,3 @@ impl AudioVoiceCap {
         }
     }
 }
-

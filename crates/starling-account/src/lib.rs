@@ -400,7 +400,8 @@ fn minecraft_login(ep: &Endpoints, ms_access: &str) -> Result<Minecraft, String>
         }),
         // An Azure app Mojang has not approved (Minecraft API access) is refused.
         (403, _) => Err(
-            "The Minecraft services refused Rezyth Launcher: its app is not approved by Mojang.".into(),
+            "The Minecraft services refused Rezyth Launcher: its app is not approved by Mojang."
+                .into(),
         ),
         (429, _) => Err("Too many sign-ins in a short time. Wait a minute and try again.".into()),
         _ => Err("The Minecraft services refused the sign-in.".into()),

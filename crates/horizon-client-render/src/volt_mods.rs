@@ -35,12 +35,30 @@ pub fn zoomify_factor(fov_pct: u16, steps: i32) -> f32 {
 /// Ease the native zoom's FOV scale independently from vanilla's camera
 /// modifier, which clamps to 0.1 and cannot represent zooms stronger than 10x.
 pub fn zoomify_ease_scale(current: f32, target: f32, seconds: f32, smooth: bool) -> f32 {
-    let target = if target.is_finite() { target.clamp(0.002, 1.0) } else { 1.0 };
-    let current = if current.is_finite() { current.clamp(0.002, 1.0) } else { 1.0 };
-    if !smooth || current == target { return target; }
-    let dt = if seconds.is_finite() { seconds.clamp(0.0, 0.25) } else { 0.0 };
+    let target = if target.is_finite() {
+        target.clamp(0.002, 1.0)
+    } else {
+        1.0
+    };
+    let current = if current.is_finite() {
+        current.clamp(0.002, 1.0)
+    } else {
+        1.0
+    };
+    if !smooth || current == target {
+        return target;
+    }
+    let dt = if seconds.is_finite() {
+        seconds.clamp(0.0, 0.25)
+    } else {
+        0.0
+    };
     let next = current + (target - current) * (1.0 - (-8.0 * dt).exp());
-    if (next - target).abs() < 0.00001 { target } else { next }
+    if (next - target).abs() < 0.00001 {
+        target
+    } else {
+        next
+    }
 }
 
 /// Original upstream artwork for entries whose source and redistribution terms
@@ -48,24 +66,78 @@ pub fn zoomify_ease_scale(current: f32, target: f32, seconds: f32, smooth: bool)
 /// These are native equivalents, not the original Java mods.
 pub fn upstream_icon(id: VoltModId) -> Option<(&'static str, &'static [u8])> {
     match id {
-        VoltModId::AppleSkin => Some(("horizon/mod-icon/appleskin", include_bytes!("../assets/mod_icons/appleskin.png"))),
-        VoltModId::ArmorHud => Some(("horizon/mod-icon/armor_hud", include_bytes!("../assets/mod_icons/armor_hud.png"))),
-        VoltModId::LowFire => Some(("horizon/mod-icon/low_fire", include_bytes!("../assets/mod_icons/low_fire.png"))),
-        VoltModId::ModMenu => Some(("horizon/mod-icon/mod_menu", include_bytes!("../assets/mod_icons/mod_menu.png"))),
-        VoltModId::ShulkerBoxTooltip => Some(("horizon/mod-icon/shulkerboxtooltip", include_bytes!("../assets/mod_icons/shulkerboxtooltip.png"))),
-        VoltModId::LanguageReload => Some(("horizon/mod-icon/language_reload", include_bytes!("../assets/mod_icons/language_reload.png"))),
-        VoltModId::FastQuit => Some(("horizon/mod-icon/fast_quit", include_bytes!("../assets/mod_icons/fast_quit.png"))),
-        VoltModId::BetterF3 => Some(("horizon/mod-icon/betterf3", include_bytes!("../assets/mod_icons/betterf3.png"))),
-        VoltModId::BetterPingDisplay => Some(("horizon/mod-icon/better_ping_display", include_bytes!("../assets/mod_icons/better_ping_display.png"))),
-        VoltModId::Controlling => Some(("horizon/mod-icon/controlling", include_bytes!("../assets/mod_icons/controlling.png"))),
-        VoltModId::MouseTweaks => Some(("horizon/mod-icon/mouse_tweaks", include_bytes!("../assets/mod_icons/mouse_tweaks.png"))),
-        VoltModId::NoFog => Some(("horizon/mod-icon/no_fog", include_bytes!("../assets/mod_icons/no_fog.png"))),
-        VoltModId::FerriteCore => Some(("horizon/mod-icon/ferritecore", include_bytes!("../assets/mod_icons/ferritecore.png"))),
-        VoltModId::DynamicFps => Some(("horizon/mod-icon/dynamic_fps", include_bytes!("../assets/mod_icons/dynamic_fps.png"))),
-        VoltModId::BadOptimizations => Some(("horizon/mod-icon/bad_optimizations", include_bytes!("../assets/mod_icons/bad_optimizations.png"))),
-        VoltModId::ScreenshotToClipboard => Some(("horizon/mod-icon/screenshot_clipboard", include_bytes!("../assets/mod_icons/screenshot_clipboard.png"))),
-        VoltModId::ChatHeads => Some(("horizon/mod-icon/chat_heads", include_bytes!("../assets/mod_icons/chat_heads.png"))),
-        VoltModId::BetterClouds => Some(("horizon/mod-icon/better_clouds", include_bytes!("../assets/mod_icons/better_clouds.png"))),
+        VoltModId::AppleSkin => Some((
+            "horizon/mod-icon/appleskin",
+            include_bytes!("../assets/mod_icons/appleskin.png"),
+        )),
+        VoltModId::ArmorHud => Some((
+            "horizon/mod-icon/armor_hud",
+            include_bytes!("../assets/mod_icons/armor_hud.png"),
+        )),
+        VoltModId::LowFire => Some((
+            "horizon/mod-icon/low_fire",
+            include_bytes!("../assets/mod_icons/low_fire.png"),
+        )),
+        VoltModId::ModMenu => Some((
+            "horizon/mod-icon/mod_menu",
+            include_bytes!("../assets/mod_icons/mod_menu.png"),
+        )),
+        VoltModId::ShulkerBoxTooltip => Some((
+            "horizon/mod-icon/shulkerboxtooltip",
+            include_bytes!("../assets/mod_icons/shulkerboxtooltip.png"),
+        )),
+        VoltModId::LanguageReload => Some((
+            "horizon/mod-icon/language_reload",
+            include_bytes!("../assets/mod_icons/language_reload.png"),
+        )),
+        VoltModId::FastQuit => Some((
+            "horizon/mod-icon/fast_quit",
+            include_bytes!("../assets/mod_icons/fast_quit.png"),
+        )),
+        VoltModId::BetterF3 => Some((
+            "horizon/mod-icon/betterf3",
+            include_bytes!("../assets/mod_icons/betterf3.png"),
+        )),
+        VoltModId::BetterPingDisplay => Some((
+            "horizon/mod-icon/better_ping_display",
+            include_bytes!("../assets/mod_icons/better_ping_display.png"),
+        )),
+        VoltModId::Controlling => Some((
+            "horizon/mod-icon/controlling",
+            include_bytes!("../assets/mod_icons/controlling.png"),
+        )),
+        VoltModId::MouseTweaks => Some((
+            "horizon/mod-icon/mouse_tweaks",
+            include_bytes!("../assets/mod_icons/mouse_tweaks.png"),
+        )),
+        VoltModId::NoFog => Some((
+            "horizon/mod-icon/no_fog",
+            include_bytes!("../assets/mod_icons/no_fog.png"),
+        )),
+        VoltModId::FerriteCore => Some((
+            "horizon/mod-icon/ferritecore",
+            include_bytes!("../assets/mod_icons/ferritecore.png"),
+        )),
+        VoltModId::DynamicFps => Some((
+            "horizon/mod-icon/dynamic_fps",
+            include_bytes!("../assets/mod_icons/dynamic_fps.png"),
+        )),
+        VoltModId::BadOptimizations => Some((
+            "horizon/mod-icon/bad_optimizations",
+            include_bytes!("../assets/mod_icons/bad_optimizations.png"),
+        )),
+        VoltModId::ScreenshotToClipboard => Some((
+            "horizon/mod-icon/screenshot_clipboard",
+            include_bytes!("../assets/mod_icons/screenshot_clipboard.png"),
+        )),
+        VoltModId::ChatHeads => Some((
+            "horizon/mod-icon/chat_heads",
+            include_bytes!("../assets/mod_icons/chat_heads.png"),
+        )),
+        VoltModId::BetterClouds => Some((
+            "horizon/mod-icon/better_clouds",
+            include_bytes!("../assets/mod_icons/better_clouds.png"),
+        )),
         _ => None,
     }
 }
@@ -764,13 +836,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xe63946,
             accent: 0xffd166,
             rows: [
-                "....++..",
-                "...+##..",
-                ".######.",
-                "##++####",
-                "#+######",
-                "########",
-                ".######.",
+                "....++..", "...+##..", ".######.", "##++####", "#+######", "########", ".######.",
                 "..####..",
             ],
         },
@@ -779,13 +845,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x38bdf8,
             accent: 0x4ade80,
             rows: [
-                "####.+++",
-                "#......+",
-                "###...++",
-                "#......+",
-                "#....+++",
-                "........",
-                "####.+++",
+                "####.+++", "#......+", "###...++", "#......+", "#....+++", "........", "####.+++",
                 "##...++.",
             ],
         },
@@ -794,13 +854,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x22c55e,
             accent: 0x86efac,
             rows: [
-                "......++",
-                "......++",
-                "....##++",
-                "....##++",
-                "..####++",
-                "..####++",
-                "######++",
+                "......++", "......++", "....##++", "....##++", "..####++", "..####++", "######++",
                 "######++",
             ],
         },
@@ -809,13 +863,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xa78bfa,
             accent: 0xf8fafc,
             rows: [
-                ".######.",
-                "#+....+#",
-                "#.+..+.#",
-                "#.++...#",
-                "#.+..+.#",
-                "#+....+#",
-                ".######.",
+                ".######.", "#+....+#", "#.+..+.#", "#.++...#", "#.+..+.#", "#+....+#", ".######.",
                 "..####..",
             ],
         },
@@ -824,13 +872,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x94a3b8,
             accent: 0xfbbf24,
             rows: [
-                "..####..",
-                ".##+#+##",
-                ".######.",
-                ".######.",
-                ".######.",
-                "..####..",
-                "...++...",
+                "..####..", ".##+#+##", ".######.", ".######.", ".######.", "..####..", "...++...",
                 "..++++..",
             ],
         },
@@ -839,13 +881,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x2dd4bf,
             accent: 0xfef08a,
             rows: [
-                "...++...",
-                "..++++..",
-                "...++...",
-                ".######.",
-                ".######.",
-                "...++...",
-                "..++++..",
+                "...++...", "..++++..", "...++...", ".######.", ".######.", "...++...", "..++++..",
                 "...++...",
             ],
         },
@@ -854,13 +890,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xc084fc,
             accent: 0xfacc15,
             rows: [
-                ".######.",
-                "########",
-                "###++###",
-                "........",
-                "###++###",
-                "########",
-                "########",
+                ".######.", "########", "###++###", "........", "###++###", "########", "########",
                 ".######.",
             ],
         },
@@ -869,13 +899,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xf4a261,
             accent: 0x60a5fa,
             rows: [
-                ".######.",
-                ".######.",
-                ".+#..#+.",
-                ".######.",
-                ".##++##.",
-                "..####..",
-                ".....+++",
+                ".######.", ".######.", ".+#..#+.", ".######.", ".##++##.", "..####..", ".....+++",
                 "....++++",
             ],
         },
@@ -884,13 +908,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x60a5fa,
             accent: 0xf8fafc,
             rows: [
-                "..####..",
-                ".#....#.",
-                "#..++..#",
-                "#.++++.#",
-                "#..++..#",
-                ".#....#.",
-                "..####..",
+                "..####..", ".#....#.", "#..++..#", "#.++++.#", "#..++..#", ".#....#.", "..####..",
                 "........",
             ],
         },
@@ -899,13 +917,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x818cf8,
             accent: 0x67e8f9,
             rows: [
-                ".####...",
-                "#++++#..",
-                "#+..+#..",
-                "#+..+#..",
-                "#++++#..",
-                ".####+#.",
-                ".....###",
+                ".####...", "#++++#..", "#+..+#..", "#+..+#..", "#++++#..", ".####+#.", ".....###",
                 "......##",
             ],
         },
@@ -914,13 +926,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xf43f5e,
             accent: 0x2dd4bf,
             rows: [
-                "...##...",
-                "...##...",
-                "........",
-                "##.++.&&",
-                "##.++.&&",
-                "........",
-                "...##...",
+                "...##...", "...##...", "........", "##.++.&&", "##.++.&&", "........", "...##...",
                 "...##...",
             ],
         },
@@ -929,13 +935,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x34d399,
             accent: 0xfbbf24,
             rows: [
-                "......++",
-                "....##++",
-                "....##++",
-                "..####++",
-                "..####++",
-                "######++",
-                "########",
+                "......++", "....##++", "....##++", "..####++", "..####++", "######++", "########",
                 "++++++++",
             ],
         },
@@ -944,13 +944,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x2dd4bf,
             accent: 0x99f6e4,
             rows: [
-                ".##..++.",
-                "####++++",
-                ".##..++.",
-                "........",
-                ".++..##.",
-                "++++####",
-                ".++..##.",
+                ".##..++.", "####++++", ".##..++.", "........", ".++..##.", "++++####", ".++..##.",
                 "........",
             ],
         },
@@ -959,13 +953,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x93c5fd,
             accent: 0xfbbf24,
             rows: [
-                "##.##.##",
-                "##.##.##",
-                "........",
-                "##.##.++",
-                "##.##.++",
-                "........",
-                "##.##.##",
+                "##.##.##", "##.##.##", "........", "##.##.++", "##.##.++", "........", "##.##.##",
                 "##.##.##",
             ],
         },
@@ -974,13 +962,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x38bdf8,
             accent: 0xbae6fd,
             rows: [
-                "##....##",
-                "###..###",
-                "########",
-                "##++++##",
-                ".######.",
-                ".######.",
-                "..####..",
+                "##....##", "###..###", "########", "##++++##", ".######.", ".######.", "..####..",
                 "..####..",
             ],
         },
@@ -989,13 +971,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xe879f9,
             accent: 0x67e8f9,
             rows: [
-                "...++...",
-                "..++++..",
-                "...##...",
-                "..####..",
-                ".##++##.",
-                ".######.",
-                ".######.",
+                "...++...", "..++++..", "...##...", "..####..", ".##++##.", ".######.", ".######.",
                 "..####..",
             ],
         },
@@ -1004,13 +980,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xa5b4fc,
             accent: 0x34d399,
             rows: [
-                "...++...",
-                "...++...",
-                "........",
-                "##.##.##",
-                "##.##.##",
-                "........",
-                ".######.",
+                "...++...", "...++...", "........", "##.##.##", "##.##.##", "........", ".######.",
                 "........",
             ],
         },
@@ -1019,13 +989,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xf97316,
             accent: 0xfef08a,
             rows: [
-                "....++..",
-                "...++...",
-                "..++++..",
-                ".######.",
-                "...++...",
-                "..++....",
-                ".++.....",
+                "....++..", "...++...", "..++++..", ".######.", "...++...", "..++....", ".++.....",
                 "........",
             ],
         },
@@ -1034,13 +998,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x10b981,
             accent: 0x6ee7b7,
             rows: [
-                "..####..",
-                ".#....#.",
-                "#..++..#",
-                "..+..+..",
-                "...##...",
-                "........",
-                "...++...",
+                "..####..", ".#....#.", "#..++..#", "..+..+..", "...##...", "........", "...++...",
                 "...++...",
             ],
         },
@@ -1049,13 +1007,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x4ade80,
             accent: 0xfacc15,
             rows: [
-                "..####..",
-                ".#....#.",
-                "#....+.#",
-                "#...++.#",
-                "#..++..#",
-                ".#....#.",
-                "########",
+                "..####..", ".#....#.", "#....+.#", "#...++.#", "#..++..#", ".#....#.", "########",
                 "........",
             ],
         },
@@ -1064,13 +1016,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xf87171,
             accent: 0xe2e8f0,
             rows: [
-                "...##...",
-                "..####..",
-                "..#++#..",
-                "...++...",
-                "...++...",
-                "..++++..",
-                ".######.",
+                "...##...", "..####..", "..#++#..", "...++...", "...++...", "..++++..", ".######.",
                 "........",
             ],
         },
@@ -1079,13 +1025,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x38bdf8,
             accent: 0x4ade80,
             rows: [
-                ".#####..",
-                "##...#..",
-                "#..#....",
-                "...##...",
-                "....##..",
-                ".....#..",
-                "++++++++",
+                ".#####..", "##...#..", "#..#....", "...##...", "....##..", ".....#..", "++++++++",
                 "######..",
             ],
         },
@@ -1094,13 +1034,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x22d3ee,
             accent: 0xffffff,
             rows: [
-                "...##...",
-                "...##...",
-                "..####..",
-                "###++###",
-                "###++###",
-                "..####..",
-                "...##...",
+                "...##...", "...##...", "..####..", "###++###", "###++###", "..####..", "...##...",
                 "...##...",
             ],
         },
@@ -1109,13 +1043,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xfacc15,
             accent: 0xfef9c3,
             rows: [
-                "#..##..#",
-                ".######.",
-                "##++++##",
-                "#+####+#",
-                "#+####+#",
-                "##++++##",
-                ".######.",
+                "#..##..#", ".######.", "##++++##", "#+####+#", "#+####+#", "##++++##", ".######.",
                 "#..##..#",
             ],
         },
@@ -1124,13 +1052,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xf97316,
             accent: 0xfde047,
             rows: [
-                "........",
-                "........",
-                "........",
-                "..#..#..",
-                ".######.",
-                "##++++##",
-                "#+####+#",
+                "........", "........", "........", "..#..#..", ".######.", "##++++##", "#+####+#",
                 ".######.",
             ],
         },
@@ -1139,13 +1061,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x60a5fa,
             accent: 0xf8fafc,
             rows: [
-                ".....++.",
-                "....++++",
-                "..#.....",
-                ".###..#.",
-                "#####.##",
-                "########",
-                "########",
+                ".....++.", "....++++", "..#.....", ".###..#.", "#####.##", "########", "########",
                 "........",
             ],
         },
@@ -1154,13 +1070,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xe2e8f0,
             accent: 0x93c5fd,
             rows: [
-                "........",
-                "...###..",
-                "..#####.",
-                ".#######",
-                "########",
-                "++++++++",
-                ".++++++.",
+                "........", "...###..", "..#####.", ".#######", "########", "++++++++", ".++++++.",
                 "........",
             ],
         },
@@ -1169,13 +1079,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xd97706,
             accent: 0xfacc15,
             rows: [
-                ".######.",
-                "########",
-                "###++###",
-                "+++##+++",
-                "###++###",
-                "########",
-                "########",
+                ".######.", "########", "###++###", "+++##+++", "###++###", "########", "########",
                 ".######.",
             ],
         },
@@ -1184,13 +1088,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x22c55e,
             accent: 0x052e16,
             rows: [
-                "########",
-                "#.+..+.#",
-                "#.+..+.#",
-                "#..++..#",
-                "#.++++.#",
-                "#.++++.#",
-                "#.+..+.#",
+                "########", "#.+..+.#", "#.+..+.#", "#..++..#", "#.++++.#", "#.++++.#", "#.+..+.#",
                 "########",
             ],
         },
@@ -1199,13 +1097,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xa855f7,
             accent: 0xf0abfc,
             rows: [
-                "........",
-                ".######.",
-                "########",
-                "+++##+++",
-                "+++##+++",
-                "########",
-                ".######.",
+                "........", ".######.", "########", "+++##+++", "+++##+++", "########", ".######.",
                 "........",
             ],
         },
@@ -1214,13 +1106,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xf59e0b,
             accent: 0xfef3c7,
             rows: [
-                "...##...",
-                "..####..",
-                ".##++##.",
-                ".#++++#.",
-                ".#++++#.",
-                ".##++##.",
-                "..####..",
+                "...##...", "..####..", ".##++##.", ".#++++#.", ".#++++#.", ".##++##.", "..####..",
                 "..####..",
             ],
         },
@@ -1229,13 +1115,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x38bdf8,
             accent: 0xf472b6,
             rows: [
-                "...++...",
-                "...++...",
-                ".######.",
-                "..####..",
-                "..#..#..",
-                ".#....#.",
-                "#......#",
+                "...++...", "...++...", ".######.", "..####..", "..#..#..", ".#....#.", "#......#",
                 "........",
             ],
         },
@@ -1244,13 +1124,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x10b981,
             accent: 0xa7f3d0,
             rows: [
-                ".######.",
-                "########",
-                "#+..+#.#",
-                "#++.##.#",
-                "#.#++#.#",
-                "#.#..#+#",
-                "########",
+                ".######.", "########", "#+..+#.#", "#++.##.#", "#.#++#.#", "#.#..#+#", "########",
                 ".######.",
             ],
         },
@@ -1259,13 +1133,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xc084fc,
             accent: 0xfbbf24,
             rows: [
-                "..####..",
-                ".#....#.",
-                "#..++..#",
-                "#..++..#",
-                ".#....#.",
-                "..####..",
-                "#......#",
+                "..####..", ".#....#.", "#..++..#", "#..++..#", ".#....#.", "..####..", "#......#",
                 "........",
             ],
         },
@@ -1274,13 +1142,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xef4444,
             accent: 0xfca5a5,
             rows: [
-                "...##...",
-                "..####..",
-                ".##++##.",
-                "##++++##",
-                "##++++##",
-                ".##++##.",
-                "..####..",
+                "...##...", "..####..", ".##++##.", "##++++##", "##++++##", ".##++##.", "..####..",
                 "...##...",
             ],
         },
@@ -1289,13 +1151,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x38bdf8,
             accent: 0x7dd3fc,
             rows: [
-                "#...#...",
-                "##..##..",
-                "###.###+",
-                "########",
-                "###.###+",
-                "##..##..",
-                "#...#...",
+                "#...#...", "##..##..", "###.###+", "########", "###.###+", "##..##..", "#...#...",
                 "........",
             ],
         },
@@ -1304,13 +1160,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x64748b,
             accent: 0x2dd4bf,
             rows: [
-                "####....",
-                "####..++",
-                "####.+++",
-                "####..++",
-                "####....",
-                "####.+++",
-                "####.+++",
+                "####....", "####..++", "####.+++", "####..++", "####....", "####.+++", "####.+++",
                 "####....",
             ],
         },
@@ -1319,13 +1169,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x22c55e,
             accent: 0x86efac,
             rows: [
-                "..++++..",
-                ".++..++.",
-                "+..##..+",
-                "+.####.+",
-                "+.####.+",
-                "+..##..+",
-                ".++..++.",
+                "..++++..", ".++..++.", "+..##..+", "+.####.+", "+.####.+", "+..##..+", ".++..++.",
                 "..++++..",
             ],
         },
@@ -1334,13 +1178,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x34d399,
             accent: 0x93c5fd,
             rows: [
-                "..####..",
-                ".######.",
-                ".#++++#.",
-                ".#+..+#.",
-                ".#++++#.",
-                ".#++++#.",
-                ".######.",
+                "..####..", ".######.", ".#++++#.", ".#+..+#.", ".#++++#.", ".#++++#.", ".######.",
                 "........",
             ],
         },
@@ -1349,13 +1187,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xf59e0b,
             accent: 0xe2e8f0,
             rows: [
-                "..+++...",
-                ".++..+..",
-                ".++.....",
-                "..###...",
-                "...###..",
-                "....###.",
-                ".....###",
+                "..+++...", ".++..+..", ".++.....", "..###...", "...###..", "....###.", ".....###",
                 "......##",
             ],
         },
@@ -1364,13 +1196,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x4ade80,
             accent: 0xffffff,
             rows: [
-                "........",
-                ".......+",
-                "......++",
-                "#....##.",
-                "##..##..",
-                ".####...",
-                "..##....",
+                "........", ".......+", "......++", "#....##.", "##..##..", ".####...", "..##....",
                 "........",
             ],
         },
@@ -1379,13 +1205,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x06b6d4,
             accent: 0xa5f3fc,
             rows: [
-                ".######.",
-                "#+....+#",
-                "#..++..#",
-                "#.++++.#",
-                "#.++++.#",
-                "#..++..#",
-                "#+....+#",
+                ".######.", "#+....+#", "#..++..#", "#.++++.#", "#.++++.#", "#..++..#", "#+....+#",
                 ".######.",
             ],
         },
@@ -1394,13 +1214,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x94a3b8,
             accent: 0x38bdf8,
             rows: [
-                "..####..",
-                "########",
-                "##++++##",
-                "#+####+#",
-                "#+####+#",
-                "##++++##",
-                "########",
+                "..####..", "########", "##++++##", "#+####+#", "#+####+#", "##++++##", "########",
                 "........",
             ],
         },
@@ -1409,13 +1223,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xd97706,
             accent: 0xf43f5e,
             rows: [
-                ".##.....",
-                "####..++",
-                "#####+++",
-                ".####.++",
-                ".######.",
-                ".##..##.",
-                ".#....#.",
+                ".##.....", "####..++", "#####+++", ".####.++", ".######.", ".##..##.", ".#....#.",
                 "........",
             ],
         },
@@ -1424,13 +1232,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xc084fc,
             accent: 0xfbbf24,
             rows: [
-                "...++...",
-                "...++...",
-                "..####++",
-                ".#.###..",
-                "...##...",
-                "..#..#..",
-                ".#....#.",
+                "...++...", "...++...", "..####++", ".#.###..", "...##...", "..#..#..", ".#....#.",
                 "........",
             ],
         },
@@ -1439,13 +1241,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x2dd4bf,
             accent: 0xf87171,
             rows: [
-                "..++++..",
-                ".######.",
-                "###++###",
-                "###++###",
-                "########",
-                "####.###",
-                ".######.",
+                "..++++..", ".######.", "###++###", "###++###", "########", "####.###", ".######.",
                 "..####..",
             ],
         },
@@ -1454,13 +1250,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x4ade80,
             accent: 0x60a5fa,
             rows: [
-                "##.++.&&",
-                "##.++.&&",
-                "###++###",
-                "++++###+",
-                "+++####+",
-                "##++++##",
-                "##.++.##",
+                "##.++.&&", "##.++.&&", "###++###", "++++###+", "+++####+", "##++++##", "##.++.##",
                 "........",
             ],
         },
@@ -1469,13 +1259,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0x60a5fa,
             accent: 0x34d399,
             rows: [
-                "..####..",
-                ".#.##.#.",
-                "########",
-                "#.####.#",
-                "########",
-                ".#.##+++",
-                "..##++++",
+                "..####..", ".#.##.#.", "########", "#.####.#", "########", ".#.##+++", "..##++++",
                 ".....++.",
             ],
         },
@@ -1484,13 +1268,7 @@ pub const fn mod_logo_spec(id: VoltModId) -> ModLogoSpec {
             primary: 0xfb7185,
             accent: 0xfef08a,
             rows: [
-                ".#####..",
-                ".#...#..",
-                ".#...+++",
-                ".#..++++",
-                ".#...+++",
-                ".#...#..",
-                ".#####..",
+                ".#####..", ".#...#..", ".#...+++", ".#..++++", ".#...+++", ".#...#..", ".#####..",
                 "........",
             ],
         },
@@ -1536,7 +1314,12 @@ pub fn draw_mod_logo_hud(
             batch.fill(atlas, px, py, pw, ph, col);
         }
     }
-    style::ring(batch, atlas, [x, y, size, size], rgb_to_hud(spec.primary, 96));
+    style::ring(
+        batch,
+        atlas,
+        [x, y, size, size],
+        rgb_to_hud(spec.primary, 96),
+    );
 }
 
 /// Persistent state for all 50 built-in native Rust mods, stored in `horizon-extras.txt`.
@@ -1651,15 +1434,42 @@ impl VoltModCatalogState {
             return true;
         }
         match key {
-            "voltModCfg.zoomifyToggle" => { self.zoomify_toggle = val == "true"; true }
-            "voltModCfg.zoomifyScroll" => { self.zoomify_scroll = val == "true"; true }
-            "voltModCfg.zoomifyRetainSteps" => { self.zoomify_retain_steps = val == "true"; true }
-            "voltModCfg.zoomifyRelativeSensitivity" => { self.zoomify_relative_sensitivity = val == "true"; true }
-            "voltModCfg.appleSkinTooltip" => { self.appleskin_tooltip = val == "true"; true }
-            "voltModCfg.appleSkinTooltipAlways" => { self.appleskin_tooltip_always = val == "true"; true }
-            "voltModCfg.appleSkinOffhand" => { self.appleskin_offhand = val == "true"; true }
-            "voltModCfg.appleSkinExhaustion" => { self.appleskin_exhaustion = val == "true"; true }
-            "voltModCfg.appleSkinDebug" => { self.appleskin_debug = val == "true"; true }
+            "voltModCfg.zoomifyToggle" => {
+                self.zoomify_toggle = val == "true";
+                true
+            }
+            "voltModCfg.zoomifyScroll" => {
+                self.zoomify_scroll = val == "true";
+                true
+            }
+            "voltModCfg.zoomifyRetainSteps" => {
+                self.zoomify_retain_steps = val == "true";
+                true
+            }
+            "voltModCfg.zoomifyRelativeSensitivity" => {
+                self.zoomify_relative_sensitivity = val == "true";
+                true
+            }
+            "voltModCfg.appleSkinTooltip" => {
+                self.appleskin_tooltip = val == "true";
+                true
+            }
+            "voltModCfg.appleSkinTooltipAlways" => {
+                self.appleskin_tooltip_always = val == "true";
+                true
+            }
+            "voltModCfg.appleSkinOffhand" => {
+                self.appleskin_offhand = val == "true";
+                true
+            }
+            "voltModCfg.appleSkinExhaustion" => {
+                self.appleskin_exhaustion = val == "true";
+                true
+            }
+            "voltModCfg.appleSkinDebug" => {
+                self.appleskin_debug = val == "true";
+                true
+            }
             "voltModCfg.freelookToggle" => {
                 self.freelook_toggle = val == "true";
                 true
@@ -1733,18 +1543,48 @@ impl VoltModCatalogState {
         }
         push("voltModCfg.zoomifyToggle", bool_s(self.zoomify_toggle));
         push("voltModCfg.zoomifyScroll", bool_s(self.zoomify_scroll));
-        push("voltModCfg.zoomifyRetainSteps", bool_s(self.zoomify_retain_steps));
-        push("voltModCfg.zoomifyRelativeSensitivity", bool_s(self.zoomify_relative_sensitivity));
-        push("voltModCfg.appleSkinTooltip", bool_s(self.appleskin_tooltip));
-        push("voltModCfg.appleSkinTooltipAlways", bool_s(self.appleskin_tooltip_always));
-        push("voltModCfg.appleSkinOffhand", bool_s(self.appleskin_offhand));
-        push("voltModCfg.appleSkinExhaustion", bool_s(self.appleskin_exhaustion));
+        push(
+            "voltModCfg.zoomifyRetainSteps",
+            bool_s(self.zoomify_retain_steps),
+        );
+        push(
+            "voltModCfg.zoomifyRelativeSensitivity",
+            bool_s(self.zoomify_relative_sensitivity),
+        );
+        push(
+            "voltModCfg.appleSkinTooltip",
+            bool_s(self.appleskin_tooltip),
+        );
+        push(
+            "voltModCfg.appleSkinTooltipAlways",
+            bool_s(self.appleskin_tooltip_always),
+        );
+        push(
+            "voltModCfg.appleSkinOffhand",
+            bool_s(self.appleskin_offhand),
+        );
+        push(
+            "voltModCfg.appleSkinExhaustion",
+            bool_s(self.appleskin_exhaustion),
+        );
         push("voltModCfg.appleSkinDebug", bool_s(self.appleskin_debug));
         push("voltModCfg.freelookToggle", bool_s(self.freelook_toggle));
-        push("voltModCfg.betterPingAutoColor", bool_s(self.better_ping_auto_color));
-        push("voltModCfg.betterPingShowBars", bool_s(self.better_ping_show_bars));
-        push("voltModCfg.appleSkinSaturation", bool_s(self.appleskin_saturation));
-        push("voltModCfg.appleSkinFoodPreview", bool_s(self.appleskin_food_preview));
+        push(
+            "voltModCfg.betterPingAutoColor",
+            bool_s(self.better_ping_auto_color),
+        );
+        push(
+            "voltModCfg.betterPingShowBars",
+            bool_s(self.better_ping_show_bars),
+        );
+        push(
+            "voltModCfg.appleSkinSaturation",
+            bool_s(self.appleskin_saturation),
+        );
+        push(
+            "voltModCfg.appleSkinFoodPreview",
+            bool_s(self.appleskin_food_preview),
+        );
         push("voltModCfg.betterf3Compact", bool_s(self.betterf3_compact));
         push(
             "voltModCfg.invHudOpacity",
@@ -1776,7 +1616,7 @@ pub fn apply_mod_to_engine(id: VoltModId, on: bool, extras: &mut Extras, horizon
         VoltModId::MouseTweaks => extras.mouse_tweaks = on,
         // Item Scroller has its own catalog switch and wheel option. Do not
         // overwrite Mouse Tweaks' independently configured wheel behavior.
-        VoltModId::ItemScroller => {},
+        VoltModId::ItemScroller => {}
         VoltModId::ShulkerBoxTooltip => extras.volt_mods.shulker_preview = on,
         VoltModId::Freelook => extras.volt_qol.freelook_enabled = on,
         VoltModId::Zoomify => {
@@ -1832,10 +1672,13 @@ pub fn sync_catalog_from_engine(extras: &mut Extras, horizon: &Graphics) {
     extras
         .mod_catalog
         .set(VoltModId::AppleSkin, extras.volt_mods.appleskin_hud);
-    extras.mod_catalog.set(VoltModId::MouseTweaks, extras.mouse_tweaks);
     extras
         .mod_catalog
-        .set(VoltModId::ShulkerBoxTooltip, extras.volt_mods.shulker_preview);
+        .set(VoltModId::MouseTweaks, extras.mouse_tweaks);
+    extras.mod_catalog.set(
+        VoltModId::ShulkerBoxTooltip,
+        extras.volt_mods.shulker_preview,
+    );
     extras
         .mod_catalog
         .set(VoltModId::Freelook, extras.volt_qol.freelook_enabled);
@@ -1877,13 +1720,20 @@ pub fn sync_catalog_from_engine(extras: &mut Extras, horizon: &Graphics) {
     extras
         .mod_catalog
         .set(VoltModId::XaerosMinimap, extras.minimap);
-    extras.mod_catalog.set(VoltModId::XaerosWorldMap, extras.volt_qol.atlas_enabled);
+    extras
+        .mod_catalog
+        .set(VoltModId::XaerosWorldMap, extras.volt_qol.atlas_enabled);
     extras.mod_catalog.set(
         VoltModId::EntityCulling,
         horizon.entity_culling != EntityCullingMode::Off,
     );
-    extras.mod_catalog.set(VoltModId::MoreCulling, extras.cull_leaves);
-    extras.mod_catalog.set(VoltModId::FerriteCore, extras.volt_boost_plus.zero_stutter_mesh_pool);
+    extras
+        .mod_catalog
+        .set(VoltModId::MoreCulling, extras.cull_leaves);
+    extras.mod_catalog.set(
+        VoltModId::FerriteCore,
+        extras.volt_boost_plus.zero_stutter_mesh_pool,
+    );
 }
 
 // ============================================================================
@@ -2074,8 +1924,19 @@ impl ModMenuUi {
 
     fn mod_config_items(id: VoltModId) -> Vec<ModCfgKind> {
         match id {
-            VoltModId::AppleSkin => vec![ModCfgKind::AppleSkinSaturation, ModCfgKind::AppleSkinFoodPreview, ModCfgKind::AppleSkinOffhand, ModCfgKind::AppleSkinTooltip, ModCfgKind::AppleSkinTooltipAlways, ModCfgKind::AppleSkinExhaustion, ModCfgKind::AppleSkinDebug],
-            VoltModId::BetterPingDisplay => vec![ModCfgKind::BetterPingAutoColor, ModCfgKind::BetterPingShowBars],
+            VoltModId::AppleSkin => vec![
+                ModCfgKind::AppleSkinSaturation,
+                ModCfgKind::AppleSkinFoodPreview,
+                ModCfgKind::AppleSkinOffhand,
+                ModCfgKind::AppleSkinTooltip,
+                ModCfgKind::AppleSkinTooltipAlways,
+                ModCfgKind::AppleSkinExhaustion,
+                ModCfgKind::AppleSkinDebug,
+            ],
+            VoltModId::BetterPingDisplay => vec![
+                ModCfgKind::BetterPingAutoColor,
+                ModCfgKind::BetterPingShowBars,
+            ],
             VoltModId::Zoomify => vec![
                 ModCfgKind::OpenKeyBinds,
                 ModCfgKind::VoltAct(VoltAct::QolZoomFov),
@@ -2110,20 +1971,98 @@ impl ModMenuUi {
         let cat = &s.extras.mod_catalog;
         match kind {
             ModCfgKind::VoltAct(act) => format!("{}: {}", act.caption(), act.value(&s.extras)),
-            ModCfgKind::AppleSkinSaturation => format!("Show saturation overlay: {}", if cat.appleskin_saturation { "ON" } else { "OFF" }),
-            ModCfgKind::AppleSkinFoodPreview => format!("Show held food preview: {}", if cat.appleskin_food_preview { "ON" } else { "OFF" }),
-            ModCfgKind::AppleSkinTooltip => format!("Food values in tooltip: {}", if cat.appleskin_tooltip { "ON" } else { "OFF" }),
-            ModCfgKind::AppleSkinTooltipAlways => format!("Always show food values: {}", if cat.appleskin_tooltip_always { "ON" } else { "OFF" }),
-            ModCfgKind::AppleSkinOffhand => format!("Offhand food preview: {}", if cat.appleskin_offhand { "ON" } else { "OFF" }),
-            ModCfgKind::AppleSkinExhaustion => format!("Show exhaustion (local): {}", if cat.appleskin_exhaustion { "ON" } else { "OFF" }),
-            ModCfgKind::AppleSkinDebug => format!("Food info in debug: {}", if cat.appleskin_debug { "ON" } else { "OFF" }),
-            ModCfgKind::BetterPingAutoColor => format!("Auto-color Ping Text: {}", if cat.better_ping_auto_color { "ON" } else { "OFF" }),
-            ModCfgKind::BetterPingShowBars => format!("Render Ping Bars: {}", if cat.better_ping_show_bars { "ON" } else { "OFF" }),
-            ModCfgKind::FreelookMode => format!("Freelook mode: {}", if cat.freelook_toggle { "Toggle" } else { "Hold" }),
-            ModCfgKind::ZoomifyMode => format!("Zoom key behavior: {}", if cat.zoomify_toggle { "Toggle" } else { "Hold" }),
-            ModCfgKind::ZoomifyScroll => format!("Enable Scroll Zoom: {}", if cat.zoomify_scroll { "ON" } else { "OFF" }),
-            ModCfgKind::ZoomifyRetainSteps => format!("Remember Zoom Steps: {}", if cat.zoomify_retain_steps { "ON" } else { "OFF" }),
-            ModCfgKind::ZoomifySensitivity => format!("Relative Sensitivity: {}", if cat.zoomify_relative_sensitivity { "ON" } else { "OFF" }),
+            ModCfgKind::AppleSkinSaturation => format!(
+                "Show saturation overlay: {}",
+                if cat.appleskin_saturation {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+            ModCfgKind::AppleSkinFoodPreview => format!(
+                "Show held food preview: {}",
+                if cat.appleskin_food_preview {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+            ModCfgKind::AppleSkinTooltip => format!(
+                "Food values in tooltip: {}",
+                if cat.appleskin_tooltip { "ON" } else { "OFF" }
+            ),
+            ModCfgKind::AppleSkinTooltipAlways => format!(
+                "Always show food values: {}",
+                if cat.appleskin_tooltip_always {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+            ModCfgKind::AppleSkinOffhand => format!(
+                "Offhand food preview: {}",
+                if cat.appleskin_offhand { "ON" } else { "OFF" }
+            ),
+            ModCfgKind::AppleSkinExhaustion => format!(
+                "Show exhaustion (local): {}",
+                if cat.appleskin_exhaustion {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+            ModCfgKind::AppleSkinDebug => format!(
+                "Food info in debug: {}",
+                if cat.appleskin_debug { "ON" } else { "OFF" }
+            ),
+            ModCfgKind::BetterPingAutoColor => format!(
+                "Auto-color Ping Text: {}",
+                if cat.better_ping_auto_color {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+            ModCfgKind::BetterPingShowBars => format!(
+                "Render Ping Bars: {}",
+                if cat.better_ping_show_bars {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+            ModCfgKind::FreelookMode => format!(
+                "Freelook mode: {}",
+                if cat.freelook_toggle {
+                    "Toggle"
+                } else {
+                    "Hold"
+                }
+            ),
+            ModCfgKind::ZoomifyMode => format!(
+                "Zoom key behavior: {}",
+                if cat.zoomify_toggle { "Toggle" } else { "Hold" }
+            ),
+            ModCfgKind::ZoomifyScroll => format!(
+                "Enable Scroll Zoom: {}",
+                if cat.zoomify_scroll { "ON" } else { "OFF" }
+            ),
+            ModCfgKind::ZoomifyRetainSteps => format!(
+                "Remember Zoom Steps: {}",
+                if cat.zoomify_retain_steps {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
+            ModCfgKind::ZoomifySensitivity => format!(
+                "Relative Sensitivity: {}",
+                if cat.zoomify_relative_sensitivity {
+                    "ON"
+                } else {
+                    "OFF"
+                }
+            ),
             ModCfgKind::BetterF3Compact => format!(
                 "BetterF3 Layout: {}",
                 if cat.betterf3_compact {
@@ -2176,14 +2115,7 @@ impl ModMenuUi {
         let list_w = (mw * 0.36).clamp(124.0, 196.0);
         let tab_y = my + 30.0;
         let tab_w = ((list_w - 6.0) / 4.0).floor();
-        let tabs = std::array::from_fn(|i| {
-            [
-                list_x + i as f32 * (tab_w + 2.0),
-                tab_y,
-                tab_w,
-                14.0,
-            ]
-        });
+        let tabs = std::array::from_fn(|i| [list_x + i as f32 * (tab_w + 2.0), tab_y, tab_w, 14.0]);
 
         let list_top = tab_y + 18.0;
         let footer_y = my + mh - 24.0;
@@ -2203,12 +2135,18 @@ impl ModMenuUi {
         let cfg_bottom = (detail_card[1] + detail_card[3] - 6.0).max(cfg_top);
         let config_items = Self::mod_config_items(self.selected);
         let cfg_content_h = (config_items.len() as f32 * 21.0 - 3.0).max(0.0);
-        self.cfg_scroll = self.cfg_scroll.clamp(0.0, (cfg_content_h - (cfg_bottom - cfg_top)).max(0.0));
-        let cfg_rows = config_items.into_iter().enumerate().filter_map(|(i, kind)| {
-            let cy = cfg_top + i as f32 * 21.0 - self.cfg_scroll;
-            (cy + 18.0 > cfg_top && cy < cfg_bottom)
-                .then_some(([dx + 10.0, cy, dw - 26.0, 18.0], kind))
-        }).collect();
+        self.cfg_scroll = self
+            .cfg_scroll
+            .clamp(0.0, (cfg_content_h - (cfg_bottom - cfg_top)).max(0.0));
+        let cfg_rows = config_items
+            .into_iter()
+            .enumerate()
+            .filter_map(|(i, kind)| {
+                let cy = cfg_top + i as f32 * 21.0 - self.cfg_scroll;
+                (cy + 18.0 > cfg_top && cy < cfg_bottom)
+                    .then_some(([dx + 10.0, cy, dw - 26.0, 18.0], kind))
+            })
+            .collect();
         let _ = s;
         let done_btn = [mx + mw - 86.0, footer_y, 76.0, 18.0];
 
@@ -2508,7 +2446,11 @@ impl ModMenuUi {
         ui::centered_text(
             batch,
             atlas,
-            &Text::literal(style::fit(atlas, "Open mods folder", lay.folder_btn[2] - 8.0)),
+            &Text::literal(style::fit(
+                atlas,
+                "Open mods folder",
+                lay.folder_btn[2] - 8.0,
+            )),
             lay.folder_btn[0],
             lay.folder_btn[1] + 5.0,
             lay.folder_btn[2],
@@ -2692,10 +2634,26 @@ impl ModMenuUi {
             );
         }
 
-        batch.clip_since(cfg_start, dx + 10.0, lay.cfg_top, dx + dw - 10.0, lay.cfg_bottom);
-        if let Some((ty, th)) = style::scrollbar_thumb(lay.cfg_top, lay.cfg_bottom, lay.cfg_content_h, self.cfg_scroll) {
+        batch.clip_since(
+            cfg_start,
+            dx + 10.0,
+            lay.cfg_top,
+            dx + dw - 10.0,
+            lay.cfg_bottom,
+        );
+        if let Some((ty, th)) = style::scrollbar_thumb(
+            lay.cfg_top,
+            lay.cfg_bottom,
+            lay.cfg_content_h,
+            self.cfg_scroll,
+        ) {
             let bx = dx + dw - 15.0;
-            style::scroller(batch, atlas, [bx, lay.cfg_top, 4.0, lay.cfg_bottom - lay.cfg_top], [bx, ty, 4.0, th]);
+            style::scroller(
+                batch,
+                atlas,
+                [bx, lay.cfg_top, 4.0, lay.cfg_bottom - lay.cfg_top],
+                [bx, ty, 4.0, th],
+            );
         }
 
         // Bottom bar: "Esc to go back" + teal "Done" button
@@ -2742,14 +2700,21 @@ impl ModMenuUi {
 
         if drag {
             if self.scroll.held() {
-                self.scroll.drag(y, lay.list_top, lay.list_bottom, content_h);
+                self.scroll
+                    .drag(y, lay.list_top, lay.list_bottom, content_h);
             }
             if let Some(last) = self.cfg_drag_y {
                 let view = lay.cfg_bottom - lay.cfg_top;
                 let max_scroll = (lay.cfg_content_h - view).max(0.0);
-                if let Some((_, thumb)) = style::scrollbar_thumb(lay.cfg_top, lay.cfg_bottom, lay.cfg_content_h, self.cfg_scroll) {
+                if let Some((_, thumb)) = style::scrollbar_thumb(
+                    lay.cfg_top,
+                    lay.cfg_bottom,
+                    lay.cfg_content_h,
+                    self.cfg_scroll,
+                ) {
                     let track = (view - thumb).max(1.0);
-                    self.cfg_scroll = (self.cfg_scroll + (y - last) * max_scroll / track).clamp(0.0, max_scroll);
+                    self.cfg_scroll =
+                        (self.cfg_scroll + (y - last) * max_scroll / track).clamp(0.0, max_scroll);
                 }
                 self.cfg_drag_y = Some(y);
             }
@@ -2769,8 +2734,10 @@ impl ModMenuUi {
         }
 
         let [dx, _, dw, _] = lay.detail_card;
-        if x >= dx + dw - 17.0 && x <= dx + dw - 8.0
-            && y >= lay.cfg_top && y < lay.cfg_bottom
+        if x >= dx + dw - 17.0
+            && x <= dx + dw - 8.0
+            && y >= lay.cfg_top
+            && y < lay.cfg_bottom
             && lay.cfg_content_h > lay.cfg_bottom - lay.cfg_top
         {
             self.cfg_drag_y = Some(y);
@@ -2830,7 +2797,9 @@ impl ModMenuUi {
                     if right || (self.selected == id && x >= lay.list_x + row_w - 28.0) {
                         let next = !s.extras.mod_catalog.is_on(id);
                         apply_mod_to_engine(id, next, &mut s.extras, &mut s.horizon);
-                        if self.selected != id { self.cfg_scroll = 0.0; }
+                        if self.selected != id {
+                            self.cfg_scroll = 0.0;
+                        }
                         self.selected = id;
                         return vec![ModMenuAction::ButtonClick, ModMenuAction::Changed];
                     }
@@ -2887,51 +2856,63 @@ impl ModMenuUi {
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::ZoomifyRetainSteps => {
-                        s.extras.mod_catalog.zoomify_retain_steps = !s.extras.mod_catalog.zoomify_retain_steps;
+                        s.extras.mod_catalog.zoomify_retain_steps =
+                            !s.extras.mod_catalog.zoomify_retain_steps;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::ZoomifySensitivity => {
-                        s.extras.mod_catalog.zoomify_relative_sensitivity = !s.extras.mod_catalog.zoomify_relative_sensitivity;
+                        s.extras.mod_catalog.zoomify_relative_sensitivity =
+                            !s.extras.mod_catalog.zoomify_relative_sensitivity;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::FreelookMode => {
-                        s.extras.mod_catalog.freelook_toggle = !s.extras.mod_catalog.freelook_toggle;
+                        s.extras.mod_catalog.freelook_toggle =
+                            !s.extras.mod_catalog.freelook_toggle;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::BetterPingAutoColor => {
-                        s.extras.mod_catalog.better_ping_auto_color = !s.extras.mod_catalog.better_ping_auto_color;
+                        s.extras.mod_catalog.better_ping_auto_color =
+                            !s.extras.mod_catalog.better_ping_auto_color;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::BetterPingShowBars => {
-                        s.extras.mod_catalog.better_ping_show_bars = !s.extras.mod_catalog.better_ping_show_bars;
+                        s.extras.mod_catalog.better_ping_show_bars =
+                            !s.extras.mod_catalog.better_ping_show_bars;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::AppleSkinTooltip => {
-                        s.extras.mod_catalog.appleskin_tooltip = !s.extras.mod_catalog.appleskin_tooltip;
+                        s.extras.mod_catalog.appleskin_tooltip =
+                            !s.extras.mod_catalog.appleskin_tooltip;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::AppleSkinTooltipAlways => {
-                        s.extras.mod_catalog.appleskin_tooltip_always = !s.extras.mod_catalog.appleskin_tooltip_always;
+                        s.extras.mod_catalog.appleskin_tooltip_always =
+                            !s.extras.mod_catalog.appleskin_tooltip_always;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::AppleSkinOffhand => {
-                        s.extras.mod_catalog.appleskin_offhand = !s.extras.mod_catalog.appleskin_offhand;
+                        s.extras.mod_catalog.appleskin_offhand =
+                            !s.extras.mod_catalog.appleskin_offhand;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::AppleSkinExhaustion => {
-                        s.extras.mod_catalog.appleskin_exhaustion = !s.extras.mod_catalog.appleskin_exhaustion;
+                        s.extras.mod_catalog.appleskin_exhaustion =
+                            !s.extras.mod_catalog.appleskin_exhaustion;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::AppleSkinDebug => {
-                        s.extras.mod_catalog.appleskin_debug = !s.extras.mod_catalog.appleskin_debug;
+                        s.extras.mod_catalog.appleskin_debug =
+                            !s.extras.mod_catalog.appleskin_debug;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::AppleSkinSaturation => {
-                        s.extras.mod_catalog.appleskin_saturation = !s.extras.mod_catalog.appleskin_saturation;
+                        s.extras.mod_catalog.appleskin_saturation =
+                            !s.extras.mod_catalog.appleskin_saturation;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::AppleSkinFoodPreview => {
-                        s.extras.mod_catalog.appleskin_food_preview = !s.extras.mod_catalog.appleskin_food_preview;
+                        s.extras.mod_catalog.appleskin_food_preview =
+                            !s.extras.mod_catalog.appleskin_food_preview;
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::BetterF3Compact => {
@@ -2941,11 +2922,8 @@ impl ModMenuUi {
                     }
                     ModCfgKind::InvHudOpacity => {
                         let cur = s.extras.mod_catalog.inventory_hud_opacity;
-                        s.extras.mod_catalog.inventory_hud_opacity = if cur >= 100 {
-                            40
-                        } else {
-                            (cur + 20).min(100)
-                        };
+                        s.extras.mod_catalog.inventory_hud_opacity =
+                            if cur >= 100 { 40 } else { (cur + 20).min(100) };
                         vec![ModMenuAction::ButtonClick, ModMenuAction::Changed]
                     }
                     ModCfgKind::CoordsBiome => {
@@ -2998,12 +2976,17 @@ impl ModMenuUi {
         let count = self.filtered_mods(s).len();
         let lay = self.compute_layout(s, w, h, count);
         let [dx, _, dw, _] = lay.detail_card;
-        if cursor.0 >= dx && cursor.0 < dx + dw && cursor.1 >= lay.cfg_top && cursor.1 < lay.cfg_bottom {
+        if cursor.0 >= dx
+            && cursor.0 < dx + dw
+            && cursor.1 >= lay.cfg_top
+            && cursor.1 < lay.cfg_bottom
+        {
             let max_scroll = (lay.cfg_content_h - (lay.cfg_bottom - lay.cfg_top)).max(0.0);
             self.cfg_scroll = (self.cfg_scroll - amount * 22.0).clamp(0.0, max_scroll);
         } else {
             let content_h = (count as f32 * (ROW_H + ROW_GAP) - ROW_GAP).max(0.0);
-            self.scroll.wheel(amount, 22.0, lay.list_top, lay.list_bottom, content_h);
+            self.scroll
+                .wheel(amount, 22.0, lay.list_top, lay.list_bottom, content_h);
         }
     }
 
@@ -3060,7 +3043,9 @@ impl ModMenuUi {
                     } else {
                         pos.saturating_sub(1)
                     };
-                    if self.selected != mods[next] { self.cfg_scroll = 0.0; }
+                    if self.selected != mods[next] {
+                        self.cfg_scroll = 0.0;
+                    }
                     self.selected = mods[next];
                 }
                 (Vec::new(), true)
@@ -3102,19 +3087,45 @@ mod tests {
         };
         let layout = menu.compute_layout(&settings, 320.0, 200.0, 50);
         assert!(layout.cfg_content_h > layout.cfg_bottom - layout.cfg_top);
-        assert!(layout.cfg_rows.iter().any(|(_, kind)| *kind == ModCfgKind::OpenWorldMap));
-        let cursor = (layout.detail_card[0] + 12.0, (layout.cfg_top + layout.cfg_bottom) / 2.0);
+        assert!(
+            layout
+                .cfg_rows
+                .iter()
+                .any(|(_, kind)| *kind == ModCfgKind::OpenWorldMap)
+        );
+        let cursor = (
+            layout.detail_card[0] + 12.0,
+            (layout.cfg_top + layout.cfg_bottom) / 2.0,
+        );
         menu.scroll(&settings, (320.0, 200.0), cursor, -10.0);
         let scrolled = menu.compute_layout(&settings, 320.0, 200.0, 50);
         assert!(menu.cfg_scroll > 0.0);
         assert_eq!(menu.scroll.amount, 0.0);
-        assert!(scrolled.cfg_rows.iter().any(|(_, kind)| *kind == ModCfgKind::VoltAct(VoltAct::QolAtlasGrid)));
-        assert!(style::scrollbar_thumb(scrolled.cfg_top, scrolled.cfg_bottom, scrolled.cfg_content_h, menu.cfg_scroll).is_some());
+        assert!(
+            scrolled
+                .cfg_rows
+                .iter()
+                .any(|(_, kind)| *kind == ModCfgKind::VoltAct(VoltAct::QolAtlasGrid))
+        );
+        assert!(
+            style::scrollbar_thumb(
+                scrolled.cfg_top,
+                scrolled.cfg_bottom,
+                scrolled.cfg_content_h,
+                menu.cfg_scroll
+            )
+            .is_some()
+        );
         menu.selected = VoltModId::AppleSkin;
         menu.cfg_scroll = 0.0;
         menu.scroll(&settings, (320.0, 200.0), cursor, -20.0);
         let appleskin = menu.compute_layout(&settings, 320.0, 200.0, 50);
-        assert!(appleskin.cfg_rows.iter().any(|(_, kind)| *kind == ModCfgKind::AppleSkinDebug));
+        assert!(
+            appleskin
+                .cfg_rows
+                .iter()
+                .any(|(_, kind)| *kind == ModCfgKind::AppleSkinDebug)
+        );
     }
 
     #[test]
@@ -3151,8 +3162,14 @@ mod tests {
     #[test]
     fn appleskin_options_persist() {
         let mut extras = Extras::default();
-        assert!(extras.mod_catalog.appleskin_tooltip && extras.mod_catalog.appleskin_tooltip_always);
-        assert!(extras.mod_catalog.appleskin_offhand && extras.mod_catalog.appleskin_exhaustion && extras.mod_catalog.appleskin_debug);
+        assert!(
+            extras.mod_catalog.appleskin_tooltip && extras.mod_catalog.appleskin_tooltip_always
+        );
+        assert!(
+            extras.mod_catalog.appleskin_offhand
+                && extras.mod_catalog.appleskin_exhaustion
+                && extras.mod_catalog.appleskin_debug
+        );
         extras.mod_catalog.appleskin_tooltip = false;
         extras.mod_catalog.appleskin_tooltip_always = false;
         extras.mod_catalog.appleskin_offhand = false;
@@ -3239,8 +3256,16 @@ mod tests {
         apply_mod_to_engine(VoltModId::MouseTweaks, true, &mut s.extras, &mut s.horizon);
         assert!(s.extras.mouse_tweaks_wheel);
         apply_mod_to_engine(VoltModId::ItemScroller, true, &mut s.extras, &mut s.horizon);
-        apply_mod_to_engine(VoltModId::ItemScroller, false, &mut s.extras, &mut s.horizon);
-        assert!(s.extras.mouse_tweaks_wheel, "disabling Item Scroller must not change Mouse Tweaks' wheel setting");
+        apply_mod_to_engine(
+            VoltModId::ItemScroller,
+            false,
+            &mut s.extras,
+            &mut s.horizon,
+        );
+        assert!(
+            s.extras.mouse_tweaks_wheel,
+            "disabling Item Scroller must not change Mouse Tweaks' wheel setting"
+        );
         s.extras.mouse_tweaks = false;
         s.extras.volt_qol.atlas_enabled = true;
         s.extras.cull_leaves = true;
@@ -3248,7 +3273,12 @@ mod tests {
         s.horizon.entity_culling = EntityCullingMode::Synchronous;
         sync_catalog_from_engine(&mut s.extras, &s.horizon);
         assert!(!s.extras.mod_catalog.is_on(VoltModId::MouseTweaks));
-        for id in [VoltModId::XaerosWorldMap, VoltModId::MoreCulling, VoltModId::FerriteCore, VoltModId::EntityCulling] {
+        for id in [
+            VoltModId::XaerosWorldMap,
+            VoltModId::MoreCulling,
+            VoltModId::FerriteCore,
+            VoltModId::EntityCulling,
+        ] {
             assert!(s.extras.mod_catalog.is_on(id));
         }
         s.extras.volt_qol.atlas_enabled = false;
@@ -3256,7 +3286,12 @@ mod tests {
         s.extras.volt_boost_plus.zero_stutter_mesh_pool = false;
         s.horizon.entity_culling = EntityCullingMode::Off;
         sync_catalog_from_engine(&mut s.extras, &s.horizon);
-        for id in [VoltModId::XaerosWorldMap, VoltModId::MoreCulling, VoltModId::FerriteCore, VoltModId::EntityCulling] {
+        for id in [
+            VoltModId::XaerosWorldMap,
+            VoltModId::MoreCulling,
+            VoltModId::FerriteCore,
+            VoltModId::EntityCulling,
+        ] {
             assert!(!s.extras.mod_catalog.is_on(id));
         }
     }

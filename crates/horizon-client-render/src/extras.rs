@@ -17,12 +17,8 @@ pub const WAYPOINT_KEY: &str = "volt.waypoint_add";
 pub const MINIMAP_ZOOM_KEY: &str = "volt.minimap_zoom";
 
 /// The minimap's sizes in GUI pixels, and its zooms in blocks per pixel.
-pub const MINIMAP_SIZES: [(u8, &str); 4] = [
-    (64, "Small"),
-    (96, "Medium"),
-    (128, "Large"),
-    (160, "XL"),
-];
+pub const MINIMAP_SIZES: [(u8, &str); 4] =
+    [(64, "Small"), (96, "Medium"), (128, "Large"), (160, "XL")];
 pub const MINIMAP_ZOOMS: [f32; 4] = [0.5, 1.0, 2.0, 4.0];
 /// The minimap's opacities in percent (`minimapOpacity`).
 pub const MINIMAP_OPACITIES: [u8; 4] = [50, 75, 90, 100];
@@ -652,9 +648,7 @@ impl Extras {
                         e.perf_hud = v;
                     }
                 }
-                "voltPerfHudCorner" => {
-                    e.perf_hud_corner = Corner::parse(value, e.perf_hud_corner)
-                }
+                "voltPerfHudCorner" => e.perf_hud_corner = Corner::parse(value, e.perf_hud_corner),
                 "voltCullLeaves" => e.cull_leaves = flag(e.cull_leaves),
                 "voltChunkUploadCap" => {
                     if let Some(v) = ChunkUploadCap::parse(value) {
@@ -717,8 +711,7 @@ impl Extras {
                     e.volt_shaders.foliage_subsurface = flag(e.volt_shaders.foliage_subsurface)
                 }
                 "voltShaderTorchStyle" => {
-                    if let Some(v) =
-                        horizon_shader_api::volt_shaders::TorchLightStyle::parse(value)
+                    if let Some(v) = horizon_shader_api::volt_shaders::TorchLightStyle::parse(value)
                     {
                         e.volt_shaders.torch_style = v;
                     }
@@ -762,17 +755,14 @@ impl Extras {
                         e.volt_shaders.sunset_glow = v.clamp(0, 200);
                     }
                 }
-                "voltShaderSunHalo" => {
-                    e.volt_shaders.sun_halo = flag(e.volt_shaders.sun_halo)
-                }
+                "voltShaderSunHalo" => e.volt_shaders.sun_halo = flag(e.volt_shaders.sun_halo),
                 "voltShaderAurora" => {
                     if let Some(v) = horizon_shader_api::volt_shaders::AuroraMode::parse(value) {
                         e.volt_shaders.aurora = v;
                     }
                 }
                 "voltShaderDepthHaze" => {
-                    if let Some(v) = horizon_shader_api::volt_shaders::DepthHazeMode::parse(value)
-                    {
+                    if let Some(v) = horizon_shader_api::volt_shaders::DepthHazeMode::parse(value) {
                         e.volt_shaders.depth_haze = v;
                     }
                 }
@@ -897,9 +887,7 @@ impl Extras {
                 "voltQolFreelook" => {
                     e.volt_qol.freelook_enabled = flag(e.volt_qol.freelook_enabled)
                 }
-                "voltQolInspector" => {
-                    e.volt_qol.world_inspector = flag(e.volt_qol.world_inspector)
-                }
+                "voltQolInspector" => e.volt_qol.world_inspector = flag(e.volt_qol.world_inspector),
                 "voltQolSpawnLight" => {
                     e.volt_qol.spawn_light_overlay = flag(e.volt_qol.spawn_light_overlay)
                 }
@@ -929,9 +917,7 @@ impl Extras {
                 }
                 "voltQolLetterbox" => e.volt_qol.cam_letterbox = flag(e.volt_qol.cam_letterbox),
                 "voltQolReplay" => e.volt_qol.replay_buffer = flag(e.volt_qol.replay_buffer),
-                "voltQolReplayButton" => {
-                    e.volt_qol.replay_button = flag(e.volt_qol.replay_button)
-                }
+                "voltQolReplayButton" => e.volt_qol.replay_button = flag(e.volt_qol.replay_button),
                 "voltQolReplayBtnX" => {
                     if let Ok(v) = value.parse::<u16>() {
                         e.volt_qol.replay_btn_x_pct = v.clamp(0, 100);
@@ -1348,10 +1334,7 @@ impl Extras {
             "voltShaderSunsetGlow",
             &self.volt_shaders.sunset_glow.to_string(),
         );
-        push(
-            "voltShaderSunHalo",
-            bool_text(self.volt_shaders.sun_halo),
-        );
+        push("voltShaderSunHalo", bool_text(self.volt_shaders.sun_halo));
         push("voltShaderAurora", self.volt_shaders.aurora.as_str());
         push("voltShaderDepthHaze", self.volt_shaders.depth_haze.as_str());
         push("voltShaderTonemap", self.volt_shaders.tonemap.as_str());
@@ -1445,10 +1428,7 @@ impl Extras {
         push("voltQolZoomFov", &self.volt_qol.zoom_fov_pct.to_string());
         push("voltQolZoomSmooth", bool_text(self.volt_qol.zoom_smooth));
         push("voltQolFreelook", bool_text(self.volt_qol.freelook_enabled));
-        push(
-            "voltQolInspector",
-            bool_text(self.volt_qol.world_inspector),
-        );
+        push("voltQolInspector", bool_text(self.volt_qol.world_inspector));
         push(
             "voltQolSpawnLight",
             bool_text(self.volt_qol.spawn_light_overlay),
@@ -1599,7 +1579,10 @@ impl Extras {
         push("voltModCpsHud", bool_text(self.volt_mods.cps_hud));
         push("voltModReachHud", bool_text(self.volt_mods.reach_hud));
         push("voltModFpsPill", bool_text(self.volt_mods.fps_ping_pill));
-        push("voltModKeystrokes", bool_text(self.volt_mods.keystrokes_hud));
+        push(
+            "voltModKeystrokes",
+            bool_text(self.volt_mods.keystrokes_hud),
+        );
         push("voltModCrosshair", self.volt_mods.custom_crosshair.as_str());
         push(
             "voltModLowShieldFire",
@@ -1633,18 +1616,12 @@ impl Extras {
             "voltModDamageDir",
             bool_text(self.volt_mods.damage_direction_hud),
         );
-        push(
-            "voltModChatCalc",
-            bool_text(self.volt_mods.chat_calculator),
-        );
+        push("voltModChatCalc", bool_text(self.volt_mods.chat_calculator));
         push(
             "voltModEnchantGuide",
             bool_text(self.volt_mods.enchant_guide),
         );
-        push(
-            "voltModSlimeTech",
-            bool_text(self.volt_mods.slime_tech_hud),
-        );
+        push("voltModSlimeTech", bool_text(self.volt_mods.slime_tech_hud));
         push(
             "voltModDeathTracker",
             bool_text(self.volt_mods.death_tracker),
@@ -1666,24 +1643,42 @@ impl Extras {
         };
         self.volt_preset = preset;
         let (thread_boost, dynamic_fps, particle_budget, audio_voice_cap) = match preset {
-            VoltBoostPreset::Off => {
-                (false, DynamicIdleFps::Off, ParticleBudget::Vanilla16k, AudioVoiceCap::Vanilla)
-            }
-            VoltBoostPreset::Balanced => {
-                (true, DynamicIdleFps::Fps30, ParticleBudget::Cap4096, AudioVoiceCap::Cap32)
-            }
-            VoltBoostPreset::Competitive => {
-                (true, DynamicIdleFps::Fps30, ParticleBudget::Cap2048, AudioVoiceCap::Cap32)
-            }
-            VoltBoostPreset::UltraFps => {
-                (true, DynamicIdleFps::Fps15, ParticleBudget::Cap512, AudioVoiceCap::Cap16)
-            }
-            VoltBoostPreset::BatterySaver => {
-                (false, DynamicIdleFps::Fps15, ParticleBudget::Cap2048, AudioVoiceCap::Cap16)
-            }
-            VoltBoostPreset::LowRam => {
-                (true, DynamicIdleFps::Fps15, ParticleBudget::Cap512, AudioVoiceCap::Cap16)
-            }
+            VoltBoostPreset::Off => (
+                false,
+                DynamicIdleFps::Off,
+                ParticleBudget::Vanilla16k,
+                AudioVoiceCap::Vanilla,
+            ),
+            VoltBoostPreset::Balanced => (
+                true,
+                DynamicIdleFps::Fps30,
+                ParticleBudget::Cap4096,
+                AudioVoiceCap::Cap32,
+            ),
+            VoltBoostPreset::Competitive => (
+                true,
+                DynamicIdleFps::Fps30,
+                ParticleBudget::Cap2048,
+                AudioVoiceCap::Cap32,
+            ),
+            VoltBoostPreset::UltraFps => (
+                true,
+                DynamicIdleFps::Fps15,
+                ParticleBudget::Cap512,
+                AudioVoiceCap::Cap16,
+            ),
+            VoltBoostPreset::BatterySaver => (
+                false,
+                DynamicIdleFps::Fps15,
+                ParticleBudget::Cap2048,
+                AudioVoiceCap::Cap16,
+            ),
+            VoltBoostPreset::LowRam => (
+                true,
+                DynamicIdleFps::Fps15,
+                ParticleBudget::Cap512,
+                AudioVoiceCap::Cap16,
+            ),
         };
         self.thread_boost = thread_boost;
         self.dynamic_fps = dynamic_fps;
@@ -1774,18 +1769,13 @@ impl Extras {
         // Saver's; Balanced keeps the caches warm.
         self.memory_saver = matches!(
             preset,
-            VoltBoostPreset::UltraFps
-                | VoltBoostPreset::LowRam
-                | VoltBoostPreset::BatterySaver
+            VoltBoostPreset::UltraFps | VoltBoostPreset::LowRam | VoltBoostPreset::BatterySaver
         );
         // The cave sky cull is on in every non-Off profile; the streaming
         // lookahead everywhere but Low-RAM Rescue, which prefers plain
         // rings while memory is rebuilt.
         self.cave_sky_cull = preset != VoltBoostPreset::Off;
-        self.lookahead_stream = !matches!(
-            preset,
-            VoltBoostPreset::Off | VoltBoostPreset::LowRam
-        );
+        self.lookahead_stream = !matches!(preset, VoltBoostPreset::Off | VoltBoostPreset::LowRam);
         self.frustum_priority_mesh = preset != VoltBoostPreset::Off;
         // The ported Tier 1 and Tier 3 switches; the distant LOD boost stays
         // off in every profile, as the head's do.
@@ -2576,20 +2566,11 @@ impl Item {
             | WaypointScale
             | WaypointMaxDistance
             | WaypointHudButton => Waypoints,
-            MinimapCorner
-            | MinimapSize
-            | MinimapShape
-            | MinimapZoom
-            | MinimapRotate
-            | MinimapFrameStyle
-            | MinimapOpacity
-            | MinimapTerrain
-            | MinimapChunkGrid
-            | MinimapEntityRadar
-            | MinimapCoords
-            | MinimapBiome
-            | MinimapTime
-            | MinimapZoomKey => Minimap,
+            MinimapCorner | MinimapSize | MinimapShape | MinimapZoom | MinimapRotate
+            | MinimapFrameStyle | MinimapOpacity | MinimapTerrain | MinimapChunkGrid
+            | MinimapEntityRadar | MinimapCoords | MinimapBiome | MinimapTime | MinimapZoomKey => {
+                Minimap
+            }
             Fullbright | DynamicLights | OwnNameTag | HideBlockParticles | MouseTweaks | Sort
             | AutoReconnect | NoAi | AgentControl | ReproKeys | DiscordPresence | Splitscreen
             | ChatAnimation | WheelCyclesSettings | MusicPage | CosmeticsMine | CosmeticsOthers
@@ -2597,20 +2578,58 @@ impl Item {
                 return None;
             }
             // Each Volt Boost switch stands on its own.
-            VoltPreset | VoltThreadBoost | VoltPerformanceHints | VoltDisplayHz
-            | VoltDynamicFps | VoltAudioCap | VoltAutoDrs | VoltThermalGuard | VoltReflex
-            | VoltParticleBudget | VoltChaosShield | VoltParticleFrustum | VoltEntityCap
-            | VoltItemCap | VoltBlockEntityCap | VoltAnimThrottle | VoltActiveAnimCull
-            | VoltFastTranslucency | VoltFastWeather | VoltCullSignText | VoltMobThrottle
-            | VoltHubShield | VoltMenuBg | VoltLookahead | VoltCaveSkyCull | VoltFrustumMesh
-            | VoltMemorySaver | VoltPerfHud | VoltPerfHudCorner | VoltShaderEnable
-            | VoltShaderProfile | VoltShaderReset | VoltShaderWavePlants | VoltShaderWaveLeaves
-            | VoltShaderWaveWater | VoltShaderStormWind | VoltShaderSunShading
-            | VoltShaderFoliageGlow | VoltShaderTorchStyle | VoltShaderRainWetness
-            | VoltShaderWaterRipples | VoltShaderWaterGlint | VoltShaderClearWater
-            | VoltShaderUnderwaterRefract | VoltShaderCustomSky | VoltShaderSunHalo
-            | VoltShaderAurora | VoltShaderDepthHaze | VoltShaderTonemap | VoltShaderBloom
-            | VoltShaderSunRays | VoltShaderVignette => {
+            VoltPreset
+            | VoltThreadBoost
+            | VoltPerformanceHints
+            | VoltDisplayHz
+            | VoltDynamicFps
+            | VoltAudioCap
+            | VoltAutoDrs
+            | VoltThermalGuard
+            | VoltReflex
+            | VoltParticleBudget
+            | VoltChaosShield
+            | VoltParticleFrustum
+            | VoltEntityCap
+            | VoltItemCap
+            | VoltBlockEntityCap
+            | VoltAnimThrottle
+            | VoltActiveAnimCull
+            | VoltFastTranslucency
+            | VoltFastWeather
+            | VoltCullSignText
+            | VoltMobThrottle
+            | VoltHubShield
+            | VoltMenuBg
+            | VoltLookahead
+            | VoltCaveSkyCull
+            | VoltFrustumMesh
+            | VoltMemorySaver
+            | VoltPerfHud
+            | VoltPerfHudCorner
+            | VoltShaderEnable
+            | VoltShaderProfile
+            | VoltShaderReset
+            | VoltShaderWavePlants
+            | VoltShaderWaveLeaves
+            | VoltShaderWaveWater
+            | VoltShaderStormWind
+            | VoltShaderSunShading
+            | VoltShaderFoliageGlow
+            | VoltShaderTorchStyle
+            | VoltShaderRainWetness
+            | VoltShaderWaterRipples
+            | VoltShaderWaterGlint
+            | VoltShaderClearWater
+            | VoltShaderUnderwaterRefract
+            | VoltShaderCustomSky
+            | VoltShaderSunHalo
+            | VoltShaderAurora
+            | VoltShaderDepthHaze
+            | VoltShaderTonemap
+            | VoltShaderBloom
+            | VoltShaderSunRays
+            | VoltShaderVignette => {
                 return None;
             }
         })
@@ -2745,9 +2764,7 @@ impl Item {
             Item::WaypointBeams => {
                 "Draws vertical translucent beacon light columns at nearby active waypoints."
             }
-            Item::WaypointLabels => {
-                "Shows floating diamond icons and nameplates in 3D space."
-            }
+            Item::WaypointLabels => "Shows floating diamond icons and nameplates in 3D space.",
             Item::WaypointDistance => {
                 "Displays live distance in metres next to each waypoint label."
             }
@@ -2757,39 +2774,85 @@ impl Item {
             Item::WaypointEdgeArrows => {
                 "Shows sleek coloured directional chevrons along the screen rim pointing toward off-screen waypoints."
             }
-            Item::WaypointScale => {
-                "Adjusts HUD marker and nameplate size (75%, 100% or 125%)."
-            }
+            Item::WaypointScale => "Adjusts HUD marker and nameplate size (75%, 100% or 125%).",
             Item::WaypointMaxDistance => {
                 "Hides in-world waypoint markers beyond the chosen distance (Unlimited, 256m, 512m, 1024m or 2048m)."
             }
-            Item::VoltPreset => "One tap sets every Volt Boost switch below to a profile; Off is vanilla.",
-            Item::VoltThreadBoost => "Tightens the game threads’ timer slack on Android so frame pacing wakes crisp on 90 and 120 Hz displays.",
-            Item::VoltPerformanceHints => "Lets Android raise the clock when a frame runs late (the ADPF hint session).",
-            Item::VoltDisplayHz => "Asks the screen for this rate every frame; System default follows the frame cap.",
-            Item::VoltDynamicFps => "A stronger cap while paused, in a menu or showing no world: 30 or 15 FPS.",
-            Item::VoltAudioCap => "Caps a tick’s particle sounds (a farm or a TNT blast) at 8 or 4.",
-            Item::VoltAutoDrs => "Eases the world’s resolution towards a frame target; the HUD stays native.",
-            Item::VoltThermalGuard => "Under load, eases the resolution and the particle budget down until the phone cools.",
-            Item::VoltReflex => "Works the GPU’s queue before the frame’s sleep and paces precisely while playing.",
-            Item::VoltParticleBudget => "The active particle cap and the distance past which nothing renders.",
-            Item::VoltChaosShield => "An explosion throws at most 24 debris particles, and a far one starts no firework show.",
-            Item::VoltParticleFrustum => "Particles behind the camera skip their sprite and light lookups.",
-            Item::VoltEntityCap => "Past the cap only the nearest mobs draw; the ones you fight never vanish first.",
-            Item::VoltItemCap => "Past the cap only the nearest dropped items draw, with a distance cut.",
-            Item::VoltBlockEntityCap => "Past the cap only the nearest chests, signs and banners draw.",
-            Item::VoltAnimThrottle => "Animated textures upload every second tick (10 Hz instead of vanilla’s 20).",
+            Item::VoltPreset => {
+                "One tap sets every Volt Boost switch below to a profile; Off is vanilla."
+            }
+            Item::VoltThreadBoost => {
+                "Tightens the game threads’ timer slack on Android so frame pacing wakes crisp on 90 and 120 Hz displays."
+            }
+            Item::VoltPerformanceHints => {
+                "Lets Android raise the clock when a frame runs late (the ADPF hint session)."
+            }
+            Item::VoltDisplayHz => {
+                "Asks the screen for this rate every frame; System default follows the frame cap."
+            }
+            Item::VoltDynamicFps => {
+                "A stronger cap while paused, in a menu or showing no world: 30 or 15 FPS."
+            }
+            Item::VoltAudioCap => {
+                "Caps a tick’s particle sounds (a farm or a TNT blast) at 8 or 4."
+            }
+            Item::VoltAutoDrs => {
+                "Eases the world’s resolution towards a frame target; the HUD stays native."
+            }
+            Item::VoltThermalGuard => {
+                "Under load, eases the resolution and the particle budget down until the phone cools."
+            }
+            Item::VoltReflex => {
+                "Works the GPU’s queue before the frame’s sleep and paces precisely while playing."
+            }
+            Item::VoltParticleBudget => {
+                "The active particle cap and the distance past which nothing renders."
+            }
+            Item::VoltChaosShield => {
+                "An explosion throws at most 24 debris particles, and a far one starts no firework show."
+            }
+            Item::VoltParticleFrustum => {
+                "Particles behind the camera skip their sprite and light lookups."
+            }
+            Item::VoltEntityCap => {
+                "Past the cap only the nearest mobs draw; the ones you fight never vanish first."
+            }
+            Item::VoltItemCap => {
+                "Past the cap only the nearest dropped items draw, with a distance cut."
+            }
+            Item::VoltBlockEntityCap => {
+                "Past the cap only the nearest chests, signs and banners draw."
+            }
+            Item::VoltAnimThrottle => {
+                "Animated textures upload every second tick (10 Hz instead of vanilla’s 20)."
+            }
             Item::VoltActiveAnimCull => "Skips animated textures no loaded chunk uses.",
-            Item::VoltFastTranslucency => "Distant water and glass re-sort on a coarser grid with a smaller budget.",
+            Item::VoltFastTranslucency => {
+                "Distant water and glass re-sort on a coarser grid with a smaller budget."
+            }
             Item::VoltFastWeather => "Rain and snow draw within four blocks instead of fifteen.",
-            Item::VoltCullSignText => "Signs’ standing text is skipped past sixteen blocks; the block stays.",
-            Item::VoltMobThrottle => "Far mobs’ bodies and player layers draw without their animation alpha.",
-            Item::VoltHubShield => "With more than 24 mobs, players beyond nametag range give up their render slot first.",
-            Item::VoltMenuBg => "FastDark skips the multi-pass menu blur for a plain dark backdrop.",
-            Item::VoltLookahead => "Chunks behind the movement and the look generate later than the ones ahead.",
-            Item::VoltCaveSkyCull => "Sealed underground in the Overworld, the weather draw is skipped.",
+            Item::VoltCullSignText => {
+                "Signs’ standing text is skipped past sixteen blocks; the block stays."
+            }
+            Item::VoltMobThrottle => {
+                "Far mobs’ bodies and player layers draw without their animation alpha."
+            }
+            Item::VoltHubShield => {
+                "With more than 24 mobs, players beyond nametag range give up their render slot first."
+            }
+            Item::VoltMenuBg => {
+                "FastDark skips the multi-pass menu blur for a plain dark backdrop."
+            }
+            Item::VoltLookahead => {
+                "Chunks behind the movement and the look generate later than the ones ahead."
+            }
+            Item::VoltCaveSkyCull => {
+                "Sealed underground in the Overworld, the weather draw is skipped."
+            }
             Item::VoltFrustumMesh => "Sections behind the view upload after every visible one.",
-            Item::VoltMemorySaver => "On a world or dimension change, emptied queues and freed pages go back to the OS.",
+            Item::VoltMemorySaver => {
+                "On a world or dimension change, emptied queues and freed pages go back to the OS."
+            }
             Item::VoltPerfHud => {
                 "Shows a telemetry overlay with live FPS, 1% lows, frame pacing, active entities, chunks and resident RAM."
             }
@@ -2800,7 +2863,9 @@ impl Item {
             Item::VoltShaderProfile => {
                 "Switches between the Potato, Low, Medium, High, Ultra and Custom native WGSL shader profiles tuned for mobile TBDR GPUs."
             }
-            Item::VoltShaderReset => "Restores every Volt Shaders setting back to the active profile's defaults.",
+            Item::VoltShaderReset => {
+                "Restores every Volt Shaders setting back to the active profile's defaults."
+            }
             Item::VoltShaderWavePlants => {
                 "Animates short grass, tall grass, ferns, flowers, crops and saplings with root-anchored vertex wind."
             }
@@ -3048,10 +3113,15 @@ impl Item {
                 e.item_render_cap.label(),
             ),
             Item::VoltBlockEntityCap => crate::lang::get_or(
-                &format!("horizon.volt.block_entities.{}", e.block_entity_cap.as_str()),
+                &format!(
+                    "horizon.volt.block_entities.{}",
+                    e.block_entity_cap.as_str()
+                ),
                 e.block_entity_cap.label(),
             ),
-            Item::VoltMenuBg => crate::lang::get_or(e.menu_bg_mode.label_key(), e.menu_bg_mode.as_str()),
+            Item::VoltMenuBg => {
+                crate::lang::get_or(e.menu_bg_mode.label_key(), e.menu_bg_mode.as_str())
+            }
             Item::VoltPerfHud => match e.perf_hud {
                 crate::volt_features::PerfHudMode::Off => crate::lang::get_or("options.off", "Off"),
                 crate::volt_features::PerfHudMode::Compact => {
@@ -3147,7 +3217,9 @@ impl Item {
             Item::WaypointDistance => e.waypoint_distance = !e.waypoint_distance,
             Item::WaypointCoords => e.waypoint_coords = !e.waypoint_coords,
             Item::WaypointEdgeArrows => e.waypoint_edge_arrows = !e.waypoint_edge_arrows,
-            Item::WaypointScale => e.waypoint_scale = step(&WAYPOINT_SCALES, e.waypoint_scale, _back),
+            Item::WaypointScale => {
+                e.waypoint_scale = step(&WAYPOINT_SCALES, e.waypoint_scale, _back)
+            }
             Item::WaypointMaxDistance => {
                 e.waypoint_max_distance = step(&WAYPOINT_DISTANCES, e.waypoint_max_distance, _back)
             }

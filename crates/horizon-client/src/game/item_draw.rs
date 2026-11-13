@@ -563,8 +563,8 @@ impl Game<'_> {
             .item_render_cap
             .limit_and_dist_sq()
             .unwrap_or((usize::MAX, f64::INFINITY));
-        let drawn: Option<std::collections::HashSet<u64>> = (self.dropped.len() > max_items)
-            .then(|| {
+        let drawn: Option<std::collections::HashSet<u64>> =
+            (self.dropped.len() > max_items).then(|| {
                 let mut sorted: Vec<(u64, f64)> = self
                     .dropped
                     .iter()
@@ -597,7 +597,9 @@ impl Game<'_> {
                 continue;
             }
             if entity {
-                if let Some(drawn) = &drawn && !drawn.contains(&u64::from(item.id)) {
+                if let Some(drawn) = &drawn
+                    && !drawn.contains(&u64::from(item.id))
+                {
                     continue;
                 }
                 if pos.length_squared() > max_dist_sq {

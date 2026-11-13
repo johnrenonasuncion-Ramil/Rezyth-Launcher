@@ -265,8 +265,19 @@ pub fn redact(text: &str) -> String {
                         let extension = name.rsplit('.').next().unwrap_or_default();
                         if matches!(
                             extension,
-                            "rs" | "so" | "dll" | "wgsl" | "json" | "jsonl" | "txt" | "java"
-                                | "kt" | "toml" | "trace" | "log" | "zip" | "apk"
+                            "rs" | "so"
+                                | "dll"
+                                | "wgsl"
+                                | "json"
+                                | "jsonl"
+                                | "txt"
+                                | "java"
+                                | "kt"
+                                | "toml"
+                                | "trace"
+                                | "log"
+                                | "zip"
+                                | "apk"
                         ) {
                             name.to_owned()
                         } else {

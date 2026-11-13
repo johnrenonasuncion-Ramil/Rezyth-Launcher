@@ -53,12 +53,22 @@ impl VoltTab {
 
     pub const fn about(self) -> &'static str {
         match self {
-            Self::Boost => "Resolution Scaler (25%..=200%), Volt Boost FPS profiles (LOD kept OFF) & Vulkan culling.",
-            Self::Visuals => "Volt Shaders gateway, Connected Glass, Better Grass, 3D Items, Fullbright & Dynamic Lights.",
-            Self::HudQol => "PvP HUDs, Zoomify, Freelook, Viewmodel customization, Sound Physics & Mod Menu.",
-            Self::ChatVoice => "3D Positional Proximity Voice Chat, Chat Heads, timestamps & spam compaction.",
+            Self::Boost => {
+                "Resolution Scaler (25%..=200%), Volt Boost FPS profiles (LOD kept OFF) & Vulkan culling."
+            }
+            Self::Visuals => {
+                "Volt Shaders gateway, Connected Glass, Better Grass, 3D Items, Fullbright & Dynamic Lights."
+            }
+            Self::HudQol => {
+                "PvP HUDs, Zoomify, Freelook, Viewmodel customization, Sound Physics & Mod Menu."
+            }
+            Self::ChatVoice => {
+                "3D Positional Proximity Voice Chat, Chat Heads, timestamps & spam compaction."
+            }
             Self::Maps => "Xaero's Minimap, Xaero's World Map & 3D world waypoints.",
-            Self::Extras => "Mod Menu (49 native Rust mods), Shader Packs, Video Settings, inventory & system tools.",
+            Self::Extras => {
+                "Mod Menu (49 native Rust mods), Shader Packs, Video Settings, inventory & system tools."
+            }
         }
     }
 }
@@ -181,10 +191,7 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
         ),
         (
             "Vulkan FPS Engine+",
-            BOOST_PLUS_ITEMS
-                .iter()
-                .map(|&a| e_volt(a, Saves))
-                .collect(),
+            BOOST_PLUS_ITEMS.iter().map(|&a| e_volt(a, Saves)).collect(),
         ),
         (
             "Performance Mods (Live Sync)",
@@ -260,30 +267,28 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
     ];
 
     // 3. HUD & QoL
-    let mut hud_groups = vec![
-        (
-            "Built-in Mod Menu & PvP HUDs",
-            vec![
-                VoltEntry {
-                    kind: VoltRowKind::OpenModMenu,
-                    cost: None,
-                    desc: "Open the full Split-Pane Mod Menu to browse, search and toggle all 49 native Rust mods.",
-                },
-                e_mod(VoltModId::InventoryHudPlus, Low),
-                e_mod(VoltModId::ArmorHud, None),
-                e_mod(VoltModId::StatusEffectTimer, None),
-                e_mod(VoltModId::KeystrokesHud, None),
-                e_mod(VoltModId::CpsDisplay, None),
-                e_mod(VoltModId::PingDisplay, None),
-                e_mod(VoltModId::FpsDisplay, None),
-                e_mod(VoltModId::CoordinatesHud, None),
-                e_mod(VoltModId::DurabilityDisplay, None),
-                e_mod(VoltModId::CustomCrosshair, None),
-                e_mod(VoltModId::DynamicCrosshair, None),
-                e_mod(VoltModId::BetterF3, None),
-            ],
-        ),
-    ];
+    let mut hud_groups = vec![(
+        "Built-in Mod Menu & PvP HUDs",
+        vec![
+            VoltEntry {
+                kind: VoltRowKind::OpenModMenu,
+                cost: None,
+                desc: "Open the full Split-Pane Mod Menu to browse, search and toggle all 49 native Rust mods.",
+            },
+            e_mod(VoltModId::InventoryHudPlus, Low),
+            e_mod(VoltModId::ArmorHud, None),
+            e_mod(VoltModId::StatusEffectTimer, None),
+            e_mod(VoltModId::KeystrokesHud, None),
+            e_mod(VoltModId::CpsDisplay, None),
+            e_mod(VoltModId::PingDisplay, None),
+            e_mod(VoltModId::FpsDisplay, None),
+            e_mod(VoltModId::CoordinatesHud, None),
+            e_mod(VoltModId::DurabilityDisplay, None),
+            e_mod(VoltModId::CustomCrosshair, None),
+            e_mod(VoltModId::DynamicCrosshair, None),
+            e_mod(VoltModId::BetterF3, None),
+        ],
+    )];
     for &(sec_name, acts) in QOL_SECTIONS {
         hud_groups.push((sec_name, acts.iter().map(|&a| e_volt(a, Low)).collect()));
     }
@@ -294,7 +299,10 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
     // 4. CHAT & VOICE
     let mut chat_groups = vec![(
         "Chat Mods",
-        vec![e_mod(VoltModId::ChatHeads, None), e_mod(VoltModId::BetterPingDisplay, None)],
+        vec![
+            e_mod(VoltModId::ChatHeads, None),
+            e_mod(VoltModId::BetterPingDisplay, None),
+        ],
     )];
     for &(sec_name, acts) in CHAT_SECTIONS {
         chat_groups.push((sec_name, acts.iter().map(|&a| e_volt(a, Low)).collect()));
@@ -393,7 +401,11 @@ fn opt_fallback_caption(opt: Opt) -> Option<&'static str> {
     })
 }
 
-fn entry_parts(kind: VoltRowKind, s: &Settings, binding: Option<&'static str>) -> (String, Option<String>) {
+fn entry_parts(
+    kind: VoltRowKind,
+    s: &Settings,
+    binding: Option<&'static str>,
+) -> (String, Option<String>) {
     match kind {
         VoltRowKind::Opt(opt) => {
             let lbl = opt.label(s).plain();
@@ -408,9 +420,7 @@ fn entry_parts(kind: VoltRowKind, s: &Settings, binding: Option<&'static str>) -
                 }
                 None => {
                     let clean = if lbl.contains('.') {
-                        opt_fallback_caption(opt)
-                            .map(str::to_owned)
-                            .unwrap_or(lbl)
+                        opt_fallback_caption(opt).map(str::to_owned).unwrap_or(lbl)
                     } else {
                         lbl
                     };
@@ -665,7 +675,9 @@ impl VoltSettingsUi {
         // height.
         let start_y = cols.side_y + 44.0;
         let avail = (cols.button(1)[1] - 4.0 - start_y).max(96.0);
-        let step = (avail / VoltTab::ALL.len() as f32).clamp(12.0, 22.0).floor();
+        let step = (avail / VoltTab::ALL.len() as f32)
+            .clamp(12.0, 22.0)
+            .floor();
         let th = (step - 1.0).clamp(11.0, 20.0);
         [cols.side_x, start_y + i as f32 * step, style::CONTROL_W, th]
     }
@@ -938,7 +950,17 @@ impl VoltSettingsUi {
             if hov || dragging_this || (focused && described.is_none()) {
                 described = Some(entry);
             }
-            self.draw_row(batch, atlas, s, &cols, entry, y, hov, focused, dragging_this);
+            self.draw_row(
+                batch,
+                atlas,
+                s,
+                &cols,
+                entry,
+                y,
+                hov,
+                focused,
+                dragging_this,
+            );
         }
 
         if lines.is_empty() {
@@ -979,7 +1001,13 @@ impl VoltSettingsUi {
         // Bottom-left Undo + Done
         let done_rect = cols.button(0);
         let done_lbl = Text::literal(lang::get("gui.done"));
-        let done_hov = ui::hovered(cursor, done_rect[0], done_rect[1], done_rect[2], done_rect[3]);
+        let done_hov = ui::hovered(
+            cursor,
+            done_rect[0],
+            done_rect[1],
+            done_rect[2],
+            done_rect[3],
+        );
         crate::widgets::record(&done_lbl.plain(), done_rect, true);
         crate::widgets::target(done_rect);
         style::volt_button(batch, atlas, done_rect, &done_lbl, (done_hov, true, true));
@@ -987,8 +1015,13 @@ impl VoltSettingsUi {
         if self.changed {
             let undo_rect = cols.button(1);
             let undo_lbl = Text::literal(lang::get("Undo"));
-            let undo_hov =
-                ui::hovered(cursor, undo_rect[0], undo_rect[1], undo_rect[2], undo_rect[3]);
+            let undo_hov = ui::hovered(
+                cursor,
+                undo_rect[0],
+                undo_rect[1],
+                undo_rect[2],
+                undo_rect[3],
+            );
             crate::widgets::record(&undo_lbl.plain(), undo_rect, true);
             crate::widgets::target(undo_rect);
             style::undo_button(batch, atlas, undo_rect, &undo_lbl, undo_hov);
@@ -1112,7 +1145,14 @@ impl VoltSettingsUi {
             Some(entry) => {
                 let (name, _) = entry_parts(entry.kind, s, None);
                 let head = style::fit(atlas, &name, w - 120.0);
-                batch.text_styled(atlas, &Text::literal(&head), left, y + 7.0, style::WHITE, true);
+                batch.text_styled(
+                    atlas,
+                    &Text::literal(&head),
+                    left,
+                    y + 7.0,
+                    style::WHITE,
+                    true,
+                );
                 let cx = left + atlas.font.width(&head) + 8.0;
                 style::fill(
                     batch,
@@ -1255,7 +1295,10 @@ impl VoltSettingsUi {
                 vec![VoltUiAction::ButtonClick, VoltUiAction::OpenWorldMap]
             }
             VoltRowKind::OpenWaypointsManager => {
-                vec![VoltUiAction::ButtonClick, VoltUiAction::OpenWaypointsManager]
+                vec![
+                    VoltUiAction::ButtonClick,
+                    VoltUiAction::OpenWaypointsManager,
+                ]
             }
             VoltRowKind::OpenAgent => vec![VoltUiAction::ButtonClick, VoltUiAction::OpenAgent],
             VoltRowKind::Opt(opt) => {

@@ -265,7 +265,17 @@ pub fn button(
     ui::nine_slice(batch, atlas, &sprite, x, y, w, h, u32::MAX);
     let color = if live { WHITE } else { MUTED };
     let ty = y + ((h - 8.0) / 2.0).floor();
-    ui::scrolling_text(batch, atlas, label, x + 2.0, x + w - 2.0, y, y + h, ty, color);
+    ui::scrolling_text(
+        batch,
+        atlas,
+        label,
+        x + 2.0,
+        x + w - 2.0,
+        y,
+        y + h,
+        ty,
+        color,
+    );
 }
 /// The ON/OFF row control is a vanilla checkbox (the pill becomes the sprite,
 /// centred on the box it used to fill).

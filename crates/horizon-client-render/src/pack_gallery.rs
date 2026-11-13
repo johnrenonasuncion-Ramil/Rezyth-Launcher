@@ -145,9 +145,7 @@ pub fn encode(value: &str) -> String {
 pub fn parse_search(text: &str) -> Result<(Vec<Pack>, u64), String> {
     let value: serde_json::Value =
         serde_json::from_str(text).map_err(|e| format!("Modrinth: {e}"))?;
-    let hits = value["hits"]
-        .as_array()
-        .ok_or("Modrinth sent no results")?;
+    let hits = value["hits"].as_array().ok_or("Modrinth sent no results")?;
     let packs = hits.iter().filter_map(pack_of).collect();
     Ok((packs, value["total_hits"].as_u64().unwrap_or(0)))
 }
@@ -174,7 +172,10 @@ fn pack_of(hit: &serde_json::Value) -> Option<Pack> {
         downloads: hit["downloads"].as_u64().unwrap_or(0),
         versions,
         compatible,
-        latest: hit["latest_version"].as_str().unwrap_or_default().to_owned(),
+        latest: hit["latest_version"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned(),
         icon: hit["icon_url"]
             .as_str()
             .filter(|url| url.starts_with("https://"))
@@ -198,21 +199,17 @@ pub fn parse_project_versions(text: &str, installed: &str) -> Result<Option<File
     let list = value.as_array().ok_or("Modrinth sent no versions")?;
     let mut best: Option<(&serde_json::Value, bool)> = None;
     for version in list {
-        let compatible = version["game_versions"]
-            .as_array()
-            .is_some_and(|list| {
-                list.iter()
-                    .any(|v| v.as_str() == Some(horizon_core::version::VANILLA_VERSION))
-            });
+        let compatible = version["game_versions"].as_array().is_some_and(|list| {
+            list.iter()
+                .any(|v| v.as_str() == Some(horizon_core::version::VANILLA_VERSION))
+        });
         let better = match &best {
             None => true,
             Some((old, old_compatible)) => match (compatible, *old_compatible) {
                 (true, false) => true,
                 (false, true) => false,
                 // Newer wins: the date's ISO order is the time's.
-                _ => {
-                    version["date_published"].as_str() > old["date_published"].as_str()
-                }
+                _ => version["date_published"].as_str() > old["date_published"].as_str(),
             },
         };
         if better {
@@ -246,7 +243,10 @@ fn file_of(version: &serde_json::Value) -> Option<FileRef> {
             .to_owned(),
         file_name: file["filename"].as_str().unwrap_or("pack.zip").to_owned(),
         url: url.to_owned(),
-        sha512: file["hashes"]["sha512"].as_str().unwrap_or_default().to_owned(),
+        sha512: file["hashes"]["sha512"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned(),
         size: file["size"].as_u64().unwrap_or(0),
     })
 }

@@ -714,9 +714,7 @@ impl Game<'_> {
         // (AFK in a world stays the vanilla tracker's).
         let limit = match self.settings.extras.dynamic_fps.cap_fps() {
             Some(cap)
-                if self.pause
-                    || self.title.is_some()
-                    || self.screen != super::Screen::Playing =>
+                if self.pause || self.title.is_some() || self.screen != super::Screen::Playing =>
             {
                 (cap as i32).min(limit)
             }

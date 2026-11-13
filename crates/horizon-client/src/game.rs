@@ -11059,12 +11059,10 @@ impl Game<'_> {
             let mut visible: Vec<&([i32; 3], u32)> = visible
                 .filter(|block| {
                     let (pos, state) = (block.0, block.1);
-                    let dist_sq = (glam::DVec3::new(
-                        f64::from(pos[0]),
-                        f64::from(pos[1]),
-                        f64::from(pos[2]),
-                    ) - camera)
-                        .length_squared();
+                    let dist_sq =
+                        (glam::DVec3::new(f64::from(pos[0]), f64::from(pos[1]), f64::from(pos[2]))
+                            - camera)
+                            .length_squared();
                     off_screen(state) || dist_sq <= max_be_dist_sq
                 })
                 .collect();
@@ -16374,8 +16372,7 @@ impl Game<'_> {
         // Volt Boost's menu backdrop saver: FastDark skips the multi-pass
         // blur (the phone's tile GPUs pay for it every frame); the menus sit
         // on their plain dark backdrop.
-        if self.settings.extras.menu_bg_mode
-            == horizon_client::volt_features::MenuBgMode::FastDark
+        if self.settings.extras.menu_bg_mode == horizon_client::volt_features::MenuBgMode::FastDark
         {
             return None;
         }

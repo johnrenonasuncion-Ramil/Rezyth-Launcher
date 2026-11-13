@@ -348,74 +348,174 @@ impl VoltAct {
 
     pub fn description(self) -> &'static str {
         match self {
-            Self::ShaderStyle => "Switches overall BSL Soft Cinema, Complementary Reimagined, Volt Balanced, or Pastel Dream atmosphere.",
-            Self::ShaderEyeComfort => "BSL soft highlight shoulder & velvet shadow lift for comfortable zero-glare sessions.",
-            Self::ShaderCloudsMode => "Selects multi-layer BSL Puffy 3D clouds, Complementary Reimagined voxel clouds, or soft Cirrus.",
-            Self::ShaderCloudCoverage => "Adjusts 3D sky cloud density and sunlit cloud shadow coverage.",
-            Self::ShaderCloudShadows => "Projects drifting sunlight & cool cloud shadow patches across outdoor landscapes.",
-            Self::ShaderGlowingOres => "Complementary-style selective ore vein emission: diamond, emerald, gold, redstone & amethyst veins glow!",
-            Self::ShaderOreGlow => "Controls HDR emission brightness of glowing ore veins inside caves.",
-            Self::ShaderAutoPbr => "Integrated Auto-PBR specular glints & Fresnel reflections on metals, gems, ice, polished stone & glass.",
-            Self::ShaderWaterFoam => "Adds shimmering underwater caustics and bubbly white shoreline/wave-crest foam.",
-            Self::ShaderNightSkyPlus => "Renders a subtle Milky Way nebula band and occasional night shooting stars.",
-            Self::ShaderRainbow => "Displays a natural 42-degree optical rainbow arc during sun-showers and clearing rain.",
-            Self::VisualsCtmGlass => "Removes interior border seams between adjacent glass and stained-glass blocks on any resource pack.",
-            Self::VisualsBetterGrass => "Extends lush green grass textures down the sides of grassy slopes and meadows.",
-            Self::VisualsDroppedItems3d => "Gives dropped items a crisp 3D tumbling and ground-resting visual presentation.",
-            Self::BoostGreedyMerge => "Eliminates hidden interior translucent/partial coplanar faces to cut GPU overdraw.",
-            Self::BoostCaveOcclusion => "Skips unseen sealed underground cavities completely enclosed by solid stone.",
-            Self::BoostMeshPool => "Expands multi-worker SectionMesh buffer recycling to eliminate chunk-meshing frame spikes.",
-            Self::BoostOffscreenSkip => "Skips animation updates for distant block entities and off-frustum mobs.",
-            Self::BoostFramePacer => "Smooths frame delivery intervals to prevent mobile GPU thermal throttling.",
-            Self::QolZoom => "Enables smooth spyglass-free optic zoom (Key C or touch Zoom) with proportional look scaling.",
+            Self::ShaderStyle => {
+                "Switches overall BSL Soft Cinema, Complementary Reimagined, Volt Balanced, or Pastel Dream atmosphere."
+            }
+            Self::ShaderEyeComfort => {
+                "BSL soft highlight shoulder & velvet shadow lift for comfortable zero-glare sessions."
+            }
+            Self::ShaderCloudsMode => {
+                "Selects multi-layer BSL Puffy 3D clouds, Complementary Reimagined voxel clouds, or soft Cirrus."
+            }
+            Self::ShaderCloudCoverage => {
+                "Adjusts 3D sky cloud density and sunlit cloud shadow coverage."
+            }
+            Self::ShaderCloudShadows => {
+                "Projects drifting sunlight & cool cloud shadow patches across outdoor landscapes."
+            }
+            Self::ShaderGlowingOres => {
+                "Complementary-style selective ore vein emission: diamond, emerald, gold, redstone & amethyst veins glow!"
+            }
+            Self::ShaderOreGlow => {
+                "Controls HDR emission brightness of glowing ore veins inside caves."
+            }
+            Self::ShaderAutoPbr => {
+                "Integrated Auto-PBR specular glints & Fresnel reflections on metals, gems, ice, polished stone & glass."
+            }
+            Self::ShaderWaterFoam => {
+                "Adds shimmering underwater caustics and bubbly white shoreline/wave-crest foam."
+            }
+            Self::ShaderNightSkyPlus => {
+                "Renders a subtle Milky Way nebula band and occasional night shooting stars."
+            }
+            Self::ShaderRainbow => {
+                "Displays a natural 42-degree optical rainbow arc during sun-showers and clearing rain."
+            }
+            Self::VisualsCtmGlass => {
+                "Removes interior border seams between adjacent glass and stained-glass blocks on any resource pack."
+            }
+            Self::VisualsBetterGrass => {
+                "Extends lush green grass textures down the sides of grassy slopes and meadows."
+            }
+            Self::VisualsDroppedItems3d => {
+                "Gives dropped items a crisp 3D tumbling and ground-resting visual presentation."
+            }
+            Self::BoostGreedyMerge => {
+                "Eliminates hidden interior translucent/partial coplanar faces to cut GPU overdraw."
+            }
+            Self::BoostCaveOcclusion => {
+                "Skips unseen sealed underground cavities completely enclosed by solid stone."
+            }
+            Self::BoostMeshPool => {
+                "Expands multi-worker SectionMesh buffer recycling to eliminate chunk-meshing frame spikes."
+            }
+            Self::BoostOffscreenSkip => {
+                "Skips animation updates for distant block entities and off-frustum mobs."
+            }
+            Self::BoostFramePacer => {
+                "Smooths frame delivery intervals to prevent mobile GPU thermal throttling."
+            }
+            Self::QolZoom => {
+                "Enables smooth spyglass-free optic zoom (Key C or touch Zoom) with proportional look scaling."
+            }
             Self::QolZoomFov => "Target field-of-view percentage when zooming in.",
-            Self::QolZoomSmooth => "Smoothly interpolates FOV transitions instead of snapping instantly.",
-            Self::QolFreelook => "Orbit camera 360 degrees around your player without changing movement heading.",
-            Self::QolInspector => "Jade/WTHIT top-center HUD card showing looked-at block/entity info, crop growth & HP.",
-            Self::QolSpawnLight => "Highlights nearby blocks where hostile mobs can spawn (Amber = Night, Red = Always).",
-            Self::QolBlueprint => "Projects a 3D translucent build hologram in front of your anchor position.",
+            Self::QolZoomSmooth => {
+                "Smoothly interpolates FOV transitions instead of snapping instantly."
+            }
+            Self::QolFreelook => {
+                "Orbit camera 360 degrees around your player without changing movement heading."
+            }
+            Self::QolInspector => {
+                "Jade/WTHIT top-center HUD card showing looked-at block/entity info, crop growth & HP."
+            }
+            Self::QolSpawnLight => {
+                "Highlights nearby blocks where hostile mobs can spawn (Amber = Night, Red = Always)."
+            }
+            Self::QolBlueprint => {
+                "Projects a 3D translucent build hologram in front of your anchor position."
+            }
             Self::QolBlueprintPreset => "Selects the active 3D blueprint structure template.",
-            Self::QolBlueprintLayer => "View all Y layers at once or slice one horizontal build layer at a time.",
-            Self::QolBlueprintChecklist => "Shows live required block counts for the active blueprint.",
-            Self::QolPhotoOverlays => "Displays rule-of-thirds framing guides for cinematic screenshots.",
+            Self::QolBlueprintLayer => {
+                "View all Y layers at once or slice one horizontal build layer at a time."
+            }
+            Self::QolBlueprintChecklist => {
+                "Shows live required block counts for the active blueprint."
+            }
+            Self::QolPhotoOverlays => {
+                "Displays rule-of-thirds framing guides for cinematic screenshots."
+            }
             Self::QolCamRoll => "Applies a cinematic Dutch-angle camera roll tilt.",
-            Self::QolLetterbox => "Adds 21:9 cinema letterbox bars to the top and bottom of the screen.",
-            Self::QolReplay => "Records multiplayer and world sessions as Volt Replays. Watch them from the launcher's Replays page: timeline, speeds, pause, and a free camera that shows you in third person.",
-            Self::QolReplayButton => "Shows a floating Start / Pause / End recording button in the HUD. Drag it anywhere; hold it, then drag up-down for size and left-right for opacity. Applies when you next join a world or server.",
-            Self::QolCaveReverb => "Adds subtle natural acoustic echo when deep inside enclosed stone caves.",
-            Self::QolUnderwaterLpf => "Applies a warm low-pass muffle filter when the camera is submerged underwater.",
+            Self::QolLetterbox => {
+                "Adds 21:9 cinema letterbox bars to the top and bottom of the screen."
+            }
+            Self::QolReplay => {
+                "Records multiplayer and world sessions as Volt Replays. Watch them from the launcher's Replays page: timeline, speeds, pause, and a free camera that shows you in third person."
+            }
+            Self::QolReplayButton => {
+                "Shows a floating Start / Pause / End recording button in the HUD. Drag it anywhere; hold it, then drag up-down for size and left-right for opacity. Applies when you next join a world or server."
+            }
+            Self::QolCaveReverb => {
+                "Adds subtle natural acoustic echo when deep inside enclosed stone caves."
+            }
+            Self::QolUnderwaterLpf => {
+                "Applies a warm low-pass muffle filter when the camera is submerged underwater."
+            }
             Self::QolWallOcclusion => "Softens positional sounds originating behind solid walls.",
             Self::QolMufflePortal => "Individual volume cap for Nether & End portal hums.",
             Self::QolMufflePiston => "Individual volume cap for pistons, dispensers, and droppers.",
             Self::QolMuffleMinecart => "Individual volume cap for rolling minecarts.",
-            Self::QolMuffleExplosion => "Individual volume cap for loud TNT and creeper explosions.",
+            Self::QolMuffleExplosion => {
+                "Individual volume cap for loud TNT and creeper explosions."
+            }
             Self::QolMuffleRain => "Individual volume cap for outdoor rain weather loops.",
-            Self::QolAtlas => "Automatically records visited chunk terrain into the persistent full-screen World Atlas.",
-            Self::QolAtlasMode => "Switches World Atlas between Surface, Elevation Relief, Lush Biome, and Slime Chunk Radar.",
+            Self::QolAtlas => {
+                "Automatically records visited chunk terrain into the persistent full-screen World Atlas."
+            }
+            Self::QolAtlasMode => {
+                "Switches World Atlas between Surface, Elevation Relief, Lush Biome, and Slime Chunk Radar."
+            }
             Self::QolAtlasGrid => "Overlays 16x16 chunk boundary lines on the World Atlas.",
-            Self::QolVmCustom => "Enables custom first-person hand X/Y/Z position, scale, tilt, and swing speed.",
+            Self::QolVmCustom => {
+                "Enables custom first-person hand X/Y/Z position, scale, tilt, and swing speed."
+            }
             Self::QolVmX => "Shifts first-person held items horizontally.",
             Self::QolVmY => "Shifts first-person held items vertically.",
             Self::QolVmZ => "Shifts first-person held items forward or backward.",
             Self::QolVmScale => "Scales first-person held items (compact PvP items at 65-80%).",
             Self::QolVmRoll => "Tilts first-person held items around the forward axis.",
-            Self::QolVmSwing => "Adjusts arm mining/attack swing speed without affecting actual attack cooldown.",
+            Self::QolVmSwing => {
+                "Adjusts arm mining/attack swing speed without affecting actual attack cooldown."
+            }
             Self::QolVmClassic => "Enables smooth 1.7-style eating and sword/shield guard posture.",
-            Self::QolVmTotem => "Scales the Totem of Undying pop animation so it never blocks your screen.",
-            Self::QolVmReset => "Restores all first-person hand & viewmodel sliders to vanilla defaults.",
-            Self::VoiceEnable => "Enables pure-Rust 3D positional UDP proximity voice chat on LAN & compatible servers.",
-            Self::VoiceModePtt => "Choose Push-to-Talk (HUD mic button / V key) or automatic Voice Activity Detection.",
-            Self::VoiceVad => "Microphone volume threshold required to trigger Voice Activity transmission.",
+            Self::QolVmTotem => {
+                "Scales the Totem of Undying pop animation so it never blocks your screen."
+            }
+            Self::QolVmReset => {
+                "Restores all first-person hand & viewmodel sliders to vanilla defaults."
+            }
+            Self::VoiceEnable => {
+                "Enables pure-Rust 3D positional UDP proximity voice chat on LAN & compatible servers."
+            }
+            Self::VoiceModePtt => {
+                "Choose Push-to-Talk (HUD mic button / V key) or automatic Voice Activity Detection."
+            }
+            Self::VoiceVad => {
+                "Microphone volume threshold required to trigger Voice Activity transmission."
+            }
             Self::VoiceMicGain => "Amplifies or attenuates your outgoing microphone voice level.",
-            Self::VoiceOutGain => "Master volume of nearby players speaking in 3D proximity voice chat.",
-            Self::VoiceDistance => "Maximum distance in blocks over which 3D proximity voices fade out.",
+            Self::VoiceOutGain => {
+                "Master volume of nearby players speaking in 3D proximity voice chat."
+            }
+            Self::VoiceDistance => {
+                "Maximum distance in blocks over which 3D proximity voices fade out."
+            }
             Self::VoiceCaveMuffle => "Gently muffles distant voices inside deep underground caves.",
-            Self::VoiceHudBtn => "Displays a convenient Push-to-Talk microphone button on the touch HUD.",
-            Self::VoiceLoopback => "Plays back your own spatialized mic audio locally to test volume and clarity.",
+            Self::VoiceHudBtn => {
+                "Displays a convenient Push-to-Talk microphone button on the touch HUD."
+            }
+            Self::VoiceLoopback => {
+                "Plays back your own spatialized mic audio locally to test volume and clarity."
+            }
             Self::ChatTimestamps => "Prefixes incoming chat messages with [HH:MM] timestamps.",
-            Self::ChatCompactSpam => "Stacks identical consecutive chat messages into compact (x2), (x3) counters.",
-            Self::ChatMentionPing => "Highlights messages mentioning your username with a subtle chime.",
-            Self::ChatQuickBar => "Adds 1-tap Quick-Chat buttons (GG, Share Coords, OMW, Help) on the chat screen.",
+            Self::ChatCompactSpam => {
+                "Stacks identical consecutive chat messages into compact (x2), (x3) counters."
+            }
+            Self::ChatMentionPing => {
+                "Highlights messages mentioning your username with a subtle chime."
+            }
+            Self::ChatQuickBar => {
+                "Adds 1-tap Quick-Chat buttons (GG, Share Coords, OMW, Help) on the chat screen."
+            }
             _ => "Built-in pure-Rust native Volt Mod with zero overhead when disabled.",
         }
     }
@@ -552,9 +652,15 @@ impl VoltAct {
             Self::QolAtlasMode => e.volt_qol.atlas_mode = e.volt_qol.atlas_mode.cycle(back),
             Self::QolAtlasGrid => e.volt_qol.atlas_grid = !e.volt_qol.atlas_grid,
             Self::QolVmCustom => e.volt_qol.viewmodel_custom = !e.volt_qol.viewmodel_custom,
-            Self::QolVmX => e.volt_qol.vm_offset_x = step_i16(e.volt_qol.vm_offset_x, -60, 60, 10, back),
-            Self::QolVmY => e.volt_qol.vm_offset_y = step_i16(e.volt_qol.vm_offset_y, -60, 60, 10, back),
-            Self::QolVmZ => e.volt_qol.vm_offset_z = step_i16(e.volt_qol.vm_offset_z, -60, 60, 10, back),
+            Self::QolVmX => {
+                e.volt_qol.vm_offset_x = step_i16(e.volt_qol.vm_offset_x, -60, 60, 10, back)
+            }
+            Self::QolVmY => {
+                e.volt_qol.vm_offset_y = step_i16(e.volt_qol.vm_offset_y, -60, 60, 10, back)
+            }
+            Self::QolVmZ => {
+                e.volt_qol.vm_offset_z = step_i16(e.volt_qol.vm_offset_z, -60, 60, 10, back)
+            }
             Self::QolVmScale => {
                 e.volt_qol.vm_scale_pct = step_u16(e.volt_qol.vm_scale_pct, 50, 150, 10, back)
             }
@@ -599,9 +705,7 @@ impl VoltAct {
                 e.volt_chat.voice_distance_blocks =
                     step_u16(e.volt_chat.voice_distance_blocks, 16, 96, 16, back)
             }
-            Self::VoiceCaveMuffle => {
-                e.volt_chat.voice_cave_muffle = !e.volt_chat.voice_cave_muffle
-            }
+            Self::VoiceCaveMuffle => e.volt_chat.voice_cave_muffle = !e.volt_chat.voice_cave_muffle,
             Self::VoiceHudBtn => e.volt_chat.voice_hud_button = !e.volt_chat.voice_hud_button,
             Self::VoiceLoopback => {
                 e.volt_chat.voice_loopback_test = !e.volt_chat.voice_loopback_test

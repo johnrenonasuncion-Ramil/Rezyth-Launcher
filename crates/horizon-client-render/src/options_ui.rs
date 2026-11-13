@@ -424,45 +424,71 @@ impl Opt {
             Opt::AndroidGyroSensitivity => unit(1.0, 0.1, 3.0),
             Opt::TouchSensitivity => unit(1.0, 0.1, 3.0),
             Opt::TouchButtonScale => unit(1.0, 0.5, 2.0),
-            Opt::VoltResolutionScale => {
-                unit(s.horizon.resolution_scale.clamp(25, 200) as f32, 25.0, 200.0)
-            }
-            Opt::VoltShaderWindSpeed => {
-                unit(s.extras.volt_shaders.wind_speed.clamp(25, 200) as f32, 25.0, 200.0)
-            }
-            Opt::VoltShaderWindStrength => {
-                unit(s.extras.volt_shaders.wind_strength.clamp(25, 200) as f32, 25.0, 200.0)
-            }
-            Opt::VoltShaderShadowRichness => {
-                unit(s.extras.volt_shaders.shadow_richness.clamp(0, 100) as f32, 0.0, 100.0)
-            }
-            Opt::VoltShaderTorchIntensity => {
-                unit(s.extras.volt_shaders.torch_intensity.clamp(50, 200) as f32, 50.0, 200.0)
-            }
-            Opt::VoltShaderEmissiveGlow => {
-                unit(s.extras.volt_shaders.emissive_glow.clamp(0, 200) as f32, 0.0, 200.0)
-            }
-            Opt::VoltShaderWaterReflection => {
-                unit(s.extras.volt_shaders.water_reflection.clamp(0, 150) as f32, 0.0, 150.0)
-            }
-            Opt::VoltShaderSunsetGlow => {
-                unit(s.extras.volt_shaders.sunset_glow.clamp(0, 200) as f32, 0.0, 200.0)
-            }
-            Opt::VoltShaderVibrance => {
-                unit(s.extras.volt_shaders.vibrance.clamp(50, 180) as f32, 50.0, 180.0)
-            }
-            Opt::VoltShaderSaturation => {
-                unit(s.extras.volt_shaders.saturation.clamp(50, 180) as f32, 50.0, 180.0)
-            }
-            Opt::VoltShaderContrast => {
-                unit(s.extras.volt_shaders.contrast.clamp(70, 150) as f32, 70.0, 150.0)
-            }
-            Opt::VoltShaderExposure => {
-                unit(s.extras.volt_shaders.exposure.clamp(70, 150) as f32, 70.0, 150.0)
-            }
-            Opt::VoltShaderWarmth => {
-                unit(s.extras.volt_shaders.warmth.clamp(-50, 50) as f32, -50.0, 50.0)
-            }
+            Opt::VoltResolutionScale => unit(
+                s.horizon.resolution_scale.clamp(25, 200) as f32,
+                25.0,
+                200.0,
+            ),
+            Opt::VoltShaderWindSpeed => unit(
+                s.extras.volt_shaders.wind_speed.clamp(25, 200) as f32,
+                25.0,
+                200.0,
+            ),
+            Opt::VoltShaderWindStrength => unit(
+                s.extras.volt_shaders.wind_strength.clamp(25, 200) as f32,
+                25.0,
+                200.0,
+            ),
+            Opt::VoltShaderShadowRichness => unit(
+                s.extras.volt_shaders.shadow_richness.clamp(0, 100) as f32,
+                0.0,
+                100.0,
+            ),
+            Opt::VoltShaderTorchIntensity => unit(
+                s.extras.volt_shaders.torch_intensity.clamp(50, 200) as f32,
+                50.0,
+                200.0,
+            ),
+            Opt::VoltShaderEmissiveGlow => unit(
+                s.extras.volt_shaders.emissive_glow.clamp(0, 200) as f32,
+                0.0,
+                200.0,
+            ),
+            Opt::VoltShaderWaterReflection => unit(
+                s.extras.volt_shaders.water_reflection.clamp(0, 150) as f32,
+                0.0,
+                150.0,
+            ),
+            Opt::VoltShaderSunsetGlow => unit(
+                s.extras.volt_shaders.sunset_glow.clamp(0, 200) as f32,
+                0.0,
+                200.0,
+            ),
+            Opt::VoltShaderVibrance => unit(
+                s.extras.volt_shaders.vibrance.clamp(50, 180) as f32,
+                50.0,
+                180.0,
+            ),
+            Opt::VoltShaderSaturation => unit(
+                s.extras.volt_shaders.saturation.clamp(50, 180) as f32,
+                50.0,
+                180.0,
+            ),
+            Opt::VoltShaderContrast => unit(
+                s.extras.volt_shaders.contrast.clamp(70, 150) as f32,
+                70.0,
+                150.0,
+            ),
+            Opt::VoltShaderExposure => unit(
+                s.extras.volt_shaders.exposure.clamp(70, 150) as f32,
+                70.0,
+                150.0,
+            ),
+            Opt::VoltShaderWarmth => unit(
+                s.extras.volt_shaders.warmth.clamp(-50, 50) as f32,
+                -50.0,
+                50.0,
+            ),
             _ => Kind::Cycle,
         }
     }
@@ -952,13 +978,13 @@ impl Opt {
             Opt::AndroidGyroSensitivity => Text::literal("100%"),
             Opt::TouchPreset => Text::literal("Volt Default"),
             // The ported Volt options.
-            Opt::VoltResolutionScale => Text::literal(format!(
-                "{}%",
-                s.horizon.resolution_scale.clamp(25, 200)
-            )),
-            Opt::VoltShaderWindSpeed => {
-                Text::literal(format!("{}%", s.extras.volt_shaders.wind_speed.clamp(25, 200)))
+            Opt::VoltResolutionScale => {
+                Text::literal(format!("{}%", s.horizon.resolution_scale.clamp(25, 200)))
             }
+            Opt::VoltShaderWindSpeed => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.wind_speed.clamp(25, 200)
+            )),
             Opt::VoltShaderWindStrength => Text::literal(format!(
                 "{}%",
                 s.extras.volt_shaders.wind_strength.clamp(25, 200)
@@ -983,19 +1009,22 @@ impl Opt {
                 "{}%",
                 s.extras.volt_shaders.sunset_glow.clamp(0, 200)
             )),
-            Opt::VoltShaderVibrance => {
-                Text::literal(format!("{}%", s.extras.volt_shaders.vibrance.clamp(50, 180)))
-            }
+            Opt::VoltShaderVibrance => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.vibrance.clamp(50, 180)
+            )),
             Opt::VoltShaderSaturation => Text::literal(format!(
                 "{}%",
                 s.extras.volt_shaders.saturation.clamp(50, 180)
             )),
-            Opt::VoltShaderContrast => {
-                Text::literal(format!("{}%", s.extras.volt_shaders.contrast.clamp(70, 150)))
-            }
-            Opt::VoltShaderExposure => {
-                Text::literal(format!("{}%", s.extras.volt_shaders.exposure.clamp(70, 150)))
-            }
+            Opt::VoltShaderContrast => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.contrast.clamp(70, 150)
+            )),
+            Opt::VoltShaderExposure => Text::literal(format!(
+                "{}%",
+                s.extras.volt_shaders.exposure.clamp(70, 150)
+            )),
             Opt::VoltShaderWarmth => {
                 let w = s.extras.volt_shaders.warmth.clamp(-50, 50);
                 Text::literal(if w == 0 {
@@ -1893,7 +1922,9 @@ enum WKind {
     },
     /// A gallery row's Modrinth icon: `gallery.icons[project]` written into a
     /// pack icon slot as the row is drawn.
-    Icon { project: String },
+    Icon {
+        project: String,
+    },
 }
 struct Widget {
     x: f32,
@@ -3610,8 +3641,12 @@ impl OptionsUi {
             }
             Page::VoltSettings => {
                 // The Volt Settings hub: its pages, the Boost page first.
-                let open = |key: &str, page: Page| button(0.0, 0.0, 150.0, tr(key), Act::Push(page));
-                vec![Row::Buttons(open("horizon.volt.boost", Page::VoltBoost), None)]
+                let open =
+                    |key: &str, page: Page| button(0.0, 0.0, 150.0, tr(key), Act::Push(page));
+                vec![Row::Buttons(
+                    open("horizon.volt.boost", Page::VoltBoost),
+                    None,
+                )]
             }
             Page::VoltBoost => {
                 // The Boost page: the profile first, then every switch the
@@ -6894,8 +6929,7 @@ impl OptionsUi {
                 self.scroll = 0.0;
                 return Vec::new();
             }
-        } else if matches!(self.page(), Page::Language | Page::PackGallery)
-            && self.focus.is_none()
+        } else if matches!(self.page(), Page::Language | Page::PackGallery) && self.focus.is_none()
         {
             let search = if self.page() == Page::Language {
                 &mut self.language_search
@@ -9272,12 +9306,12 @@ mod tests {
                 })
                 .collect()
         };
-        // Vanilla's Options buttons, Horizon's two in the Telemetry and Credits slots, then
+        // Vanilla's Options buttons, Horizon's own in the Telemetry and Credits slots, then
         // Credits & Attribution (WinScreen's credits).
         let main = pushes(&mut ui);
         assert_eq!(
-            &main[main.len() - 3..],
-            [Page::Horizon, Page::Mods, Page::Credits]
+            &main[main.len() - 4..],
+            [Page::Horizon, Page::VoltSettings, Page::Mods, Page::Credits]
         );
         ui.push(Page::Horizon);
         assert_eq!(

@@ -130,9 +130,7 @@ fn prepare(
     let sdk = env
         .get_static_field("android/os/Build$VERSION", "SDK_INT", "I")?
         .i()?;
-    if sdk <= 28
-        && !permission(env, activity)?
-        && !PERMISSION_PENDING.swap(true, Ordering::Relaxed)
+    if sdk <= 28 && !permission(env, activity)? && !PERMISSION_PENDING.swap(true, Ordering::Relaxed)
     {
         let permissions = env.new_object_array(1, "java/lang/String", JObject::null())?;
         env.set_object_array_element(

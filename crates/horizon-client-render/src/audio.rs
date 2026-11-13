@@ -878,11 +878,17 @@ impl Audio {
             );
         }
         let mixer = Arc::new(Mutex::new(Mixer::default()));
+        // Without the feature `Stream` is uninhabited and `open_named` always
+        // fails, which makes the `Ok` arm of a match over its result
+        // unreachable code (rustc's lint): the build without sound says so
+        // without opening anything.
+        #[cfg(feature = "audio")]
         let opened = if output {
             Self::open_named(mixer.clone(), target_device)
         } else {
             Err("no output on a dedicated server".into())
         };
+        #[cfg(feature = "audio")]
         let (stream, live) = match opened {
             Ok(v) => (Some(v), true),
             Err(e) => {
@@ -891,6 +897,17 @@ impl Audio {
                 }
                 (None, false)
             }
+        };
+        #[cfg(not(feature = "audio"))]
+        let (stream, live): (Option<Stream>, bool) = {
+            let _ = target_device;
+            if output {
+                log::warn!(
+                    "Horizon: no sound: this build has no sound output \
+                     (built without the `audio` feature)"
+                );
+            }
+            (None, false)
         };
         let mut engine = SoundEngine::new(registry);
         engine.loaded = live;
@@ -939,10 +956,6 @@ impl Audio {
             #[cfg(feature = "audio")]
             device_ticks: 0,
         }
-    }
-    #[cfg(not(feature = "audio"))]
-    fn open_named(_: Arc<Mutex<Mixer>>, _: &str) -> Result<Stream> {
-        Err("this build has no sound output (built without the `audio` feature)".into())
     }
     #[cfg(feature = "audio")]
     fn open_named(mixer: Arc<Mutex<Mixer>>, target: &str) -> Result<Stream> {

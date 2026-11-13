@@ -25,6 +25,7 @@ pub(super) struct NativeShaders {
     /// The pack's name in `shaderpacks/` (a native mod's own pack sets
     /// `picking` with its directory); empty: none. What a native mod reads
     /// to know the world is not drawing with a picked pack of its own.
+    #[allow(dead_code)] // Read by a native mod's mixins, not by this tree.
     pub picked: String,
     /// The pack's files when it was last read (`fingerprint`).
     stamp: Option<u64>,

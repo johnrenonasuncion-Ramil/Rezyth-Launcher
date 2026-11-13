@@ -127,7 +127,10 @@ fn query(env: &mut JNIEnv<'_>, activity: &JObject<'_>, dir: &Path) -> jni::error
             &[JValue::Object(&null), JValue::Int(0), JValue::Int(8)],
         )?
         .l()?;
-    let count = env.call_method(&exits, "size", "()I", &[])?.i()?.clamp(0, 8);
+    let count = env
+        .call_method(&exits, "size", "()I", &[])?
+        .i()?
+        .clamp(0, 8);
     let mut rows = Vec::new();
     for i in 0..count {
         let row = env.with_local_frame(64, |env| -> jni::errors::Result<Value> {
