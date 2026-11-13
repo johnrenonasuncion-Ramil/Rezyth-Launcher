@@ -4,7 +4,7 @@
 //! lays out its widgets, takes their presses and builds the packet for the
 //! server. The screens change the client's copy of the block entity as they
 //! are used, as vanilla's do, so the box preview follows them.
-use super::{Game, Screen};
+use super::{Game, Screen, close_button};
 use horizon_client::{
     containers::BlockEntity,
     hud::{HudBatch, rgba},
@@ -334,6 +334,8 @@ impl Game<'_> {
                 }
             }
         }
+        // The close button in the window's top-right corner.
+        self.draw_close_rect(batch, close_button::rect(0.0, 0.0, w));
         self.block_editor = Some(screen);
     }
 
@@ -343,6 +345,13 @@ impl Game<'_> {
             .as_ref()
             .map_or([1, 1], |r| [r.config.width, r.config.height]);
         let b = HudBatch::new(size);
+        // The close button in the window's top-right corner, before the
+        // widgets under it.
+        if self.close_rect_hit(close_button::rect(0.0, 0.0, b.width)) {
+            self.audio.play_button_click();
+            self.close_block_editor();
+            return;
+        }
         let cursor = self.cursor;
         let shift = self.has_shift_down();
         let alt = self.keys.contains(&KeyCode::AltLeft);

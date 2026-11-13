@@ -18,7 +18,8 @@ use horizon_client::{
 };
 
 /// The merchant screen is 100 px wider than the 176-px menus it shares an origin with.
-const SHIFT: f32 = -50.0;
+pub(super) const SHIFT: f32 = -50.0;
+pub(super) const WIDTH: f32 = 276.0;
 const GREY: u32 = 0xFF40_4040;
 
 pub(super) struct MerchantState {
@@ -624,9 +625,9 @@ impl Game<'_> {
         );
         if let Some(mut r) = atlas.sprites.get("gui/container/villager").copied() {
             let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
-            r.u1 = r.u0 + 276.0 * du;
+            r.u1 = r.u0 + WIDTH * du;
             r.v1 = r.v0 + 166.0 * dv;
-            batch.rect_uv(ox + SHIFT, oy, 276.0, 166.0, r, u32::MAX);
+            batch.rect_uv(ox + SHIFT, oy, WIDTH, 166.0, r, u32::MAX);
         }
         let tr = |k: &str, f: &str| horizon_client::lang::get_or(k, f);
         let name = custom.unwrap_or_else(|| {
@@ -825,6 +826,8 @@ impl Game<'_> {
                 };
             }
         }
+        // The close button in the frame's top-right corner.
+        self.draw_close_button(batch);
         // Slots, hover highlight, carried stack, tooltip.
         let slots: Vec<usize> = (0..36).chain([INPUT, INPUT + 1, RESULT]).collect();
         let drag = self.drag_view();

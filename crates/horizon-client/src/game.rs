@@ -92,6 +92,7 @@ mod chiseled_bookshelf;
 mod chutes;
 mod client_ambient;
 mod clipboard;
+mod close_button;
 mod code_of_conduct;
 mod combat;
 mod command_blocks;
@@ -9271,6 +9272,8 @@ impl Game<'_> {
                 }
             }
         }
+        // Bedrock's X: the close button in the frame's top-right corner.
+        self.draw_close_button(batch);
         if self.container.is_none() && self.craft_size != 3 && !self.mount_active() {
             self.draw_inventory_player(batch, ox, oy);
         }
@@ -10121,6 +10124,9 @@ impl Game<'_> {
         use horizon_client::container_screen::Target;
         use horizon_client::menu::Input;
         if self.mod_browser_press(right) {
+            return;
+        }
+        if self.close_button_press(right) {
             return;
         }
         if !right && self.sort_press() {

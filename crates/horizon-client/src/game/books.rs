@@ -1214,6 +1214,14 @@ impl Game<'_> {
                     click(self);
                     self.close_book();
                 }
+                // The close button inside the book's top-right corner (its
+                // top is `draw_book`'s 2.0). Its rect meets no link, page
+                // button or Done button, so checking it after them changes
+                // nothing else's clicks.
+                if self.close_rect_hit(super::close_button::rect(left, 2.0, 192.0)) {
+                    click(self);
+                    self.close_book();
+                }
             }
             None => {}
         }
@@ -1528,6 +1536,8 @@ impl Game<'_> {
                         true,
                     );
                 }
+                // The close button inside the book's top-right corner.
+                self.draw_close_rect(batch, super::close_button::rect(left, top, 192.0));
                 // HoveredTextEffects.TOOLTIP_AND_CURSOR: the hovered words'
                 // show_text hover event, as the chat shows it.
                 if let Some(hover) = pages

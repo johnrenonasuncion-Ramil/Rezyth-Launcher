@@ -20,6 +20,7 @@ use horizon_protocol::packets::play::{self, Serverbound as S};
 
 /// The beacon screen is 54 px wider than the 176-px menus it shares an origin with.
 pub(super) const SHIFT: f32 = -27.0;
+pub(super) const WIDTH: f32 = 230.0;
 pub(super) const HEIGHT: f32 = 219.0;
 /// `BEACON_EFFECTS` in order, with the pyramid level each needs.
 pub(super) const EFFECTS: [(&str, i32); 6] = [
@@ -477,9 +478,9 @@ impl Game<'_> {
         );
         if let Some(mut r) = atlas.sprites.get("gui/container/beacon").copied() {
             let (du, dv) = ((r.u1 - r.u0) / r.w as f32, (r.v1 - r.v0) / r.h as f32);
-            r.u1 = r.u0 + 230.0 * du;
+            r.u1 = r.u0 + WIDTH * du;
             r.v1 = r.v0 + HEIGHT * dv;
-            batch.rect_uv(bx, by, 230.0, HEIGHT, r, u32::MAX);
+            batch.rect_uv(bx, by, WIDTH, HEIGHT, r, u32::MAX);
         }
         let label = 0xFFE0_E0E0;
         for (key, fallback, cx) in [
@@ -573,6 +574,8 @@ impl Game<'_> {
             false,
             "gui/sprites/container/beacon/cancel",
         );
+        // The close button in the frame's top-right corner.
+        self.draw_close_button(batch);
         let slots: Vec<usize> = (0..36).chain([INPUT]).collect();
         self.draw_hovered_slot_highlight(batch, false, ox, oy);
         for i in slots {

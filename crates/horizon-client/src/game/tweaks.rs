@@ -359,8 +359,9 @@ impl Game<'_> {
 impl Game<'_> {
     /// The sort buttons of the open screen, with the extra on: their
     /// corner (from the screen's) and the slots each sorts. The container's
-    /// (chest-like ones only) sits by its title, the main inventory's by
-    /// the "Inventory" label's line.
+    /// (chest-like ones only) sits by its title, left of the close button
+    /// (`close_button`), the main inventory's by the "Inventory" label's
+    /// line.
     fn sort_buttons(&self) -> Vec<((f32, f32), Vec<usize>)> {
         if !self.settings.extras.sort
             || self.screen != Screen::Inventory
@@ -390,7 +391,9 @@ impl Game<'_> {
             .filter(|s| (300..500).contains(s))
             .collect();
         if chest_like && !container.is_empty() {
-            buttons.push(((160.0, 5.0), container));
+            // 160 is the close button's corner; the sort button keeps clear
+            // of it (142 + 9 < 158).
+            buttons.push(((142.0, 5.0), container));
         }
         buttons.push(((160.0, self.screen_height() - 95.0), (9..36).collect()));
         buttons

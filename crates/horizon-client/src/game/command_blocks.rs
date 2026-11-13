@@ -686,6 +686,8 @@ impl Game<'_> {
                 |rect| s.narration(b, rect, &super::screen_info::tr),
             );
         }
+        // The close button in the window's top-right corner.
+        self.draw_close_rect(batch, super::close_button::rect(0.0, 0.0, w));
         // The command box, then its suggestions over the widgets.
         let m = Measure(&atlas.font);
         let c = Commands {
@@ -735,6 +737,18 @@ impl Game<'_> {
         let Some(mut s) = self.command_block_screen.take() else {
             return;
         };
+        // The close button in the window's top-right corner, before the
+        // suggestions and the box under it.
+        let size = self
+            .renderer
+            .as_ref()
+            .map_or([1, 1], |r| [r.config.width, r.config.height]);
+        let b = HudBatch::new(size);
+        if self.close_rect_hit(super::close_button::rect(0.0, 0.0, b.width)) {
+            self.audio.play_button_click();
+            self.close_command_block();
+            return;
+        }
         // CommandSuggestions.mouseClicked first, then the command box.
         {
             let m = Measure(&self.gui.atlas.font);
@@ -748,11 +762,6 @@ impl Game<'_> {
                 return;
             }
         }
-        let size = self
-            .renderer
-            .as_ref()
-            .map_or([1, 1], |r| [r.config.width, r.config.height]);
-        let b = HudBatch::new(size);
         let hit = CommandBlockScreen::buttons(b.width, b.height, s.cart.is_some())
             .into_iter()
             .find(|(_, x, y, bw)| ui::hovered(self.cursor, *x, *y, *bw, 20.0))

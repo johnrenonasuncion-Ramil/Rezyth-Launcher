@@ -2010,6 +2010,8 @@ impl Game<'_> {
         if anvil_name {
             self.draw_anvil_name(batch, ox, oy);
         }
+        // The close button in the frame's top-right corner.
+        self.draw_close_button(batch);
         let drag = self.drag_view();
         self.draw_hovered_slot_highlight(batch, false, ox, oy);
         for i in self.station_slots().unwrap_or_default() {
