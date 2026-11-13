@@ -289,6 +289,35 @@ up to 4 MiB and logs the URL when tries run out; the draw side is unchanged
 `unknown_pack` only until pixels arrive). Verified green: `android.yml` run
 **42938084338** at `f93da8f56`.
 
+## Gallery icons: the WebP, GIF and JPEG reader, and no size cap
+
+Modrinth serves most resource packs' icons as WebP — 269 of 400 in a survey
+of the search API on 2026-11-13; 112 were PNG, 17 GIF, 2 JPEG — and the
+reader was PNG-only, so two rows in three kept `unknown_pack` for good.
+`hud::decode_bytes` now dispatches on the file's signature to WebP, GIF or
+JPEG decoders (`gif`, `image-webp`, `jpeg-decoder` in
+horizon-client-render) beside PNG; an animation decodes its first frame. The
+gallery's fetcher reads a whole response whatever its size (the 4 MiB cap is
+gone), and reopening the page clears the failed-icon counts, so one flaky
+moment cannot strand a row. Three tests pin the codecs (a transparent 1x1
+GIF, a baseline 1x1 JPEG, a WebP round-tripped through the encoder).
+
+It pulled along the fork's first format and lint pass, on a temporary
+`lockfile-bootstrap.yml` workflow (the authoring tree has no Rust toolchain);
+that run resolved `Cargo.lock` for the new crates, formatted 22 files the
+fork had never rustfmt'ed, and cleared 14 lints in the touched crates —
+`manual_flatten` and a needless borrow in the Volt screens, two useless
+`String` conversions in extras, two unused bindings and a
+`field_reassign_with_default` in the Mod Menu, `chunks_exact`→`as_chunks` in
+the new decoders, the audio feature-off build's unreachable match arm, and
+`native_shaders.picked` (kept: native mods read it). The stale
+`horizon_settings_hang_off_options_...` test — it still expected the buttons
+from before the Volt Settings icon work — passes again too.
+
+Verified green: weave run **43462894439** (the woven APK) and
+lockfile-bootstrap run **43462894638** at `0bc2f6dcb` — the render crate
+clippy-clean in both feature states, 1231 tests passing.
+
 ## Settings screens: vanilla Minecraft styling
 
 The Mod Menu (the hub's Extras tab opens it) follows the same restyle: its
