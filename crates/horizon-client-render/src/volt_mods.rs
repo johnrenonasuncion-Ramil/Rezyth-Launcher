@@ -2277,7 +2277,7 @@ impl ModMenuUi {
 
         // The modal sits on vanilla's tiled list background, as the settings
         // screens do.
-        let [mx, my, mw, mh] = lay.modal;
+        let [mx, my, mw, ..] = lay.modal;
         style::panel(batch, atlas, lay.modal, in_world);
         batch.fill(atlas, mx + 8.0, my + 26.0, mw - 16.0, 1.0, MM_EDGE);
 
@@ -2314,7 +2314,7 @@ impl ModMenuUi {
         );
 
         // The search box is the vanilla text field.
-        let [sx, sy, sw, sh] = lay.search_box;
+        let [sx, sy, ..] = lay.search_box;
         style::well(batch, atlas, lay.search_box);
         if self.search_focused {
             style::ring(batch, atlas, lay.search_box, style::WHITE);
@@ -3096,8 +3096,10 @@ mod tests {
     #[test]
     fn short_mod_menu_scrolls_settings_independently() {
         let settings = Settings::default();
-        let mut menu = ModMenuUi::default();
-        menu.selected = VoltModId::XaerosWorldMap;
+        let mut menu = ModMenuUi {
+            selected: VoltModId::XaerosWorldMap,
+            ..Default::default()
+        };
         let layout = menu.compute_layout(&settings, 320.0, 200.0, 50);
         assert!(layout.cfg_content_h > layout.cfg_bottom - layout.cfg_top);
         assert!(layout.cfg_rows.iter().any(|(_, kind)| *kind == ModCfgKind::OpenWorldMap));

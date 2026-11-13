@@ -256,7 +256,9 @@ fn jpeg_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
     let rgba = match info.pixel_format {
         // An Adobe CMYK JPEG: its channels are inverted, and K scales RGB.
         jpeg_decoder::PixelFormat::CMYK32 => pixels
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .flat_map(|p| {
                 let k = u16::from(p[3]);
                 [
@@ -270,7 +272,7 @@ fn jpeg_bytes(data: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
         jpeg_decoder::PixelFormat::L8 => to_rgba(&pixels, 1),
         // Two-byte luminance: its high byte (JPEG is big-endian).
         jpeg_decoder::PixelFormat::L16 => {
-            let gray: Vec<u8> = pixels.chunks_exact(2).map(|p| p[0]).collect();
+            let gray: Vec<u8> = pixels.as_chunks::<2>().0.iter().map(|p| p[0]).collect();
             to_rgba(&gray, 1)
         }
         _ => to_rgba(&pixels, 3),

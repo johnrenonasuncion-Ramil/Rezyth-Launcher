@@ -2985,19 +2985,21 @@ impl Item {
                     name,
                 )
             }
-            Item::MinimapShape => if e.minimap_round {
-                crate::lang::get_or("horizon.volt.minimap.round", "Round")
-            } else {
-                crate::lang::get_or("horizon.volt.minimap.square", "Square")
+            Item::MinimapShape => {
+                if e.minimap_round {
+                    crate::lang::get_or("horizon.volt.minimap.round", "Round")
+                } else {
+                    crate::lang::get_or("horizon.volt.minimap.square", "Square")
+                }
             }
-            .into(),
             Item::MinimapZoom => format!("{}x", e.minimap_zoom),
-            Item::MinimapRotate => if e.minimap_rotate {
-                crate::lang::get_or("horizon.volt.minimap.rotated", "Rotate")
-            } else {
-                crate::lang::get_or("horizon.volt.minimap.north_up", "North Up")
+            Item::MinimapRotate => {
+                if e.minimap_rotate {
+                    crate::lang::get_or("horizon.volt.minimap.rotated", "Rotate")
+                } else {
+                    crate::lang::get_or("horizon.volt.minimap.north_up", "North Up")
+                }
             }
-            .into(),
             Item::MinimapFrameStyle => e.minimap_frame.label().into(),
             Item::MinimapOpacity => format!("{}%", e.minimap_opacity),
             Item::MinimapTerrain => e.minimap_terrain_mode.label().into(),

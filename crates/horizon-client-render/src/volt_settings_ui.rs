@@ -315,16 +315,12 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
             desc: "Manage saved per-world waypoints, colors, death markers and quick teleport.",
         },
     ];
-    for r in extras::minimap_rows() {
-        if let Ok(item) = r {
-            map_rows.push(e_ext(item, Low));
-        }
+    for item in extras::minimap_rows().into_iter().flatten() {
+        map_rows.push(e_ext(item, Low));
     }
     let mut wp_rows = Vec::new();
-    for r in extras::waypoint_rows() {
-        if let Ok(item) = r {
-            wp_rows.push(e_ext(item, Low));
-        }
+    for item in extras::waypoint_rows().into_iter().flatten() {
+        wp_rows.push(e_ext(item, Low));
     }
     let maps_groups = vec![
         ("Xaero's Minimap & World Map", map_rows),
@@ -348,10 +344,8 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
         e_mod(VoltModId::LanguageReload, Saves),
         e_mod(VoltModId::FastQuit, Saves),
     ];
-    for r in extras::rows() {
-        if let Ok(item) = r {
-            ext_rows.push(e_ext(item, None));
-        }
+    for item in extras::rows().into_iter().flatten() {
+        ext_rows.push(e_ext(item, None));
     }
     ext_rows.push(e_ext(ExtraItem::DiscordPresence, None));
     ext_rows.push(e_ext(ExtraItem::NoAi, None));
@@ -838,7 +832,7 @@ impl VoltSettingsUi {
         if self.search.value.is_empty() && !sfocus {
             batch.text_styled(
                 atlas,
-                &Text::literal(&lang::get("Search options")),
+                &Text::literal(lang::get("Search options")),
                 srect[0] + 5.0,
                 self.search.y,
                 style::MUTED,

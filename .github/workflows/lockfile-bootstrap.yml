@@ -1,9 +1,9 @@
 name: lockfile-bootstrap
-# TEMPORARY (its two files are removed once Cargo.lock lands): the working tree
-# this was written in has no Rust toolchain, so one runner resolves the lockfile
-# for the icon decoders horizon-client-render gained, formats the touched
-# sources, type-checks them and runs the crate's tests. The artifact carries the
-# manifests, the lockfile and the formatted sources.
+# TEMPORARY (its two files are removed once everything lands): the working tree
+# this was written in has no Rust toolchain, so one runner resolves the
+# lockfile, type-checks the touched crates, runs the render crate's tests and
+# formats the sources (this fork had never been rustfmt'ed). The artifact
+# carries the lockfile, the manifest and the formatting patch.
 on:
   push:
     paths: ['.lockfile-bootstrap']
@@ -25,21 +25,24 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: verify
-      - name: Resolve the lockfile for the new decoders
+      - name: Resolve the lockfile
         run: |
           cargo fetch
           cargo metadata --format-version 1 > /dev/null
-      - name: Format and type-check the touched crates
-        run: |
-          cargo fmt --all
-          cargo clippy -p horizon-client-render -p horizon-client --lib --bins --tests -- -D warnings
+      - name: Type-check the render crate
+        run: cargo clippy -p horizon-client-render --lib --bins --tests -- -D warnings
+      - name: Type-check the game crate
+        if: always()
+        run: cargo clippy -p horizon-client --lib -- -D warnings
       - name: Run the render crate's tests
+        if: always()
         run: cargo test -p horizon-client-render --lib
-      - name: Show what changed
+      - name: Format the sources
         if: always()
         run: |
+          cargo fmt --all
+          git diff > "$RUNNER_TEMP/fmt.patch"
           git status --short
-          git diff --stat
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -47,6 +50,5 @@ jobs:
           path: |
             Cargo.lock
             crates/horizon-client-render/Cargo.toml
-            crates/horizon-client-render/src/hud.rs
-            crates/horizon-client/src/game/pack_gallery.rs
+            ${{ runner.temp }}/fmt.patch
           if-no-files-found: error

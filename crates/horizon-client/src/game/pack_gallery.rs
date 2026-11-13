@@ -207,10 +207,7 @@ impl GalleryOps {
             Msg::Installed { record, replace } => {
                 finish(ui, settings, root, server, record, replace)
             }
-            Msg::InstallFailed {
-                project_id,
-                error,
-            } => {
+            Msg::InstallFailed { project_id, error } => {
                 log::warn!("Horizon: a gallery download failed: {error}");
                 ui.gallery.downloading.remove(&project_id);
                 ui.gallery.warning = error;
@@ -272,11 +269,7 @@ impl GalleryOps {
             .map(|record| (record.file.clone(), record.clone()))
             .collect();
         refresh_icons(ui);
-        if !records.is_empty()
-            && self
-                .checked
-                .is_none_or(|at| at.elapsed() >= UPDATE_EVERY)
-        {
+        if !records.is_empty() && self.checked.is_none_or(|at| at.elapsed() >= UPDATE_EVERY) {
             self.checked = Some(Instant::now());
             ui.gallery.checked_at = Some(Instant::now());
             let tx = self.tx.clone();
@@ -284,8 +277,7 @@ impl GalleryOps {
                 .name("pack-gallery-updates".into())
                 .spawn(move || check_updates(tx, records));
         }
-        let fresh =
-            ui.gallery.results.is_empty() && ui.gallery.status != gallery::Status::Loading;
+        let fresh = ui.gallery.results.is_empty() && ui.gallery.status != gallery::Status::Loading;
         if fresh {
             self.search(ui, false);
         }
@@ -412,10 +404,7 @@ impl GalleryOps {
             }
             wanted.push((project.clone(), url.clone()));
         }
-        for (project, url) in wanted
-            .into_iter()
-            .take(ICON_LANES - self.icons_in_flight)
-        {
+        for (project, url) in wanted.into_iter().take(ICON_LANES - self.icons_in_flight) {
             ui.gallery.icons_requested.insert(project.clone());
             let tx = self.tx.clone();
             let asked = project.clone();
@@ -459,7 +448,9 @@ fn finish(
             ui.gallery.installed.remove(old);
             ui.gallery.updates.remove(old);
         }
-        ui.gallery.installed.insert(record.file.clone(), record.clone());
+        ui.gallery
+            .installed
+            .insert(record.file.clone(), record.clone());
         ui.gallery.installed.values().cloned().collect()
     };
     write_index(&installed);
@@ -600,10 +591,7 @@ fn run_install(
             });
         }
         Err(error) => {
-            let _ = tx.send(Msg::InstallFailed {
-                project_id,
-                error,
-            });
+            let _ = tx.send(Msg::InstallFailed { project_id, error });
         }
     }
 }
@@ -731,7 +719,9 @@ fn refresh_icons(ui: &mut OptionsUi) {
     }
     ui.gallery.icon_urls = urls;
     let keep = ui.gallery.icon_urls.clone();
-    ui.gallery.icons.retain(|project, _| keep.contains_key(project));
+    ui.gallery
+        .icons
+        .retain(|project, _| keep.contains_key(project));
     ui.gallery
         .icons_requested
         .retain(|project| keep.contains_key(project));
@@ -766,11 +756,7 @@ fn fetch_icon(url: &str) -> Option<Arc<[u8]>> {
     if !url.starts_with("https://") {
         return None;
     }
-    let response = agent()
-        .get(url)
-        .set("User-Agent", USER_AGENT)
-        .call()
-        .ok()?;
+    let response = agent().get(url).set("User-Agent", USER_AGENT).call().ok()?;
     let mut body = response.into_reader();
     let mut data = Vec::new();
     let mut buffer = vec![0u8; 64 * 1024];
