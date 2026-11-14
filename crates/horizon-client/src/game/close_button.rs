@@ -140,6 +140,31 @@ impl Game<'_> {
 #[cfg(test)]
 mod tests {
     use super::{Press, press, rect};
+    use horizon_client::creative::Creative;
+
+    /// The creative inventory's close button (`draw_creative_window`): the
+    /// item panel's top-right corner, at or above the scrollbar's track and
+    /// clear of the search box and the trash slot, so a tap on it can never
+    /// scroll, search or destroy.
+    #[test]
+    fn the_creative_close_clears_the_panels_other_widgets() {
+        let r = rect(0.0, 0.0, Creative::WIDTH);
+        assert!(
+            r[0] >= 0.0 && r[0] + r[2] <= Creative::WIDTH,
+            "inside the panel"
+        );
+        assert!(
+            r[1] >= 0.0 && r[1] + r[3] <= Creative::SCROLL_Y,
+            "above the scrollbar's track"
+        );
+        // `CreativeModeInventoryScreen`: the search tab's box is 82..162
+        // across, on the panel's 6..15 row.
+        assert!(r[0] >= 82.0 + 80.0, "right of the search box");
+        assert!(
+            r[1] + r[3] <= Creative::TRASH_POSITION.1,
+            "above the trash slot"
+        );
+    }
 
     #[test]
     fn the_close_button_sits_inside_the_frames_top_right_corner() {

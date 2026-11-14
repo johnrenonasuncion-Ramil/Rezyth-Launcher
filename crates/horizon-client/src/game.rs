@@ -15056,6 +15056,14 @@ impl Game<'_> {
             let (tx, ty) = Creative::tab_position(tab);
             batch.sprite(&self.gui.atlas, &tab_sprite(tab, true), ox + tx, oy + ty);
         }
+        // Bedrock's X on the item window's panel, as every container screen
+        // carries it: the panel's top-right corner, inside it, above the
+        // scrollbar and clear of the search box and the tabs. The dual
+        // Bedrock layout's inventory window keeps none of its own: the item
+        // window carries the screen's one X.
+        if !panel {
+            self.draw_close_rect(batch, close_button::rect(ox, oy, Creative::WIDTH));
+        }
         for t in tabs
             .iter()
             .filter(|t| !panel && self.creative_screen.on_page(t))
@@ -15321,6 +15329,35 @@ impl Game<'_> {
         let (ox, oy) = Self::creative_origin(&batch);
         let (cx, cy) = self.cursor;
         let panel = self.bedrock_items.is_some();
+        // The close button on the item window (Bedrock's X): a left press
+        // closes the screen as Escape does, a right press is swallowed, as
+        // any widget swallows its own, so its release drops nothing.
+        if !panel {
+            let close = close_button::rect(ox, oy, Creative::WIDTH);
+            match close_button::press((cx, cy), close, right) {
+                close_button::Press::Miss => {}
+                close_button::Press::Swallow => {
+                    self.inv_clicks.skip_release();
+                    return;
+                }
+                close_button::Press::Close => {
+                    self.audio.play_button_click();
+                    self.pad_clear_focus();
+                    // AbstractContainerMenu.removed: the carried stack goes
+                    // back to the inventory, and what does not fit is dropped.
+                    if let Some(c) = self.carried.take() {
+                        if let Some(rest) = self.give(c)
+                            && let Some(eye) = self.eye_position()
+                        {
+                            self.throw_from_eyes(rest, eye, false);
+                        }
+                    }
+                    self.screen = Screen::Playing;
+                    self.capture(true);
+                    return;
+                }
+            }
+        }
         // NeoForge's page buttons, when mods add tabs.
         if let Some(step) =
             Self::creative_page_button(ox, oy, (cx, cy), self.creative_screen.pages())
