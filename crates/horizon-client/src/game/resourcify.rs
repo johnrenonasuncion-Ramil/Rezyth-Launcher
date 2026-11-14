@@ -72,7 +72,10 @@ impl Json {
     /// A field of an object; null for anything else.
     pub fn get(&self, key: &str) -> &Json {
         match self {
-            Json::Obj(fields) => fields.iter().find(|(k, _)| k == key).map_or(&NULL, |(_, v)| v),
+            Json::Obj(fields) => fields
+                .iter()
+                .find(|(k, _)| k == key)
+                .map_or(&NULL, |(_, v)| v),
             _ => &NULL,
         }
     }
@@ -108,7 +111,11 @@ impl Json {
 }
 
 pub fn parse_json(text: &str) -> Result<Json, String> {
-    let mut p = Reader { b: text.as_bytes(), i: 0, depth: 0 };
+    let mut p = Reader {
+        b: text.as_bytes(),
+        i: 0,
+        depth: 0,
+    };
     let value = p.value()?;
     p.skip_space();
     if p.i < p.b.len() {
@@ -215,7 +222,11 @@ impl Reader<'_> {
     }
 
     fn word(&mut self, word: &str, value: Json) -> Result<Json, String> {
-        if self.b.get(self.i..).is_some_and(|rest| rest.starts_with(word.as_bytes())) {
+        if self
+            .b
+            .get(self.i..)
+            .is_some_and(|rest| rest.starts_with(word.as_bytes()))
+        {
             self.i += word.len();
             Ok(value)
         } else {
@@ -225,7 +236,12 @@ impl Reader<'_> {
 
     fn number(&mut self) -> Result<Json, String> {
         let start = self.i;
-        while self.i < self.b.len() && matches!(self.b[self.i], b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9') {
+        while self.i < self.b.len()
+            && matches!(
+                self.b[self.i],
+                b'-' | b'+' | b'.' | b'e' | b'E' | b'0'..=b'9'
+            )
+        {
             self.i += 1;
         }
         std::str::from_utf8(&self.b[start..self.i])
@@ -236,7 +252,10 @@ impl Reader<'_> {
     }
 
     fn hex4(&mut self) -> Result<u32, String> {
-        let digits = self.b.get(self.i..self.i + 4).ok_or_else(|| self.at("short \\u escape"))?;
+        let digits = self
+            .b
+            .get(self.i..self.i + 4)
+            .ok_or_else(|| self.at("short \\u escape"))?;
         let text = std::str::from_utf8(digits).map_err(|_| self.at("bad \\u escape"))?;
         self.i += 4;
         u32::from_str_radix(text, 16).map_err(|_| self.at("bad \\u escape"))
@@ -270,11 +289,17 @@ impl Reader<'_> {
                             let hi = self.hex4()?;
                             let ch = if (0xD800..0xDC00).contains(&hi) {
                                 // A pair: the next escape is the low half.
-                                if self.b.get(self.i..).is_some_and(|rest| rest.starts_with(b"\\u")) {
+                                if self
+                                    .b
+                                    .get(self.i..)
+                                    .is_some_and(|rest| rest.starts_with(b"\\u"))
+                                {
                                     self.i += 2;
                                     let lo = self.hex4()?;
                                     if (0xDC00..0xE000).contains(&lo) {
-                                        char::from_u32(0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00))
+                                        char::from_u32(
+                                            0x10000 + ((hi - 0xD800) << 10) + (lo - 0xDC00),
+                                        )
                                     } else {
                                         None
                                     }
@@ -285,7 +310,9 @@ impl Reader<'_> {
                                 char::from_u32(hi)
                             };
                             let mut buf = [0u8; 4];
-                            out.extend_from_slice(ch.unwrap_or('\u{FFFD}').encode_utf8(&mut buf).as_bytes());
+                            out.extend_from_slice(
+                                ch.unwrap_or('\u{FFFD}').encode_utf8(&mut buf).as_bytes(),
+                            );
                         }
                         _ => return Err(self.at("bad escape")),
                     }
@@ -336,7 +363,10 @@ pub struct Version {
 }
 
 fn strings(v: &Json) -> Vec<String> {
-    v.items().iter().filter_map(|s| s.as_str().map(str::to_owned)).collect()
+    v.items()
+        .iter()
+        .filter_map(|s| s.as_str().map(str::to_owned))
+        .collect()
 }
 
 /// An error the API sent as its answer (`{"error": ..., "description": ...}`).
@@ -366,12 +396,19 @@ pub fn parse_search(body: &str) -> Result<(Vec<Hit>, u64), String> {
                 summary: h.get("description").as_str().unwrap_or("").to_owned(),
                 downloads: h.get("downloads").as_u64().unwrap_or(0),
                 follows: h.get("follows").as_u64().unwrap_or(0),
-                icon_url: h.get("icon_url").as_str().filter(|u| icon_url_ok(u)).map(str::to_owned),
+                icon_url: h
+                    .get("icon_url")
+                    .as_str()
+                    .filter(|u| icon_url_ok(u))
+                    .map(str::to_owned),
                 categories: strings(h.get("display_categories")),
             })
         })
         .collect();
-    let total = root.get("total_hits").as_u64().unwrap_or(found.len() as u64);
+    let total = root
+        .get("total_hits")
+        .as_u64()
+        .unwrap_or(found.len() as u64);
     Ok((found, total))
 }
 
@@ -389,7 +426,10 @@ pub fn parse_versions(body: &str) -> Result<Vec<Version>, String> {
         .filter_map(|v| {
             let id = v.get("id").as_str()?.to_owned();
             let files = v.get("files").items();
-            let chosen = files.iter().find(|f| f.get("primary").as_bool() == Some(true)).or_else(|| files.first());
+            let chosen = files
+                .iter()
+                .find(|f| f.get("primary").as_bool() == Some(true))
+                .or_else(|| files.first());
             let file = chosen.and_then(|f| {
                 Some(File {
                     url: f.get("url").as_str()?.to_owned(),
@@ -402,7 +442,11 @@ pub fn parse_versions(body: &str) -> Result<Vec<Version>, String> {
                 id,
                 number: v.get("version_number").as_str().unwrap_or("?").to_owned(),
                 name: v.get("name").as_str().unwrap_or("").to_owned(),
-                kind: v.get("version_type").as_str().unwrap_or("release").to_owned(),
+                kind: v
+                    .get("version_type")
+                    .as_str()
+                    .unwrap_or("release")
+                    .to_owned(),
                 games: strings(v.get("game_versions")),
                 date: v.get("date_published").as_str().unwrap_or("").to_owned(),
                 file,
@@ -426,7 +470,11 @@ pub fn file_ok(f: &File) -> Result<(), String> {
         return Err("Modrinth gave no checksum for the file, so it is not downloaded.".into());
     }
     if f.size > MAX_PACK_BYTES {
-        return Err(format!("The file is {}, more than the {} the game takes.", human_size(f.size), human_size(MAX_PACK_BYTES)));
+        return Err(format!(
+            "The file is {}, more than the {} the game takes.",
+            human_size(f.size),
+            human_size(MAX_PACK_BYTES)
+        ));
     }
     if safe_filename(&f.filename).is_none() {
         return Err("The file is not a .zip resource pack.".into());
@@ -441,7 +489,9 @@ pub fn file_ok(f: &File) -> Result<(), String> {
 pub fn encode(s: &str) -> String {
     s.bytes()
         .map(|b| match b {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => (b as char).to_string(),
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                (b as char).to_string()
+            }
             _ => format!("%{b:02X}"),
         })
         .collect()
@@ -506,7 +556,10 @@ pub fn search_url(query: &str, sort: Sort, game: Option<&str>, offset: usize) ->
 pub fn versions_url(project: &str, game: Option<&str>) -> String {
     let mut url = format!("{API}/project/{}/version", encode(project));
     if let Some(game) = game {
-        url.push_str(&format!("?game_versions={}", encode(&format!("[\"{game}\"]"))));
+        url.push_str(&format!(
+            "?game_versions={}",
+            encode(&format!("[\"{game}\"]"))
+        ));
     }
     url
 }
@@ -519,7 +572,13 @@ pub fn safe_filename(name: &str) -> Option<String> {
     let base = name.rsplit(['/', '\\']).next().unwrap_or("");
     let cleaned: String = base
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || " ._()+-".contains(c) { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || " ._()+-".contains(c) {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     let cleaned = cleaned.trim_matches(|c| c == '.' || c == ' ').to_owned();
     let lower = cleaned.to_ascii_lowercase();
@@ -534,7 +593,10 @@ pub fn unique_name(name: &str, taken: &dyn Fn(&str) -> bool) -> String {
     if !taken(name) {
         return name.to_owned();
     }
-    let stem = name.strip_suffix(".zip").or_else(|| name.strip_suffix(".ZIP")).unwrap_or(name);
+    let stem = name
+        .strip_suffix(".zip")
+        .or_else(|| name.strip_suffix(".ZIP"))
+        .unwrap_or(name);
     for n in 2..100 {
         let candidate = format!("{stem} ({n}).zip");
         if !taken(&candidate) {
@@ -571,7 +633,12 @@ pub fn format_records(records: &[Record]) -> String {
         .iter()
         .map(|r| {
             let clean = |s: &str| s.replace(['\t', '\n', '\r'], " ");
-            format!("{}\t{}\t{}\n", clean(&r.project), clean(&r.version), clean(&r.filename))
+            format!(
+                "{}\t{}\t{}\n",
+                clean(&r.project),
+                clean(&r.version),
+                clean(&r.filename)
+            )
         })
         .collect()
 }
@@ -686,7 +753,12 @@ pub fn layout(w: f32, h: f32) -> Layout {
         status: [6.0, 36.0],
         list: Rect::new(0.0, HEADER, list_w, body_h),
         detail,
-        done: Rect::new((w / 2.0).floor() - done_w / 2.0, h - FOOTER + 8.0, done_w, BUTTON_H),
+        done: Rect::new(
+            (w / 2.0).floor() - done_w / 2.0,
+            h - FOOTER + 8.0,
+            done_w,
+            BUTTON_H,
+        ),
         hint_y: h - 12.0,
     }
 }
@@ -763,7 +835,11 @@ pub fn wrap(text: &str, max: f32, measure: &dyn Fn(&str) -> f32) -> Vec<String> 
             if word.is_empty() {
                 continue;
             }
-            let joined = if line.is_empty() { word.clone() } else { format!("{line} {word}") };
+            let joined = if line.is_empty() {
+                word.clone()
+            } else {
+                format!("{line} {word}")
+            };
             if line.is_empty() || measure(&joined) <= max {
                 line = joined;
             } else {
@@ -851,7 +927,11 @@ fn hsv(h: f32, s: f32, v: f32) -> [u8; 3] {
         4 => (x, 0.0, c),
         _ => (c, 0.0, x),
     };
-    [((r + m) * 255.0).round() as u8, ((g + m) * 255.0).round() as u8, ((b + m) * 255.0).round() as u8]
+    [
+        ((r + m) * 255.0).round() as u8,
+        ((g + m) * 255.0).round() as u8,
+        ((b + m) * 255.0).round() as u8,
+    ]
 }
 
 /// `rgb` made `k` times as bright (above 1 lightens, below 1 darkens).
@@ -878,7 +958,11 @@ pub struct Line {
 }
 
 fn plain(text: impl Into<String>, tone: Tone) -> Line {
-    Line { text: text.into(), tone, version: None }
+    Line {
+        text: text.into(),
+        tone,
+        version: None,
+    }
 }
 
 /// How the versions of the picked pack are doing.
@@ -907,7 +991,10 @@ pub fn pick_version(versions: &[Version], chosen: Option<&str>) -> Option<usize>
     {
         return Some(i);
     }
-    versions.iter().position(|v| v.kind == "release").or(if versions.is_empty() { None } else { Some(0) })
+    versions
+        .iter()
+        .position(|v| v.kind == "release")
+        .or(if versions.is_empty() { None } else { Some(0) })
 }
 
 /// The detail pane's text under the Install button: the versions, then what the pack is.
@@ -939,28 +1026,55 @@ pub fn body_lines(
         Versions::Loaded(list) => {
             for (i, v) in list.iter().enumerate().take(12) {
                 let mark = if Some(i) == picked { ">" } else { " " };
-                let tag = if v.kind == "release" { String::new() } else { format!(" [{}]", v.kind) };
+                let tag = if v.kind == "release" {
+                    String::new()
+                } else {
+                    format!(" [{}]", v.kind)
+                };
                 let text = format!("{mark} {}{tag} ({})", v.number, games_short(&v.games));
                 out.push(Line {
                     text: ellipsize(&text, width, measure),
-                    tone: if Some(i) == picked { Tone::Heading } else { Tone::Text },
+                    tone: if Some(i) == picked {
+                        Tone::Heading
+                    } else {
+                        Tone::Text
+                    },
                     version: Some(i),
                 });
             }
             if list.len() > 12 {
-                out.push(plain(format!("... and {} older", list.len() - 12), Tone::Dim));
+                out.push(plain(
+                    format!("... and {} older", list.len() - 12),
+                    Tone::Dim,
+                ));
             }
         }
     }
     out.push(plain("", Tone::Text));
     if hit.summary.trim().is_empty() {
-        out.extend(wrap("This pack has no description.", width, measure).into_iter().map(|t| plain(t, Tone::Dim)));
+        out.extend(
+            wrap("This pack has no description.", width, measure)
+                .into_iter()
+                .map(|t| plain(t, Tone::Dim)),
+        );
     } else {
-        out.extend(wrap(hit.summary.trim(), width, measure).into_iter().map(|t| plain(t, Tone::Text)));
+        out.extend(
+            wrap(hit.summary.trim(), width, measure)
+                .into_iter()
+                .map(|t| plain(t, Tone::Text)),
+        );
     }
     if !hit.categories.is_empty() {
         out.push(plain("", Tone::Text));
-        out.extend(wrap(&format!("Tags: {}", hit.categories.join(", ")), width, measure).into_iter().map(|t| plain(t, Tone::Dim)));
+        out.extend(
+            wrap(
+                &format!("Tags: {}", hit.categories.join(", ")),
+                width,
+                measure,
+            )
+            .into_iter()
+            .map(|t| plain(t, Tone::Dim)),
+        );
     }
     out
 }
@@ -1051,11 +1165,25 @@ mod tests {
 
     #[test]
     fn json_refuses_what_is_broken() {
-        for bad in ["", "{", "[1,", "{\"a\" 1}", "[1 2]", "\"abc", "tru", "{\"a\":1} x", "\"\\q\"", "[\"\\u12\"]"] {
+        for bad in [
+            "",
+            "{",
+            "[1,",
+            "{\"a\" 1}",
+            "[1 2]",
+            "\"abc",
+            "tru",
+            "{\"a\":1} x",
+            "\"\\q\"",
+            "[\"\\u12\"]",
+        ] {
             assert!(parse_json(bad).is_err(), "{bad:?} should not parse");
         }
         // A lone half of a surrogate pair becomes the replacement character, not a panic.
-        assert_eq!(parse_json("\"\\ud83d\"").unwrap(), Json::Str("\u{FFFD}".into()));
+        assert_eq!(
+            parse_json("\"\\ud83d\"").unwrap(),
+            Json::Str("\u{FFFD}".into())
+        );
         // Deep nesting stops instead of overflowing the stack.
         let deep = "[".repeat(200) + &"]".repeat(200);
         assert!(parse_json(&deep).is_err());
@@ -1079,10 +1207,20 @@ mod tests {
         assert_eq!(hits[0].summary, "A pack \"for\" you");
         assert_eq!(hits[0].downloads, 1_234_567);
         assert_eq!(hits[0].categories, ["32x", "vanilla-like"]);
-        assert_eq!(hits[0].icon_url.as_deref(), Some("https://cdn.modrinth.com/data/AANobbMI/icon.png"));
+        assert_eq!(
+            hits[0].icon_url.as_deref(),
+            Some("https://cdn.modrinth.com/data/AANobbMI/icon.png")
+        );
         assert_eq!(hits[1].icon_url, None);
-        assert_eq!(hits[2].icon_url, None, "an icon from another host is not fetched");
-        assert!(parse_search(r#"{"error":"invalid_input","description":"bad facets"}"#).unwrap_err().contains("bad facets"));
+        assert_eq!(
+            hits[2].icon_url, None,
+            "an icon from another host is not fetched"
+        );
+        assert!(
+            parse_search(r#"{"error":"invalid_input","description":"bad facets"}"#)
+                .unwrap_err()
+                .contains("bad facets")
+        );
         assert!(parse_search("[]").is_err());
         assert!(parse_search("nope").is_err());
     }
@@ -1106,7 +1244,9 @@ mod tests {
         assert_eq!(v[0].games, ["1.21", "26.2", "26.3"]);
         assert!(v[1].file.is_none());
         assert_eq!(v[1].kind, "beta");
-        assert!(parse_versions(r#"{"error":"not_found","description":"no such project"}"#).is_err());
+        assert!(
+            parse_versions(r#"{"error":"not_found","description":"no such project"}"#).is_err()
+        );
         assert!(parse_versions("{}").is_err());
         assert_eq!(parse_versions("[]").unwrap(), vec![]);
     }
@@ -1120,28 +1260,76 @@ mod tests {
             sha1: "0123456789abcdef0123456789abcdef01234567".into(),
         };
         assert!(file_ok(&ok).is_ok());
-        assert!(file_ok(&File { url: "https://evil.example/Pack.zip".into(), ..ok.clone() }).is_err());
-        assert!(file_ok(&File { url: "http://cdn.modrinth.com/x.zip".into(), ..ok.clone() }).is_err());
-        assert!(file_ok(&File { sha1: "short".into(), ..ok.clone() }).is_err());
-        assert!(file_ok(&File { sha1: "z".repeat(40), ..ok.clone() }).is_err());
-        assert!(file_ok(&File { size: MAX_PACK_BYTES + 1, ..ok.clone() }).is_err());
-        assert!(file_ok(&File { filename: "pack.mrpack".into(), ..ok.clone() }).is_err());
+        assert!(
+            file_ok(&File {
+                url: "https://evil.example/Pack.zip".into(),
+                ..ok.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            file_ok(&File {
+                url: "http://cdn.modrinth.com/x.zip".into(),
+                ..ok.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            file_ok(&File {
+                sha1: "short".into(),
+                ..ok.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            file_ok(&File {
+                sha1: "z".repeat(40),
+                ..ok.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            file_ok(&File {
+                size: MAX_PACK_BYTES + 1,
+                ..ok.clone()
+            })
+            .is_err()
+        );
+        assert!(
+            file_ok(&File {
+                filename: "pack.mrpack".into(),
+                ..ok.clone()
+            })
+            .is_err()
+        );
     }
 
     #[test]
     fn the_questions_are_built_right() {
         let url = search_url("faithful 32x", Sort::Downloads, Some("26.3"), 40);
-        assert!(url.starts_with("https://api.modrinth.com/v2/search?query=faithful%2032x&facets="), "{url}");
+        assert!(
+            url.starts_with("https://api.modrinth.com/v2/search?query=faithful%2032x&facets="),
+            "{url}"
+        );
         assert!(url.contains("%22project_type%3Aresourcepack%22"), "{url}");
         assert!(url.contains("%22versions%3A26.3%22"), "{url}");
-        assert!(url.ends_with("&index=downloads&limit=20&offset=40"), "{url}");
+        assert!(
+            url.ends_with("&index=downloads&limit=20&offset=40"),
+            "{url}"
+        );
         let all = search_url("  ", Sort::Relevance, None, 0);
-        assert!(all.contains("query=&facets") && !all.contains("versions"), "{all}");
+        assert!(
+            all.contains("query=&facets") && !all.contains("versions"),
+            "{all}"
+        );
         assert_eq!(
             versions_url("AANobbMI", Some("26.3")),
             "https://api.modrinth.com/v2/project/AANobbMI/version?game_versions=%5B%2226.3%22%5D"
         );
-        assert_eq!(versions_url("a/b", None), "https://api.modrinth.com/v2/project/a%2Fb/version");
+        assert_eq!(
+            versions_url("a/b", None),
+            "https://api.modrinth.com/v2/project/a%2Fb/version"
+        );
         assert_eq!(encode("a b&c=d/é"), "a%20b%26c%3Dd%2F%C3%A9");
         let mut s = Sort::Relevance;
         for _ in 0..4 {
@@ -1153,9 +1341,15 @@ mod tests {
 
     #[test]
     fn file_names_are_made_safe() {
-        assert_eq!(safe_filename("Pack 2.0.zip").as_deref(), Some("Pack 2.0.zip"));
+        assert_eq!(
+            safe_filename("Pack 2.0.zip").as_deref(),
+            Some("Pack 2.0.zip")
+        );
         assert_eq!(safe_filename("../../evil.zip").as_deref(), Some("evil.zip"));
-        assert_eq!(safe_filename("C:\\x\\y\\evil.ZIP").as_deref(), Some("evil.ZIP"));
+        assert_eq!(
+            safe_filename("C:\\x\\y\\evil.ZIP").as_deref(),
+            Some("evil.ZIP")
+        );
         assert_eq!(safe_filename("a:b*c?.zip").as_deref(), Some("a_b_c_.zip"));
         assert_eq!(safe_filename("Pack Ü.zip").as_deref(), Some("Pack _.zip"));
         assert_eq!(safe_filename("...zip"), None, "nothing but the extension");
@@ -1170,15 +1364,43 @@ mod tests {
 
     #[test]
     fn the_list_of_installed_packs_survives_a_round_trip() {
-        let mut records = vec![Record { project: "p1".into(), version: "v1".into(), filename: "A.zip".into() }];
-        put_record(&mut records, Record { project: "p2".into(), version: "v9".into(), filename: "B\tC.zip".into() });
-        put_record(&mut records, Record { project: "p1".into(), version: "v2".into(), filename: "A 2.zip".into() });
+        let mut records = vec![Record {
+            project: "p1".into(),
+            version: "v1".into(),
+            filename: "A.zip".into(),
+        }];
+        put_record(
+            &mut records,
+            Record {
+                project: "p2".into(),
+                version: "v9".into(),
+                filename: "B\tC.zip".into(),
+            },
+        );
+        put_record(
+            &mut records,
+            Record {
+                project: "p1".into(),
+                version: "v2".into(),
+                filename: "A 2.zip".into(),
+            },
+        );
         assert_eq!(records.len(), 2, "one record per pack");
         let text = format_records(&records);
         let back = parse_records(&text);
         assert_eq!(back.len(), 2);
-        assert_eq!(back[1], Record { project: "p1".into(), version: "v2".into(), filename: "A 2.zip".into() });
-        assert_eq!(back[0].filename, "B C.zip", "a tab in a name can't break the file");
+        assert_eq!(
+            back[1],
+            Record {
+                project: "p1".into(),
+                version: "v2".into(),
+                filename: "A 2.zip".into()
+            }
+        );
+        assert_eq!(
+            back[0].filename, "B C.zip",
+            "a tab in a name can't break the file"
+        );
         assert!(parse_records("garbage\n\n\t\t\nonly\ttwo\n").is_empty());
     }
 
@@ -1201,16 +1423,47 @@ mod tests {
 
     #[test]
     fn the_layout_fits_every_screen_size() {
-        for (w, h) in [(320.0, 240.0), (427.0, 240.0), (480.0, 270.0), (640.0, 360.0), (960.0, 540.0), (1280.0, 720.0)] {
+        for (w, h) in [
+            (320.0, 240.0),
+            (427.0, 240.0),
+            (480.0, 270.0),
+            (640.0, 360.0),
+            (960.0, 540.0),
+            (1280.0, 720.0),
+        ] {
             let l = layout(w, h);
-            assert!(l.search.x + l.search.w <= l.list.w, "{w}x{h}: search leaves the list");
-            assert!(l.list.x + l.list.w <= l.detail.x, "{w}x{h}: list and detail overlap");
-            assert!(l.detail.x + l.detail.w <= w, "{w}x{h}: detail leaves the screen");
-            assert!(l.sort.x + l.sort.w < l.game.x, "{w}x{h}: the two buttons overlap");
-            assert!(l.game.x + l.game.w <= w, "{w}x{h}: a button leaves the screen");
-            assert!(l.list.y + l.list.h <= l.done.y, "{w}x{h}: list reaches the button");
-            assert!(l.done.x >= 0.0 && l.done.x + l.done.w <= w, "{w}x{h}: Done leaves the screen");
-            assert!(l.done.y + l.done.h <= l.hint_y && l.hint_y + 8.0 <= h, "{w}x{h}: small print is cut");
+            assert!(
+                l.search.x + l.search.w <= l.list.w,
+                "{w}x{h}: search leaves the list"
+            );
+            assert!(
+                l.list.x + l.list.w <= l.detail.x,
+                "{w}x{h}: list and detail overlap"
+            );
+            assert!(
+                l.detail.x + l.detail.w <= w,
+                "{w}x{h}: detail leaves the screen"
+            );
+            assert!(
+                l.sort.x + l.sort.w < l.game.x,
+                "{w}x{h}: the two buttons overlap"
+            );
+            assert!(
+                l.game.x + l.game.w <= w,
+                "{w}x{h}: a button leaves the screen"
+            );
+            assert!(
+                l.list.y + l.list.h <= l.done.y,
+                "{w}x{h}: list reaches the button"
+            );
+            assert!(
+                l.done.x >= 0.0 && l.done.x + l.done.w <= w,
+                "{w}x{h}: Done leaves the screen"
+            );
+            assert!(
+                l.done.y + l.done.h <= l.hint_y && l.hint_y + 8.0 <= h,
+                "{w}x{h}: small print is cut"
+            );
             let plus = plus_button(w);
             assert!(plus.x + plus.w <= w && plus.x >= 0.0);
         }
@@ -1223,9 +1476,21 @@ mod tests {
         assert!(max_scroll(100, l.list.h) > 0.0);
         assert_eq!(row_at(&l, 0.0, 5, 10.0, l.list.y + 1.0), Some(0));
         assert_eq!(row_at(&l, 0.0, 5, 10.0, l.list.y + ROW + 1.0), Some(1));
-        assert_eq!(row_at(&l, 0.0, 5, 10.0, l.list.y + 6.0 * ROW), None, "past the last row");
-        assert_eq!(row_at(&l, 0.0, 5, l.list.w - 3.0, l.list.y + 1.0), None, "the scroll bar is not a row");
-        assert_eq!(row_at(&l, ROW, 5, 10.0, l.list.y + 1.0), Some(1), "scrolled");
+        assert_eq!(
+            row_at(&l, 0.0, 5, 10.0, l.list.y + 6.0 * ROW),
+            None,
+            "past the last row"
+        );
+        assert_eq!(
+            row_at(&l, 0.0, 5, l.list.w - 3.0, l.list.y + 1.0),
+            None,
+            "the scroll bar is not a row"
+        );
+        assert_eq!(
+            row_at(&l, ROW, 5, 10.0, l.list.y + 1.0),
+            Some(1),
+            "scrolled"
+        );
         assert_eq!(row_at(&l, 0.0, 5, 10.0, l.list.y - 1.0), None);
         assert_eq!(step(5, None, 1), Some(0));
         assert_eq!(step(5, None, -1), Some(4));
@@ -1247,9 +1512,16 @@ mod tests {
 
     #[test]
     fn text_wraps_to_the_width() {
-        assert_eq!(wrap("hello brave new world", 66.0, &six), ["hello brave", "new world"]);
+        assert_eq!(
+            wrap("hello brave new world", 66.0, &six),
+            ["hello brave", "new world"]
+        );
         assert_eq!(wrap("a\n\nb", 100.0, &six), ["a", "", "b"]);
-        assert!(wrap("aaaaaaaaaaaaaaaaaaaa", 30.0, &six).iter().all(|l| six(l) <= 30.0));
+        assert!(
+            wrap("aaaaaaaaaaaaaaaaaaaa", 30.0, &six)
+                .iter()
+                .all(|l| six(l) <= 30.0)
+        );
         assert_eq!(wrap("", 100.0, &six), Vec::<String>::new());
     }
 
@@ -1302,15 +1574,35 @@ mod tests {
         assert_eq!(pick_version(&[], None), None);
         let mut only_beta = v;
         only_beta.remove(0);
-        assert_eq!(pick_version(&only_beta, None), Some(0), "no release: the newest");
-        assert_eq!(games_short(&["1.20".into(), "1.21".into(), "26.1".into(), "26.2".into(), "26.3".into()]), "26.3, 26.2, 26.1 +2");
+        assert_eq!(
+            pick_version(&only_beta, None),
+            Some(0),
+            "no release: the newest"
+        );
+        assert_eq!(
+            games_short(&[
+                "1.20".into(),
+                "1.21".into(),
+                "26.1".into(),
+                "26.2".into(),
+                "26.3".into()
+            ]),
+            "26.3, 26.2, 26.1 +2"
+        );
         assert_eq!(games_short(&["26.3".into()]), "26.3");
     }
 
     #[test]
     fn the_detail_pane_lists_versions_then_the_pack() {
         let v = two_versions();
-        let lines = body_lines(&a_hit(), Versions::Loaded(&v), Some(0), Some("26.3"), 300.0, &six);
+        let lines = body_lines(
+            &a_hit(),
+            Versions::Loaded(&v),
+            Some(0),
+            Some("26.3"),
+            300.0,
+            &six,
+        );
         let texts: Vec<&str> = lines.iter().map(|l| l.text.as_str()).collect();
         assert_eq!(texts[0], "Versions");
         assert_eq!(texts[1], "> 2.0 (26.3, 26.2, 1.21)");
@@ -1320,22 +1612,52 @@ mod tests {
         assert_eq!(lines[1].version, Some(0));
         assert_eq!(lines[2].version, Some(1));
         assert!(texts.contains(&"A pack \"for\" you"));
-        assert!(texts.iter().any(|t| t.starts_with("Tags: 32x, vanilla-like")));
+        assert!(
+            texts
+                .iter()
+                .any(|t| t.starts_with("Tags: 32x, vanilla-like"))
+        );
         // A click on the second version line picks it; the heading and the text pick nothing.
         let body_y = 100.0;
         assert_eq!(version_at(&lines, body_y, body_y + LINE + 1.0), Some(0));
-        assert_eq!(version_at(&lines, body_y, body_y + 2.0 * LINE + 1.0), Some(1));
+        assert_eq!(
+            version_at(&lines, body_y, body_y + 2.0 * LINE + 1.0),
+            Some(1)
+        );
         assert_eq!(version_at(&lines, body_y, body_y + 1.0), None);
         assert_eq!(version_at(&lines, body_y, body_y - 5.0), None);
         assert_eq!(version_at(&lines, body_y, body_y + 500.0), None);
         let loading = body_lines(&a_hit(), Versions::Loading, None, None, 300.0, &six);
         assert_eq!(loading[1].text, "Loading...");
-        let failed = body_lines(&a_hit(), Versions::Failed("no internet"), None, None, 300.0, &six);
-        assert!(failed.iter().any(|l| l.tone == Tone::Bad && l.text.contains("no internet")));
-        let empty = body_lines(&a_hit(), Versions::Loaded(&[]), None, Some("26.3"), 300.0, &six);
+        let failed = body_lines(
+            &a_hit(),
+            Versions::Failed("no internet"),
+            None,
+            None,
+            300.0,
+            &six,
+        );
+        assert!(
+            failed
+                .iter()
+                .any(|l| l.tone == Tone::Bad && l.text.contains("no internet"))
+        );
+        let empty = body_lines(
+            &a_hit(),
+            Versions::Loaded(&[]),
+            None,
+            Some("26.3"),
+            300.0,
+            &six,
+        );
         assert!(empty.iter().any(|l| l.text.contains("26.3")));
         assert!(lines.iter().all(|l| six(&l.text) <= 300.0));
-        let many: Vec<Version> = (0..20).map(|i| Version { id: format!("v{i}"), ..two_versions().remove(0) }).collect();
+        let many: Vec<Version> = (0..20)
+            .map(|i| Version {
+                id: format!("v{i}"),
+                ..two_versions().remove(0)
+            })
+            .collect();
         let lines = body_lines(&a_hit(), Versions::Loaded(&many), None, None, 300.0, &six);
         assert_eq!(lines.iter().filter(|l| l.version.is_some()).count(), 12);
         assert!(lines.iter().any(|l| l.text == "... and 8 older"));
@@ -1362,8 +1684,14 @@ mod tests {
         assert_eq!(status_text(false, None, 0, 0), "No packs found");
         assert_eq!(status_text(false, None, 20, 312), "Showing 20 of 312 packs");
         assert_eq!(status_text(false, None, 1, 1), "Showing 1 of 1 pack");
-        assert_eq!(status_text(true, None, 20, 312), "Showing 20 of 312 packs ...");
-        assert_eq!(status_text(false, Some("No internet"), 20, 312), "No internet");
+        assert_eq!(
+            status_text(true, None, 20, 312),
+            "Showing 20 of 312 packs ..."
+        );
+        assert_eq!(
+            status_text(false, Some("No internet"), 20, 312),
+            "No internet"
+        );
     }
 
     #[test]

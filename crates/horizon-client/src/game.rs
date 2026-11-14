@@ -15347,12 +15347,11 @@ impl Game<'_> {
                     self.pad_clear_focus();
                     // AbstractContainerMenu.removed: the carried stack goes
                     // back to the inventory, and what does not fit is dropped.
-                    if let Some(c) = self.carried.take() {
-                        if let Some(rest) = self.give(c)
-                            && let Some(eye) = self.eye_position()
-                        {
-                            self.throw_from_eyes(rest, eye, false);
-                        }
+                    if let Some(c) = self.carried.take()
+                        && let Some(rest) = self.give(c)
+                        && let Some(eye) = self.eye_position()
+                    {
+                        self.throw_from_eyes(rest, eye, false);
                     }
                     self.screen = Screen::Playing;
                     self.capture(true);

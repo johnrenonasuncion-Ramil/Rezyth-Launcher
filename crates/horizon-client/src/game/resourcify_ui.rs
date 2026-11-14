@@ -120,7 +120,8 @@ impl State {
     }
 
     fn game_filter(&self) -> Option<&'static str> {
-        self.only_game.then_some(horizon_core::version::VANILLA_VERSION)
+        self.only_game
+            .then_some(horizon_core::version::VANILLA_VERSION)
     }
 
     fn versions_key(&self, project: &str) -> String {
@@ -130,11 +131,28 @@ impl State {
 
 /// What the threads tell the screen.
 enum Msg {
-    Search { generation: u64, append: bool, result: Res<(Vec<r::Hit>, u64)> },
-    Versions { key: String, result: Res<Vec<r::Version>> },
-    Icon { project: String, rgba: Option<Arc<[u8]>> },
-    Progress { project: String, done: u64, total: u64 },
-    Installed { project: String, result: Res<r::Record> },
+    Search {
+        generation: u64,
+        append: bool,
+        result: Res<(Vec<r::Hit>, u64)>,
+    },
+    Versions {
+        key: String,
+        result: Res<Vec<r::Version>>,
+    },
+    Icon {
+        project: String,
+        rgba: Option<Arc<[u8]>>,
+    },
+    Progress {
+        project: String,
+        done: u64,
+        total: u64,
+    },
+    Installed {
+        project: String,
+        result: Res<r::Record>,
+    },
 }
 
 fn inbox() -> &'static (Sender<Msg>, Mutex<Receiver<Msg>>) {
@@ -166,7 +184,11 @@ fn state() -> MutexGuard<'static, State> {
 
 fn apply(st: &mut State, msg: Msg) {
     match msg {
-        Msg::Search { generation, append, result } => {
+        Msg::Search {
+            generation,
+            append,
+            result,
+        } => {
             if generation != st.generation {
                 return;
             }
@@ -176,8 +198,10 @@ fn apply(st: &mut State, msg: Msg) {
                     st.error = None;
                     st.total = total;
                     if append {
-                        let known: BTreeSet<String> = st.hits.iter().map(|h| h.id.clone()).collect();
-                        st.hits.extend(hits.into_iter().filter(|h| !known.contains(&h.id)));
+                        let known: BTreeSet<String> =
+                            st.hits.iter().map(|h| h.id.clone()).collect();
+                        st.hits
+                            .extend(hits.into_iter().filter(|h| !known.contains(&h.id)));
                     } else {
                         st.hits = hits;
                         st.list_scroll = 0.0;
@@ -188,16 +212,23 @@ fn apply(st: &mut State, msg: Msg) {
             }
         }
         Msg::Versions { key, result } => {
-            st.versions.insert(key, match result {
-                Ok(list) => VState::Loaded(list),
-                Err(e) => VState::Failed(e),
-            });
+            st.versions.insert(
+                key,
+                match result {
+                    Ok(list) => VState::Loaded(list),
+                    Err(e) => VState::Failed(e),
+                },
+            );
         }
         Msg::Icon { project, rgba } => {
             st.icons_loading.remove(&project);
             st.icons.insert(project, rgba);
         }
-        Msg::Progress { project, done, total } => {
+        Msg::Progress {
+            project,
+            done,
+            total,
+        } => {
             if let Some(i) = st.install.as_mut().filter(|i| i.project == project) {
                 i.done = done;
                 i.total = total;
@@ -209,9 +240,17 @@ fn apply(st: &mut State, msg: Msg) {
             }
             match result {
                 Ok(record) => {
-                    st.notice = Some((format!("Installed {}. It is in your Resource Packs list.", record.filename), r::Tone::Good));
+                    st.notice = Some((
+                        format!(
+                            "Installed {}. It is in your Resource Packs list.",
+                            record.filename
+                        ),
+                        r::Tone::Good,
+                    ));
                     r::put_record(&mut st.records, record);
-                    let _ = std::fs::create_dir_all(records_path().parent().unwrap_or(std::path::Path::new(".")));
+                    let _ = std::fs::create_dir_all(
+                        records_path().parent().unwrap_or(std::path::Path::new(".")),
+                    );
                     let _ = std::fs::write(records_path(), r::format_records(&st.records));
                 }
                 Err(e) => st.notice = Some((e, r::Tone::Bad)),
@@ -221,11 +260,19 @@ fn apply(st: &mut State, msg: Msg) {
 }
 
 fn records_path() -> std::path::PathBuf {
-    std::env::current_dir().unwrap_or_default().join("resourcify").join("installed.txt")
+    std::env::current_dir()
+        .unwrap_or_default()
+        .join("resourcify")
+        .join("installed.txt")
 }
 
 fn color(rgb: u32) -> u32 {
-    rgba(((rgb >> 16) & 0xFF) as u8, ((rgb >> 8) & 0xFF) as u8, (rgb & 0xFF) as u8, 255)
+    rgba(
+        ((rgb >> 16) & 0xFF) as u8,
+        ((rgb >> 8) & 0xFF) as u8,
+        (rgb & 0xFF) as u8,
+        255,
+    )
 }
 
 fn rgb_of(c: [u8; 3]) -> u32 {
@@ -260,7 +307,9 @@ fn get(url: &str) -> Res<ureq::Response> {
 }
 
 fn get_text(url: &str) -> Res<String> {
-    get(url)?.into_string().map_err(|_| "Modrinth's answer could not be read".to_owned())
+    get(url)?
+        .into_string()
+        .map_err(|_| "Modrinth's answer could not be read".to_owned())
 }
 
 /// At most `cap` bytes of `reader`: `ureq` hands back a boxed reader, on
@@ -299,7 +348,11 @@ fn start_search(st: &mut State, append: bool) {
     let url = r::search_url(&key.0, key.1, st.game_filter(), offset);
     spawn("resourcify-search", move || {
         let result = get_text(&url).and_then(|body| r::parse_search(&body));
-        let _ = inbox().0.send(Msg::Search { generation, append, result });
+        let _ = inbox().0.send(Msg::Search {
+            generation,
+            append,
+            result,
+        });
     });
 }
 
@@ -317,7 +370,10 @@ fn start_versions(st: &mut State, project: &str) {
 }
 
 fn start_icon(st: &mut State, project: &str, url: &str) {
-    if st.icons.contains_key(project) || st.icons_loading.contains(project) || st.icons_loading.len() >= 6 {
+    if st.icons.contains_key(project)
+        || st.icons_loading.contains(project)
+        || st.icons_loading.len() >= 6
+    {
         return;
     }
     if !r::icon_url_ok(url) {
@@ -332,7 +388,10 @@ fn start_icon(st: &mut State, project: &str, url: &str) {
             let bytes = read_capped(response.into_reader(), 2 * 1024 * 1024)?;
             horizon_client::pack_screen::load_icon(&bytes)
         });
-        let _ = inbox().0.send(Msg::Icon { project, rgba: picture });
+        let _ = inbox().0.send(Msg::Icon {
+            project,
+            rgba: picture,
+        });
     });
 }
 
@@ -347,7 +406,11 @@ fn start_install(st: &mut State, hit: &r::Hit, version: &r::Version) {
         return;
     }
     st.notice = None;
-    st.install = Some(Install { project: hit.id.clone(), done: 0, total: file.size });
+    st.install = Some(Install {
+        project: hit.id.clone(),
+        done: 0,
+        total: file.size,
+    });
     let (project, version_id) = (hit.id.clone(), version.id.clone());
     spawn("resourcify-install", move || {
         let result = install(&project, &version_id, &file);
@@ -356,8 +419,14 @@ fn start_install(st: &mut State, hit: &r::Hit, version: &r::Version) {
 }
 
 fn install(project: &str, version_id: &str, file: &r::File) -> Res<r::Record> {
-    use horizon_client::server_packs::{Request, download::{Progress, download_file}};
-    let dir = std::env::current_dir().unwrap_or_default().join("downloads").join("resourcify");
+    use horizon_client::server_packs::{
+        Request,
+        download::{Progress, download_file},
+    };
+    let dir = std::env::current_dir()
+        .unwrap_or_default()
+        .join("downloads")
+        .join("resourcify");
     let (tx, rx) = channel::<Progress>();
     let (watch_project, total) = (project.to_owned(), file.size);
     spawn("resourcify-progress", move || {
@@ -366,19 +435,28 @@ fn install(project: &str, version_id: &str, file: &r::File) -> Res<r::Record> {
             match step {
                 Progress::DownloadStart(Some(len)) => size = len,
                 Progress::Bytes(done) => {
-                    let _ = inbox().0.send(Msg::Progress { project: watch_project.clone(), done, total: size });
+                    let _ = inbox().0.send(Msg::Progress {
+                        project: watch_project.clone(),
+                        done,
+                        total: size,
+                    });
                 }
                 _ => {}
             }
         }
     });
-    let request = Request { id: 0, url: file.url.clone(), sha1: Some(file.sha1.clone()) };
+    let request = Request {
+        id: 0,
+        url: file.url.clone(),
+        sha1: Some(file.sha1.clone()),
+    };
     let headers = vec![("User-Agent", r::AGENT.to_owned())];
     let cached = download_file(&dir, &request, &headers, r::MAX_PACK_BYTES, &tx)
         .map_err(|e| format!("Download failed: {e}"))?;
     drop(tx);
     let packs = super::packs::packs_dir();
-    std::fs::create_dir_all(&packs).map_err(|e| format!("Could not make the resourcepacks folder: {e}"))?;
+    std::fs::create_dir_all(&packs)
+        .map_err(|e| format!("Could not make the resourcepacks folder: {e}"))?;
     let wanted = r::safe_filename(&file.filename).ok_or("The file is not a .zip resource pack.")?;
     let name = r::unique_name(&wanted, &|n| packs.join(n).exists());
     let part = packs.join(format!("{name}.part"));
@@ -387,14 +465,20 @@ fn install(project: &str, version_id: &str, file: &r::File) -> Res<r::Record> {
         let _ = std::fs::remove_file(&part);
         format!("Could not save the pack: {e}")
     })?;
-    Ok(r::Record { project: project.to_owned(), version: version_id.to_owned(), filename: name })
+    Ok(r::Record {
+        project: project.to_owned(),
+        version: version_id.to_owned(),
+        filename: name,
+    })
 }
 
 /// Starts the search when the box has been quiet for a moment, and the next page near the end.
 fn keep_going(st: &mut State, list_h: f32) {
     let key = (st.query.trim().to_owned(), st.sort, st.only_game);
     let changed = st.searched.as_ref() != Some(&key);
-    let quiet = st.last_change.is_none_or(|t| t.elapsed().as_millis() >= r::DEBOUNCE_MS);
+    let quiet = st
+        .last_change
+        .is_none_or(|t| t.elapsed().as_millis() >= r::DEBOUNCE_MS);
     if changed && quiet {
         // An answer for older text may still be on its way; it is thrown away when it comes.
         start_search(st, false);
@@ -413,12 +497,18 @@ fn keep_going(st: &mut State, list_h: f32) {
 
 /// The notice under the Install button, in at most three lines.
 fn notice_lines(st: &State, width: f32, measure: &dyn Fn(&str) -> f32) -> Vec<String> {
-    st.notice.as_ref().map_or_else(Vec::new, |(text, _)| r::wrap(text, width, measure).into_iter().take(3).collect())
+    st.notice.as_ref().map_or_else(Vec::new, |(text, _)| {
+        r::wrap(text, width, measure).into_iter().take(3).collect()
+    })
 }
 
 /// How far the notice pushes the versions and the description down.
 fn notice_height(lines: &[String]) -> f32 {
-    if lines.is_empty() { 0.0 } else { lines.len() as f32 * r::LINE + 4.0 }
+    if lines.is_empty() {
+        0.0
+    } else {
+        lines.len() as f32 * r::LINE + 4.0
+    }
 }
 
 /// The pictures drawn this frame: slot to project.
@@ -429,7 +519,10 @@ struct Slots {
 
 impl Slots {
     fn new() -> Self {
-        Slots { by_project: BTreeMap::new(), patches: Vec::new() }
+        Slots {
+            by_project: BTreeMap::new(),
+            patches: Vec::new(),
+        }
     }
 
     /// The sprite for a project's picture, or none while it is not there.
@@ -455,7 +548,15 @@ impl Slots {
     }
 }
 
-fn draw_icon(batch: &mut HudBatch, atlas: &HudAtlas, slots: &mut Slots, st: &State, hit: &r::Hit, x: f32, y: f32) {
+fn draw_icon(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    slots: &mut Slots,
+    st: &State,
+    hit: &r::Hit,
+    x: f32,
+    y: f32,
+) {
     if let Some(sprite) = slots.sprite(atlas, st, &hit.id) {
         batch.sprite_scaled(atlas, &sprite, x, y, r::ICON, r::ICON, u32::MAX);
         return;
@@ -463,10 +564,29 @@ fn draw_icon(batch: &mut HudBatch, atlas: &HudAtlas, slots: &mut Slots, st: &Sta
     // While the picture is not there (or never will be): a tile in the pack's colour with its first letter.
     let base = r::icon_rgb(&hit.id);
     batch.fill(atlas, x, y, r::ICON, r::ICON, rgba(70, 70, 82, 255));
-    batch.fill(atlas, x + 1.0, y + 1.0, r::ICON - 2.0, r::ICON - 2.0, rgb_of(r::shade(base, 0.6)));
-    let letter: String = hit.title.chars().next().map(|c| c.to_uppercase().collect()).unwrap_or_default();
+    batch.fill(
+        atlas,
+        x + 1.0,
+        y + 1.0,
+        r::ICON - 2.0,
+        r::ICON - 2.0,
+        rgb_of(r::shade(base, 0.6)),
+    );
+    let letter: String = hit
+        .title
+        .chars()
+        .next()
+        .map(|c| c.to_uppercase().collect())
+        .unwrap_or_default();
     let lw = HudBatch::text_width(atlas, &letter);
-    batch.text(atlas, &letter, x + ((r::ICON - lw) / 2.0).floor(), y + 12.0, u32::MAX, true);
+    batch.text(
+        atlas,
+        &letter,
+        x + ((r::ICON - lw) / 2.0).floor(),
+        y + 12.0,
+        u32::MAX,
+        true,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -485,7 +605,14 @@ fn draw_row(
     let measure = |s: &str| HudBatch::text_width(atlas, s);
     if selected {
         batch.fill(atlas, x + 2.0, y, w - 4.0, r::ROW, u32::MAX);
-        batch.fill(atlas, x + 3.0, y + 1.0, w - 6.0, r::ROW - 2.0, rgba(0, 0, 0, 255));
+        batch.fill(
+            atlas,
+            x + 3.0,
+            y + 1.0,
+            w - 6.0,
+            r::ROW - 2.0,
+            rgba(0, 0, 0, 255),
+        );
     } else if hover {
         batch.fill(atlas, x + 2.0, y, w - 4.0, r::ROW, rgba(255, 255, 255, 40));
     }
@@ -497,9 +624,20 @@ fn draw_row(
     let name = r::ellipsize(&hit.title, (avail - measure(tag)).max(30.0), &measure);
     let name_w = batch.text(atlas, &name, text_x, y + 4.0, u32::MAX, true);
     if installed {
-        batch.text(atlas, tag, text_x + name_w, y + 4.0, tone_color(r::Tone::Good), true);
+        batch.text(
+            atlas,
+            tag,
+            text_x + name_w,
+            y + 4.0,
+            tone_color(r::Tone::Good),
+            true,
+        );
     }
-    let by = r::ellipsize(&format!("by {} - {} downloads", hit.author, r::count(hit.downloads)), avail, &measure);
+    let by = r::ellipsize(
+        &format!("by {} - {} downloads", hit.author, r::count(hit.downloads)),
+        avail,
+        &measure,
+    );
     batch.text(atlas, &by, text_x, y + 14.0, color(0xA0A0A0), true);
     let about = r::ellipsize(hit.summary.trim(), avail, &measure);
     batch.text(atlas, &about, text_x, y + 24.0, color(0x808080), true);
@@ -510,7 +648,9 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
     let (w, h) = (batch.width, batch.height);
     let l = r::layout(w, h);
     keep_going(&mut st, l.list.h);
-    st.list_scroll = st.list_scroll.clamp(0.0, r::max_scroll(st.hits.len(), l.list.h));
+    st.list_scroll = st
+        .list_scroll
+        .clamp(0.0, r::max_scroll(st.hits.len(), l.list.h));
     if st.selected.is_none() && !st.hits.is_empty() {
         st.selected = Some(0);
         st.detail_scroll = 0.0;
@@ -569,18 +709,46 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
     }
 
     // Order, and only this game version or all.
-    let sort_label = r::ellipsize(&format!("Sort: {}", st.sort.label()), l.sort.w - 8.0, &measure);
-    ui::button(batch, atlas, l.sort.x, l.sort.y, l.sort.w, l.sort.h, &Text::literal(sort_label), true, l.sort.contains(cursor.0, cursor.1));
+    let sort_label = r::ellipsize(
+        &format!("Sort: {}", st.sort.label()),
+        l.sort.w - 8.0,
+        &measure,
+    );
+    ui::button(
+        batch,
+        atlas,
+        l.sort.x,
+        l.sort.y,
+        l.sort.w,
+        l.sort.h,
+        &Text::literal(sort_label),
+        true,
+        l.sort.contains(cursor.0, cursor.1),
+    );
     let game_label = if st.only_game {
         format!("For {}", horizon_core::version::VANILLA_VERSION)
     } else {
         "All versions".to_owned()
     };
     let game_label = r::ellipsize(&game_label, l.game.w - 8.0, &measure);
-    ui::button(batch, atlas, l.game.x, l.game.y, l.game.w, l.game.h, &Text::literal(game_label), true, l.game.contains(cursor.0, cursor.1));
+    ui::button(
+        batch,
+        atlas,
+        l.game.x,
+        l.game.y,
+        l.game.w,
+        l.game.h,
+        &Text::literal(game_label),
+        true,
+        l.game.contains(cursor.0, cursor.1),
+    );
 
     let status = r::status_text(st.loading, st.error.as_deref(), st.hits.len(), st.total);
-    let status_color = if st.error.is_some() { tone_color(r::Tone::Bad) } else { color(0xA0A0A0) };
+    let status_color = if st.error.is_some() {
+        tone_color(r::Tone::Bad)
+    } else {
+        color(0xA0A0A0)
+    };
     let status = r::ellipsize(&status, l.list.w - 12.0, &measure);
     batch.text(atlas, &status, l.status[0], l.status[1], status_color, true);
 
@@ -588,10 +756,30 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
     let first = batch.vertices.len();
     for row in first_row..last_row {
         let y = l.list.y + row as f32 * r::ROW - st.list_scroll;
-        let hover = l.list.contains(cursor.0, cursor.1) && cursor.1 >= y && cursor.1 < y + r::ROW && cursor.0 < l.list.w - 6.0;
-        draw_row(batch, atlas, &mut slots, &st, &st.hits[row], l.list.x, y, l.list.w - 6.0, st.selected == Some(row), hover);
+        let hover = l.list.contains(cursor.0, cursor.1)
+            && cursor.1 >= y
+            && cursor.1 < y + r::ROW
+            && cursor.0 < l.list.w - 6.0;
+        draw_row(
+            batch,
+            atlas,
+            &mut slots,
+            &st,
+            &st.hits[row],
+            l.list.x,
+            y,
+            l.list.w - 6.0,
+            st.selected == Some(row),
+            hover,
+        );
     }
-    batch.clip_since(first, l.list.x, l.list.y, l.list.x + l.list.w, l.list.y + l.list.h);
+    batch.clip_since(
+        first,
+        l.list.x,
+        l.list.y,
+        l.list.x + l.list.w,
+        l.list.y + l.list.h,
+    );
     ui::scrollbar(
         batch,
         atlas,
@@ -605,11 +793,12 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
     // The detail pane.
     if let Some(hit) = &selected_hit {
         let key = st.versions_key(&hit.id);
-        let (list, failed, loading): (Vec<r::Version>, Option<String>, bool) = match st.versions.get(&key) {
-            Some(VState::Loaded(list)) => (list.clone(), None, false),
-            Some(VState::Failed(e)) => (Vec::new(), Some(e.clone()), false),
-            _ => (Vec::new(), None, true),
-        };
+        let (list, failed, loading): (Vec<r::Version>, Option<String>, bool) =
+            match st.versions.get(&key) {
+                Some(VState::Loaded(list)) => (list.clone(), None, false),
+                Some(VState::Failed(e)) => (Vec::new(), Some(e.clone()), false),
+                _ => (Vec::new(), None, true),
+            };
         let versions = if loading {
             r::Versions::Loading
         } else if let Some(e) = &failed {
@@ -627,12 +816,24 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
         let d = r::detail(&l, st.detail_scroll);
         let first = batch.vertices.len();
         draw_icon(batch, atlas, &mut slots, &st, hit, d.icon.x, d.icon.y);
-        let name = r::ellipsize(&hit.title, l.detail.x + l.detail.w - d.name[0] - 10.0, &measure);
+        let name = r::ellipsize(
+            &hit.title,
+            l.detail.x + l.detail.w - d.name[0] - 10.0,
+            &measure,
+        );
         batch.text(atlas, &name, d.name[0], d.name[1], u32::MAX, true);
         let info = [
-            r::ellipsize(&format!("By {}", hit.author), l.detail.x + l.detail.w - d.name[0] - 10.0, &measure),
             r::ellipsize(
-                &format!("{} downloads, {} followers", r::count(hit.downloads), r::count(hit.follows)),
+                &format!("By {}", hit.author),
+                l.detail.x + l.detail.w - d.name[0] - 10.0,
+                &measure,
+            ),
+            r::ellipsize(
+                &format!(
+                    "{} downloads, {} followers",
+                    r::count(hit.downloads),
+                    r::count(hit.follows)
+                ),
                 l.detail.x + l.detail.w - d.name[0] - 10.0,
                 &measure,
             ),
@@ -659,15 +860,43 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
         };
         let inside = l.detail.contains(cursor.0, cursor.1);
         let b = d.install;
-        ui::button(batch, atlas, b.x, b.y, b.w, b.h, &Text::literal(label), can, inside && can && b.contains(cursor.0, cursor.1));
+        ui::button(
+            batch,
+            atlas,
+            b.x,
+            b.y,
+            b.w,
+            b.h,
+            &Text::literal(label),
+            can,
+            inside && can && b.contains(cursor.0, cursor.1),
+        );
         if let Some(file) = chosen_version.and_then(|v| v.file.as_ref()) {
             let size = format!("{} - {}", file.filename, r::human_size(file.size));
-            let size = r::ellipsize(&size, l.detail.x + l.detail.w - d.status[0] - 10.0, &measure);
-            batch.text(atlas, &size, d.status[0], d.status[1] - 5.0, color(0x909090), true);
+            let size = r::ellipsize(
+                &size,
+                l.detail.x + l.detail.w - d.status[0] - 10.0,
+                &measure,
+            );
+            batch.text(
+                atlas,
+                &size,
+                d.status[0],
+                d.status[1] - 5.0,
+                color(0x909090),
+                true,
+            );
         }
         if let Some((_, tone)) = &st.notice {
             for (i, line) in notice.iter().enumerate() {
-                batch.text(atlas, line, d.body[0], d.body[1] + r::LINE * i as f32, tone_color(*tone), true);
+                batch.text(
+                    atlas,
+                    line,
+                    d.body[0],
+                    d.body[1] + r::LINE * i as f32,
+                    tone_color(*tone),
+                    true,
+                );
             }
         }
         let body_y = d.body[1] + push;
@@ -676,10 +905,27 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
                 let ly = body_y + r::LINE * i as f32;
                 cursor.1 >= ly && cursor.1 < ly + r::LINE
             };
-            let tone = if hover { color(0xFFFFA0) } else { tone_color(line.tone) };
-            batch.text(atlas, &line.text, d.body[0], body_y + r::LINE * i as f32, tone, true);
+            let tone = if hover {
+                color(0xFFFFA0)
+            } else {
+                tone_color(line.tone)
+            };
+            batch.text(
+                atlas,
+                &line.text,
+                d.body[0],
+                body_y + r::LINE * i as f32,
+                tone,
+                true,
+            );
         }
-        batch.clip_since(first, l.detail.x, l.detail.y, l.detail.x + l.detail.w, l.detail.y + l.detail.h);
+        batch.clip_since(
+            first,
+            l.detail.x,
+            l.detail.y,
+            l.detail.x + l.detail.w,
+            l.detail.y + l.detail.h,
+        );
         ui::scrollbar(
             batch,
             atlas,
@@ -690,7 +936,11 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
             st.detail_scroll.trunc(),
         );
     } else {
-        let note = if st.loading { "Searching..." } else { "Pick a pack to see its versions" };
+        let note = if st.loading {
+            "Searching..."
+        } else {
+            "Pick a pack to see its versions"
+        };
         let nx = l.detail.x + ((l.detail.w - HudBatch::text_width(atlas, note)) / 2.0).floor();
         batch.text(atlas, note, nx, l.detail.y + 20.0, color(0x8C8C8C), true);
     }
@@ -699,7 +949,17 @@ pub fn draw(game: &mut Game<'_>, batch: &mut HudBatch) {
 
     // The footer.
     let done_hover = l.done.contains(cursor.0, cursor.1);
-    ui::button(batch, atlas, l.done.x, l.done.y, l.done.w, l.done.h, &Text::translate("gui.done", &[]), true, done_hover);
+    ui::button(
+        batch,
+        atlas,
+        l.done.x,
+        l.done.y,
+        l.done.w,
+        l.done.h,
+        &Text::translate("gui.done", &[]),
+        true,
+        done_hover,
+    );
     let hint = r::ellipsize(
         "Resource packs from Modrinth. Inspired by Resourcify by DeDiamondPro",
         w - 12.0,
@@ -721,9 +981,24 @@ pub fn draw_plus(game: &mut Game<'_>, batch: &mut HudBatch) {
     let atlas = &game.gui.atlas;
     let b = r::plus_button(batch.width);
     let hover = b.contains(game.cursor.0, game.cursor.1);
-    ui::button(batch, atlas, b.x, b.y, b.w, b.h, &Text::literal("+"), true, hover);
+    ui::button(
+        batch,
+        atlas,
+        b.x,
+        b.y,
+        b.w,
+        b.h,
+        &Text::literal("+"),
+        true,
+        hover,
+    );
     if hover {
-        ui::tooltip(batch, atlas, &[Text::literal("Find resource packs on Modrinth")], game.cursor);
+        ui::tooltip(
+            batch,
+            atlas,
+            &[Text::literal("Find resource packs on Modrinth")],
+            game.cursor,
+        );
     }
 }
 
@@ -801,7 +1076,14 @@ pub fn mouse(game: &mut Game<'_>, pressed: bool, right: bool) -> Result<()> {
                 }
             } else {
                 let measure = |s: &str| HudBatch::text_width(&game.gui.atlas, s);
-                let lines = r::body_lines(&hit, r::Versions::Loaded(&list), picked, st.game_filter(), d.width, &measure);
+                let lines = r::body_lines(
+                    &hit,
+                    r::Versions::Loaded(&list),
+                    picked,
+                    st.game_filter(),
+                    d.width,
+                    &measure,
+                );
                 let push = notice_height(&notice_lines(&st, d.width, &measure));
                 let body_y = d.body[1] + push;
                 if let Some(i) = r::version_at(&lines, body_y, y)
@@ -833,7 +1115,8 @@ pub fn scroll(game: &mut Game<'_>, amount: f32) -> Result<()> {
         st.detail_scroll = (st.detail_scroll - amount * r::SCROLL_STEP).max(0.0);
     } else {
         let count = st.hits.len();
-        st.list_scroll = (st.list_scroll - amount * r::SCROLL_STEP).clamp(0.0, r::max_scroll(count, l.list.h));
+        st.list_scroll =
+            (st.list_scroll - amount * r::SCROLL_STEP).clamp(0.0, r::max_scroll(count, l.list.h));
     }
     Ok(())
 }
