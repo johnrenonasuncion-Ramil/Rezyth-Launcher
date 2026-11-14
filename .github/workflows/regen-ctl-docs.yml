@@ -5,7 +5,8 @@ name: regen-ctl-docs
 # (crates/horizon-client/src/bin/horizon-ctl/commands.rs). It commits the file
 # and also carries it as an artifact.
 on:
-  workflow_dispatch:
+  push:
+    paths: ['.regen-ctl-docs']
 permissions:
   contents: write
 jobs:
