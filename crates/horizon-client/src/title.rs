@@ -12,7 +12,7 @@ use horizon_world::datafix::world_upgrader::{self, WorldUpgrader};
 use std::path::{Path, PathBuf};
 use std::{
     cell::{Cell, RefCell},
-    sync::mpsc,
+    sync::{atomic::Ordering, mpsc},
 };
 
 mod account;
@@ -21,6 +21,7 @@ mod confirm_experiments;
 mod create_world;
 mod experiments;
 mod flat;
+pub mod modmenu_title;
 mod onboarding;
 #[cfg(test)]
 mod tests;
@@ -488,6 +489,10 @@ impl Button {
     /// A button with a `trailing` icon is `SpriteIconButton.TextAndIcon`, whose
     /// label keeps clear of the icon: see [`Button::draw_label_at`].
     fn draw_label(&self, batch: &mut HudBatch, atlas: &HudAtlas, color: u32) {
+        // Mod Menu, built into the game: on its Mods button, its own 20x20
+        // icon, and the mod count after the title's version — where the mod
+        // drew them from a mixin on this method (`modmenu_title::drawn`).
+        modmenu_title::drawn(self, batch, atlas);
         self.draw_label_at(batch, atlas, color, crate::hud_overlays::now_ms());
     }
 
@@ -1702,10 +1707,34 @@ impl Title {
             Mode::Main => {
                 let cx = (w / 2.0).floor();
                 let y = (h / 4.0).floor() + 48.0;
+                // Mod Menu, built into the game (`modmenu_title`): its Mods
+                // button takes the shape chosen on its options screen
+                // (`mods_button_style`), as it did as a mod — an icon beside
+                // ours unless the player chose otherwise. The startup screen,
+                // where the game's side cannot run yet, reads what the title
+                // showed last time.
+                modmenu_title::ensure_startup();
+                let style = modmenu_title::STYLE.load(Ordering::Relaxed);
+                let mods_label = modmenu_title::LABEL
+                    .lock()
+                    .map(|l| l.clone())
+                    .unwrap_or_default();
+                let mods_label = if mods_label.is_empty() {
+                    lang::get_or("horizon.pages.mods", "Mods")
+                } else {
+                    mods_label
+                };
+                // Below Realms: what is up to Realms moves up 12, the rest
+                // down 12, and the Mods button takes the row between them.
+                let (up, down) = if style == modmenu_title::BELOW_REALMS {
+                    (-12.0, 12.0)
+                } else {
+                    (0.0, 0.0)
+                };
                 let mut buttons = vec![
                     b(
                         cx - 100.0,
-                        y,
+                        y + up,
                         200.0,
                         &lang::get_or("menu.singleplayer", "Singleplayer"),
                         true,
@@ -1713,41 +1742,99 @@ impl Title {
                     ),
                     b(
                         cx - 100.0,
-                        y + 24.0,
+                        y + 24.0 + up,
                         200.0,
                         &lang::get_or("menu.multiplayer", "Multiplayer"),
                         self.allows_multiplayer,
                         4,
                     ),
-                    b(
+                ];
+                match style {
+                    // The Mods button where Realms was.
+                    modmenu_title::REPLACE_REALMS => buttons.push(b(
+                        cx - 100.0,
+                        y + 48.0,
+                        200.0,
+                        &mods_label,
+                        true,
+                        modmenu_title::BUTTON_ID,
+                    )),
+                    // Realms and Mods side by side.
+                    modmenu_title::ADJACENT => {
+                        buttons.push(b(
+                            cx - 100.0,
+                            y + 48.0,
+                            98.0,
+                            &lang::get_or("menu.online", "Minecraft Realms"),
+                            false,
+                            0,
+                        ));
+                        buttons.push(b(
+                            cx + 2.0,
+                            y + 48.0,
+                            98.0,
+                            &mods_label,
+                            true,
+                            modmenu_title::BUTTON_ID,
+                        ));
+                    }
+                    // A row of its own under Realms.
+                    modmenu_title::BELOW_REALMS => {
+                        buttons.push(b(
+                            cx - 100.0,
+                            y + 48.0 + up,
+                            200.0,
+                            &lang::get_or("menu.online", "Minecraft Realms"),
+                            false,
+                            0,
+                        ));
+                        buttons.push(b(
+                            cx - 100.0,
+                            y + 48.0 + up + 24.0,
+                            200.0,
+                            &mods_label,
+                            true,
+                            modmenu_title::BUTTON_ID,
+                        ));
+                    }
+                    _ => buttons.push(b(
                         cx - 100.0,
                         y + 48.0,
                         200.0,
                         &lang::get_or("menu.online", "Minecraft Realms"),
                         false,
                         0,
-                    ),
-                    b(
-                        cx - 100.0,
-                        y + 96.0,
-                        98.0,
-                        &lang::get_or("menu.options", "Options..."),
-                        true,
-                        3,
-                    ),
-                    b(
-                        cx + 2.0,
-                        y + 96.0,
-                        98.0,
-                        &lang::get_or("menu.quit", "Quit Game"),
-                        true,
-                        2,
-                    ),
-                ];
+                    )),
+                }
+                buttons.push(b(
+                    cx - 100.0,
+                    y + 96.0 + down,
+                    98.0,
+                    &lang::get_or("menu.options", "Options..."),
+                    true,
+                    3,
+                ));
+                buttons.push(b(
+                    cx + 2.0,
+                    y + 96.0 + down,
+                    98.0,
+                    &lang::get_or("menu.quit", "Quit Game"),
+                    true,
+                    2,
+                ));
                 // CommonButtons' icon buttons; Horizon's Join a Friend (an
                 // invite code) sits behind vanilla's Friends button, and its
                 // own Volt Settings icon next to vanilla's three (its sprite
-                // is 20x20, drawn over the whole button).
+                // is 20x20, drawn over the whole button). Mod Menu's Mods
+                // icon joins them as the last of five when its style is the
+                // icon (`SmallModMenuButtonWidget`: no text; `modmenu_title`
+                // draws its icon over the button), the row kept centred.
+                let icon_count = if style == modmenu_title::ICON {
+                    5.0
+                } else {
+                    4.0
+                };
+                let left = cx - (icon_count * 20.0 + (icon_count - 1.0) * 4.0) / 2.0;
                 for (i, (key, plain, id, icon, size)) in [
                     ("gui.friends.open", "Friends", 5, "friends/friends", 15.0),
                     ("options.language", "Language...", 6, "icon/language", 15.0),
@@ -1770,8 +1857,8 @@ impl Title {
                 .enumerate()
                 {
                     let mut button = b(
-                        cx - 46.0 + i as f32 * 24.0,
-                        y + 72.0,
+                        left + i as f32 * 24.0,
+                        y + 72.0 + down,
                         20.0,
                         &lang::get_or(key, plain),
                         true,
@@ -1779,6 +1866,16 @@ impl Title {
                     );
                     button.icon = Some((icon, size));
                     buttons.push(button);
+                }
+                if style == modmenu_title::ICON {
+                    buttons.push(b(
+                        left + 4.0 * 24.0,
+                        y + 72.0 + down,
+                        20.0,
+                        "",
+                        true,
+                        modmenu_title::BUTTON_ID,
+                    ));
                 }
                 // Starling's account, where the game signs in itself: in the top left corner,
                 // clear of the logo, so vanilla's buttons stay as they are.
@@ -2422,6 +2519,12 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
         cursor: (f32, f32),
         hide_splash: bool,
     ) {
+        // Mod Menu's mods screen is over the title: the title isn't drawn
+        // behind it (the screen draws its own menu background; the game's
+        // `modmenu_glue::frame` keeps the flag).
+        if modmenu_title::COVER.load(Ordering::Relaxed) {
+            return;
+        }
         let (w, h) = (batch.width.ceil(), batch.height.ceil());
         if let Some(rules) = self.rules.borrow_mut().as_mut() {
             return rules.draw(batch, atlas, cursor);
@@ -3399,6 +3502,14 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
     }
     fn click_action(&mut self, x: f32, y: f32, (w, h): (f32, f32), hit: Option<u8>) -> Action {
         match (&mut self.mode, hit) {
+            // Mod Menu, built into the game: its Mods button asks the game to
+            // open its screen; the game takes the request at its next frame
+            // (`modmenu_glue::frame`), as it did for the mod.
+            (Mode::Main, Some(modmenu_title::BUTTON_ID)) => {
+                self.focused_button = None;
+                modmenu_title::OPEN_REQUEST.store(true, Ordering::Relaxed);
+                Action::None
+            }
             (Mode::Main, Some(1)) => {
                 // The title button is no longer part of the world-select screen.
                 // Clear it so Enter can activate the selected world after a
@@ -4732,15 +4843,18 @@ mod classic_tests {
             PathBuf::new(),
             Path::new("/nonexistent/horizon-test-resources"),
         );
+        // Mod Menu's default button style is the icon: it joins the row as the
+        // fifth, the four moving 12 px left (`modmenu_title`).
+        modmenu_title::STYLE.store(modmenu_title::ICON, std::sync::atomic::Ordering::Relaxed);
         for (w, h) in [(960.0, 523.0), (480.0, 320.0), (427.0, 240.0)] {
             let buttons = title.buttons(w, h);
             let cx = (w / 2.0).floor();
             let y = (h / 4.0).floor() + 48.0;
             for (id, x, enabled, icon, size) in [
-                (5, cx - 46.0, true, "friends/friends", 15.0),
-                (6, cx - 22.0, true, "icon/language", 15.0),
-                (7, cx + 2.0, true, "icon/accessibility", 15.0),
-                (9, cx + 26.0, true, "icon/volt_settings", 20.0),
+                (5, cx - 58.0, true, "friends/friends", 15.0),
+                (6, cx - 34.0, true, "icon/language", 15.0),
+                (7, cx - 10.0, true, "icon/accessibility", 15.0),
+                (9, cx + 14.0, true, "icon/volt_settings", 20.0),
             ] {
                 let b = buttons.iter().find(|b| b.id == id).unwrap();
                 assert_eq!(
@@ -4767,9 +4881,23 @@ mod classic_tests {
             for id in [2, 3] {
                 assert_eq!(buttons.iter().find(|b| b.id == id).unwrap().y, y + 96.0);
             }
+            // Mod Menu's Mods icon is the fifth: no text (its 20x20 sprite is
+            // drawn over the button), and a press asks the game to open its
+            // screen, letting the focus go.
+            let mods = buttons.iter().find(|b| b.id == 200).unwrap();
+            assert_eq!(
+                (mods.x, mods.y, mods.w, mods.label.as_str()),
+                (cx + 38.0, y + 72.0, 20.0, "")
+            );
+            assert_eq!(
+                title.click(cx + 48.0, y + 82.0, (w, h)),
+                (Action::None, true)
+            );
+            assert!(modmenu_title::OPEN_REQUEST.swap(false, Ordering::Relaxed));
+            assert_eq!(title.focused_button, None);
             // The four-pixel gaps around icons must not activate a button.
             assert_eq!(
-                title.click(cx - 24.0, y + 82.0, (w, h)),
+                title.click(cx - 36.0, y + 82.0, (w, h)),
                 (Action::None, false)
             );
             assert_eq!(

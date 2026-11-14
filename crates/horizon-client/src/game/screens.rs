@@ -112,7 +112,10 @@ fn pause_buttons(
             true,
         ),
     ]);
-    v
+    // Mod Menu (built into the game, game/modmenu.rs): its Mods button joins
+    // the list — the sixth icon beside the row, or a full-width row of its
+    // own (`game_menu_button_style`).
+    crate::game::modmenu::pause_buttons(v, w, h, u8::from(row3) + u8::from(split))
 }
 
 /// The icon row: report bugs, feedback, friends, player reporting.
@@ -167,13 +170,16 @@ fn pause_icons(
 ) -> [(f32, f32, &'static str); 5] {
     let (x0, y0) = pause_grid(w, h, u8::from(links || additions) + u8::from(split));
     let (x0, y) = (x0 + 48.0, y0 + 98.0);
-    [
+    let icons = [
         (x0, y, "gui/sprites/pause_menu/bug"),
         (x0 + 24.0, y, "gui/sprites/pause_menu/social_interactions"),
         (x0 + 48.0, y, "gui/sprites/friends/friends"),
         (x0 + 72.0, y, "gui/sprites/pause_menu/player_reporting"),
         (x0 + 96.0, y, VOLT_ICON),
-    ]
+    ];
+    // Mod Menu (built into the game): the row moves 12 px left for its icon
+    // (game/modmenu.rs).
+    crate::game::modmenu::pause_icons(icons, w, h, u8::from(links || additions) + u8::from(split))
 }
 /// DeathScreen.init: a hardcore player can only spectate.
 /// `DeathScreen.TitleConfirmScreen`: its title and the yes and no labels.
@@ -238,6 +244,11 @@ impl Game<'_> {
         self.remote.is_some() && self.integrated.is_none()
     }
     pub(super) fn draw_pause_menu(&mut self, batch: &mut HudBatch) {
+        // Mod Menu's mods screen is over the menu: the menu isn't drawn behind
+        // it (the screen draws its own; game/modmenu_view.rs).
+        if crate::game::modmenu::PAUSE_COVER.load(std::sync::atomic::Ordering::Relaxed) {
+            return;
+        }
         let friends = self.friends_view().shown;
         let atlas = &self.gui.atlas;
         let (w, h) = (batch.width, batch.height);
@@ -268,6 +279,10 @@ impl Game<'_> {
             let hover = active && (ui::hovered(self.cursor, x, y, bw, 20.0) || is_focused);
             let label = match (id, &additions) {
                 (14, Some((label, _))) => label.clone(),
+                // Mod Menu's Mods icon button carries no text
+                // (`SmallModMenuButtonWidget`; `modmenu_view` draws its icon
+                // and tooltip over it). Its Insert-style row has its own label.
+                _ if id == crate::game::modmenu::PAUSE_BUTTON && key.is_empty() => Text::empty(),
                 _ if self.options.split_guest && key == "menu.disconnect" => {
                     Text::translate("horizon.split.leave", &[])
                 }
@@ -361,6 +376,12 @@ impl Game<'_> {
         }
     }
     pub(super) fn execute_pause_action(&mut self, hit: u8) -> Result<()> {
+        // Mod Menu (built into the game): its Mods icon or row opens the mods
+        // screen over the menu (game/modmenu_glue.rs).
+        if hit == crate::game::modmenu::PAUSE_BUTTON {
+            crate::game::modmenu_glue::open_from_pause(self);
+            return Ok(());
+        }
         match hit {
             0 => {
                 self.pause_focus = None;

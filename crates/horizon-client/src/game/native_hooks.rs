@@ -2033,6 +2033,10 @@ impl Game<'_> {
     }
     /// Once a frame, in a world or not, after Horizon's extras.
     pub(super) fn native_frame(&mut self, elapsed: Duration) {
+        // Mod Menu, built into the game: opens and closes its screen, runs
+        // what the screen asked for, and feeds the title's and the pause
+        // menu's buttons (game/modmenu_glue.rs).
+        super::modmenu_glue::frame(self);
         mod_api::dispatch_frame(self, mod_api::mods(), elapsed);
     }
     /// The frame rate this window is about to be held to: Max Framerate after the
@@ -2338,6 +2342,8 @@ impl Game<'_> {
     /// (`key.keyboard.z`, `key.mouse.left`): keys on any screen (check
     /// `native_playing`), mouse buttons while playing. Repeats are left out.
     pub(super) fn native_key(&mut self, key: &str, pressed: bool) {
+        // Mod Menu, built into the game: Open Mod Menu (game/modmenu_glue.rs).
+        super::modmenu_glue::key(self, key, pressed);
         mod_api::dispatch_key(self, mod_api::mods(), key, pressed);
     }
     /// A real window key event after handling, including repeats and consumed shortcuts.
@@ -3100,6 +3106,10 @@ impl Game<'_> {
         batch: &mut HudBatch,
         screen: &NativeScreenView<'_>,
     ) {
+        // Mod Menu, built into the game: the mods screen over the title
+        // screen or the pause menu, and their Mods buttons while it is
+        // closed (game/modmenu_view.rs).
+        super::modmenu_view::render(self, batch, screen);
         mod_api::dispatch_screen_render_post(self, mod_api::mods(), batch, screen);
     }
     /// A mouse button went down over the open screen
@@ -3130,6 +3140,13 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        // Mod Menu, built into the game: it runs before the mods while its
+        // screen is open and takes every press, as its priority 200 did
+        // (game/modmenu_glue.rs).
+        if super::modmenu_glue::pressed(self, screen, button, modifiers) {
+            *canceled = true;
+            return;
+        }
         mod_api::dispatch_screen_mouse_button_pressed_pre(
             self,
             mod_api::mods(),
@@ -3159,6 +3176,10 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        if super::modmenu_glue::released(self, screen, button) {
+            *canceled = true;
+            return;
+        }
         mod_api::dispatch_screen_mouse_button_released_pre(
             self,
             mod_api::mods(),
@@ -3179,6 +3200,10 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        if super::modmenu_glue::dragged(self, screen) {
+            *canceled = true;
+            return;
+        }
         mod_api::dispatch_screen_mouse_dragged_pre(
             self,
             mod_api::mods(),
@@ -3221,6 +3246,10 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        if super::modmenu_glue::scrolled(self, screen, scroll) {
+            *canceled = true;
+            return;
+        }
         mod_api::dispatch_screen_mouse_scrolled_pre(
             self,
             mod_api::mods(),
@@ -3262,6 +3291,10 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        if super::modmenu_glue::key_pressed(self, screen, key, modifiers) {
+            *canceled = true;
+            return;
+        }
         mod_api::dispatch_screen_key_pressed_pre(
             self,
             mod_api::mods(),
@@ -3281,6 +3314,10 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        if super::modmenu_glue::covers(self, screen) {
+            *canceled = true;
+            return;
+        }
         mod_api::dispatch_screen_key_released_pre(
             self,
             mod_api::mods(),
@@ -3320,6 +3357,10 @@ impl Game<'_> {
         modifiers: u32,
         canceled: &mut bool,
     ) {
+        if super::modmenu_glue::char_typed(self, screen, c) {
+            *canceled = true;
+            return;
+        }
         mod_api::dispatch_screen_char_typed_pre(
             self,
             mod_api::mods(),

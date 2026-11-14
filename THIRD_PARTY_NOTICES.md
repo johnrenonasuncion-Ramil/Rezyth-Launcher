@@ -48,6 +48,23 @@ The shape of the horizon a shader pack's sky draws (`gfx/pack_sky.rs`) comes fro
 [Iris Features](https://github.com/FatulDev/Horizon-Iris-Compatibility-Mod), a native mod for
 Horizon, Copyright (c) 2026 Riley-Neeb, under the MIT license (`licenses/iris-features-MIT.txt`).
 
+## Mod Menu
+
+`crates/horizon-client/src/game/modmenu.rs`, `modmenu_glue.rs`, `modmenu_view.rs` and
+`modmenu_sprites.rs` beside it, and `crates/horizon-client/src/title/modmenu_title.rs`, are
+[Mod Menu](https://github.com/TerraformersMC/ModMenu) (branch 26.3) by Prospector and the
+TerraformersMC contributors, Copyright (c) 2018-2020 Prospector, under the MIT license
+(`licenses/modmenu-MIT.txt`); the Horizon port they were taken from is by DeportedToHell and was
+a native mod for Horizon (`modmenu-1.1.2.hnmod`), built into this game as a feature now. The
+textures in `modmenu_sprites.rs` are Mod Menu's own (`src/main/resources/assets/modmenu`, MIT).
+Buttons, the search box, scroll bars and tooltips are the game's own widgets, as Mod Menu uses
+vanilla's. Changes from the original: the mods are this game's (the native mods built into it
+and the content mods turned on, with Minecraft and Horizon itself in place of Minecraft and
+Java); Configure opens a mod's page on Options > Mods; there are no parent and child mods and no
+drag and drop of mod files; the Children, Java Color and translation options are kept on the
+options screen but have nothing to change. It is not affiliated with TerraformersMC, Prospector,
+Mojang or Microsoft.
+
 ## Pixelify Sans
 
 `crates/horizon-theme/fonts/PixelifySans-*.ttf` is [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans)

@@ -89,6 +89,12 @@ impl Game<'_> {
     /// Typing or a backspace in a title-screen field. A field that still only
     /// appends replaces a Select All selection before the edit.
     pub(super) fn title_edit(&mut self, typed: Option<&str>, backspace: bool) {
+        // Mod Menu (built into the game): while its screen is over the title,
+        // typing goes to its search box and nowhere else
+        // (game/modmenu_glue.rs).
+        if super::modmenu_glue::title_typed(self, typed, backspace) {
+            return;
+        }
         let Some(title) = self.title.as_mut() else {
             return;
         };
