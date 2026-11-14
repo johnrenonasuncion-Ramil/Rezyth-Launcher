@@ -65,6 +65,19 @@ drag and drop of mod files; the Children, Java Color and translation options are
 options screen but have nothing to change. It is not affiliated with TerraformersMC, Prospector,
 Mojang or Microsoft.
 
+## Resourcify
+
+`crates/horizon-client/src/game/resourcify.rs` and `resourcify_ui.rs` are Resourcify for Horizon
+(`resourcify-0.1.2.hnmod`) by tariksabanuz, a native mod for Horizon, built into this game as a
+feature now (see HARVEST.md). The mod is not the Java mod's code: it was written from
+[Modrinth's public API](https://docs.modrinth.com) and from what
+[Resourcify](https://github.com/DeDiamondPro/Resourcify) by DeDiamondPro (LGPL-3.0) shows its
+players, and this port keeps that: the JSON reader, the Modrinth answers, the layout and the
+checks are the mod's, with the mixin's injections as direct calls into the game's own Options
+screens. Resource packs install into the game's `resourcepacks` folder as any vanilla pack, and
+Modrinth's API is asked with the mod's own agent string. It is not affiliated with Modrinth,
+DeDiamondPro, Mojang or Microsoft.
+
 ## Pixelify Sans
 
 `crates/horizon-theme/fonts/PixelifySans-*.ttf` is [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans)

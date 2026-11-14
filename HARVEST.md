@@ -509,6 +509,77 @@ findings were fixed in `491a58850`: `Read::take` cannot be called on the
 boxed reader `ureq` returns (the download reads in chunks now), and the
 logo/icon geometry test still pinned the four-icon row.
 
+## Chests and barrels: vanilla's five-tick opener recheck
+
+A container's opener count is recounted now, as vanilla recounts it. The fork had the chest,
+ender chest and barrel tick arm that calls `recheck_container_openers` and reschedules itself
+while anyone has the container open, but nothing scheduled that tick on the first opener and
+nothing answered the recount: a close the game missed (a death, a teleport, a dropped
+connection) left a stale count, and with it a chest's lid or a barrel's `open` block state —
+barrels had no tick arm at all — stuck open.
+
+- `game/block_entity_anims.rs`: `openers_at` and `recheck_opener_count`
+  (`ContainerOpenersCounter.getEntitiesWithContainerOpen` / `recheckOpeners`), vanilla's
+  five-tick schedule in `count_opener` when a count rises from zero, and three tests for the
+  recount (a stale count is corrected, an agreeing recount changes nothing, a double chest
+  answers for both halves).
+- `game.rs`: `GameLevel` carries `open_containers` — the local player's and the guests' menus,
+  a double chest as both halves, spectators aside — beside a mutable `lid_openers`, and
+  implements `recheck_container_openers` for chests, ender chests and barrels.
+- `horizon-world/src/level/tick.rs`: the `Class::Barrel` arm, upstream's: recount, and on the
+  count crossing zero the barrel's own sound (volume 0.5, pitch 0.9–1.0 from the level random),
+  `updateBlockState` and the `container_open`/`container_close` game events.
+
+Verified green: checks run **43630512385** at `9eaef6023` (fmt, clippy `-D warnings`, the three
+new `game::block_entity_anims::opener_recheck_tests` among the gameplay tests, and the client
+library's 1,509) and the weave run **43630436075** at the same commit.
+
+## The creative inventory: Bedrock's X on the item panel
+
+The creative screen's item panel carries the same close button every container screen has: a
+small vanilla button in the panel's top-right corner, inside it (`close_button::rect`), at or
+above the scrollbar's track and clear of the search box, the tabs and the trash slot. The
+Bedrock Inventory mode's two windows keep exactly one X: the item window carries it.
+
+A left press closes as the screen's Escape does — the carried stack goes back to the inventory
+and what does not fit is dropped (`AbstractContainerMenu.removed`) — a right press is swallowed,
+and neither edge reaches a slot, tab or the scrollbar. `game.rs` draws it in
+`draw_creative_window` (the item window only) and tests it first in `click_creative`;
+`game/close_button.rs` adds a test pinning the rect inside the panel's top row, above the
+scrollbar and clear of the search box and the trash. Its first check run found clippy's
+`collapsible_if` on the carried-stack return (rust 1.100 wants one let-chain there), fixed in
+`162b3632f`, which the resourcify-check run below covers.
+
+## Resourcify: the `resourcify-0.1.2.hnmod` native mod, built into the game
+
+Resourcify — browse and install Modrinth resource packs from inside the game, behind the "+"
+button on the Resource Packs screen — is a feature of the game itself now. The mod was a native
+mixin mod by tariksabanuz, written from Modrinth's public API; the Java Resourcify it follows is
+by DeDiamondPro (LGPL-3.0; [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+
+- `game/resourcify.rs`: the logic as it was — the JSON reader, the Modrinth answers, the
+  layout, the installed-pack record — with its 22 tests. The re-entrancy guard the mixin needed
+  for its own hook (`Guard`/`DRAW`) went with the hook, and the module's identity constants
+  went with the Options > Mods row: built-in features are not listed there (the Mod Menu port
+  dropped its row the same way).
+- `game/resourcify_ui.rs`: the browser screen — the search box, the pack list with icons, the
+  detail pane with the versions made for this game, the Install button, the download threads.
+  The icon download reads capped in chunks: `ureq` hands back a boxed reader, on which the
+  by-value `Read::take` cannot be called (the same fix the Mod Menu port needed).
+- The mixin's injections are direct calls at the same points: the six Options-screen calls in
+  `game/options.rs` (`draw_options`, `options_mouse`, `options_drag`, `options_key`,
+  `options_shortcut`, `options_scroll`) and the once-a-frame stale-browser check in
+  `native_hooks.rs`'s `native_frame`, beside the Mod Menu's own. Escape, Done and the browser's
+  own "leave" alike close it, and a browser left open by the Options screen going away closes
+  itself (a world loading, a disconnect).
+
+Verified green: the temporary resourcify-check run **43641260495** at `247a5da6a` (782 gameplay
+tests — the 22 ported `game::resourcify::tests` among them — and the client library's 1,509,
+passing; `cargo fmt` produced a patch over the two ported files, applied in `162b3632f`) and
+the run **43642129583** at `162b3632f` (the same checks clean: no clippy finding left, an empty
+fmt patch, the tests again), with the weave runs **43641260433** at `247a5da6a` and
+**43642129513** at `162b3632f` (the woven APKs).
+
 ## Verify
 
 ```sh
