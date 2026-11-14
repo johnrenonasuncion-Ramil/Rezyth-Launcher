@@ -239,6 +239,13 @@ impl Game<'_> {
         }
     }
     pub(super) fn draw_options(&mut self, batch: &mut HudBatch) {
+        // Resourcify (game/resourcify_ui.rs): while the browser is open it
+        // stands in for the Options screen; otherwise the "+" is drawn over
+        // the Resource Packs screen.
+        if super::resourcify::is_open() {
+            super::resourcify_ui::draw(self, batch);
+            return;
+        }
         self.watch_pack_folder();
         if self.poll_pack_gallery() {
             self.settings.save(&Self::options_path());
@@ -247,6 +254,7 @@ impl Game<'_> {
         ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
         self.ui.options = ui;
         self.show_calibration(batch.height);
+        super::resourcify_ui::draw_plus(self, batch);
     }
     /// HDR calibration's test picture to the renderer, full screen while it runs: the
     /// window goes fullscreen for it and back after, if it wasn't already.
@@ -284,6 +292,14 @@ impl Game<'_> {
         }
     }
     pub(super) fn options_mouse(&mut self, pressed: bool, right: bool) -> Result<()> {
+        // Resourcify: the browser takes every press while it is open; a left
+        // press on the "+" opens it, with the button's click sound.
+        if super::resourcify::is_open() {
+            return super::resourcify_ui::mouse(self, pressed, right);
+        }
+        if pressed && !right && super::resourcify_ui::press_plus(self) {
+            return self.handle_option_events(vec![Event::ButtonClick]);
+        }
         if !pressed {
             if right {
                 return Ok(());
@@ -315,6 +331,12 @@ impl Game<'_> {
         self.handle_option_events(events)
     }
     pub(super) fn options_drag(&mut self) -> Result<()> {
+        if super::resourcify::is_open() {
+            // Dragging does nothing in the browser: the Options screen
+            // behind it must not feel it.
+            self.dragging = false;
+            return Ok(());
+        }
         let size = self.gui_size();
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
@@ -334,6 +356,10 @@ impl Game<'_> {
         self.handle_option_events(events)
     }
     pub(super) fn options_key(&mut self, key: KeyCode, text: Option<&str>) -> Result<()> {
+        // Resourcify: typing searches, the arrows pick a pack, Escape leaves.
+        if super::resourcify::is_open() {
+            return super::resourcify_ui::key(self, key, text);
+        }
         let size = self.gui_size();
         let shift = self.has_shift_down();
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
@@ -351,11 +377,20 @@ impl Game<'_> {
         &mut self,
         shortcut: horizon_client::clipboard::EditShortcut,
     ) -> bool {
+        // Resourcify: Ctrl+A/C/V/X of the browser's search box.
+        if super::resourcify::is_open() {
+            return super::resourcify_ui::shortcut(self, shortcut);
+        }
         self.ui
             .options
             .shortcut(&self.gui.atlas, shortcut, &mut self.clipboard)
     }
     pub(super) fn options_scroll(&mut self, amount: f32) -> Result<()> {
+        // Resourcify: the wheel scrolls the list or the detail pane,
+        // whichever the pointer is over.
+        if super::resourcify::is_open() {
+            return super::resourcify_ui::scroll(self, amount);
+        }
         let framebuffer = self.renderer.as_ref().map_or([1280, 720], |r| {
             [r.config.width as i32, r.config.height as i32]
         });

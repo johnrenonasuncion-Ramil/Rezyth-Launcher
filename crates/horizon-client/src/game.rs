@@ -307,6 +307,8 @@ mod remote_vehicles;
 mod render_control;
 mod render_tick;
 mod repro;
+mod resourcify;
+mod resourcify_ui;
 mod respawn_anchor;
 mod saves_control;
 mod saving;
