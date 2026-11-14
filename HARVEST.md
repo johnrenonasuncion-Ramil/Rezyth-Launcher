@@ -440,6 +440,24 @@ and doc tests: 155 test binaries green, 0 failures, including
 `game::close_button::tests::the_close_button_sits_inside_the_frames_top_right_corner`
 and `game::close_button::tests::a_left_press_closes_and_a_right_press_is_only_swallowed`).
 
+## The Volt Settings icon: the user's cog from Google Drive
+
+The title screen's icon row (id 9) and the pause menu draw the Volt
+Settings button's icon from
+`crates/horizon-client-render/assets/volt_settings.png` (the atlas sprite
+`gui/sprites/icon/volt_settings`, compiled in with `include_bytes!`). The
+old 20x20 sliders glyph is replaced by the user's `cog.png`, fetched from
+their Google Drive through the NoClick MCP connection (search, download),
+ferried bit-for-bit into the tree over a signed bucket link, and otherwise
+left untouched: a 20x20 gray+alpha PNG, 5937 bytes, md5
+`5004fa1df95782fe814fe1aa5c14621e` — the same hash the bucket stored as its
+ETag, and the same bytes the game decodes (its C2PA id
+`urn:c2pa:8fbe282f-…`, twice, is in the woven APK's
+`libhorizon_android.so`; the 5937 bytes compare `cmp`-identical to the
+tree's copy, and the build before it has none). No code changed: the
+atlas reads the sprite's native size, 20x20, unchanged. Verified green:
+checks run **43548990433** and weave run **43548831117** at `0cb8ea54a`.
+
 ## Verify
 
 ```sh
