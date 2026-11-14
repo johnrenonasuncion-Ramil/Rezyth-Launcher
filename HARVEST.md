@@ -404,6 +404,42 @@ controller focus from the pause menu. The title screen's full-width
 "Volt Settings..." button is removed. Verified green: `android.yml` run
 **43024144898** at `8fa62bde3`.
 
+## Every container screen: Bedrock's X close button
+
+Every interactive block/entity screen carries a small close button in its
+frame's top-right corner, inside it, the place Bedrock draws its X: a
+14x14 vanilla widget button (`widget/button`, `_highlighted` under the
+cursor) with an "x", narrated as `gui.close` ("Close"). A left press runs
+that screen's own Escape close (the same calls `key_pressed` makes); a
+right press is swallowed as a widget's is, so it reaches no slot and
+drops nothing. One helper, `game/close_button.rs`, derives the frame
+(`container_close_rect`: the 176-px origin, the beacon's 230 and the
+merchant's 276 by their shifts) and draws it from a single call in
+`draw_inventory` (chests, barrels, ender/copper chests, shulkers,
+hoppers, droppers, dispensers, crafters, furnaces, mount inventories,
+the player inventory and the crafting table), `draw_station` (brewing,
+enchanting, anvil, grindstone, smithing, stonecutter, loom, cartography),
+`draw_beacon` and `draw_merchant`; the screens that lay themselves out
+carry their own rect: `draw_command_block` (chain/repeating too),
+`draw_block_editor` (structure, jigsaw and test blocks) and `draw_book`
+(a lectern's book and a held written book's view). Presses route through
+`inventory_press`, `command_block_click`, `block_editor_click` and
+`book_click`; a native mod's screen keeps its own corner (no X), as does
+the creative menu's own Bedrock layout. The chest screens' sort button
+moves 18 px left (160 -> 142) so the two never overlap. Two tests pin the
+placement and the press rules; the module's finger-print (`gui.close`)
+is in the shipped `libhorizon_android.so`. Along the way the checks
+workflow's horizon-ctl test found `docs/horizon-ctl-commands.md` stale
+(regenerated at `cb1a2b14a`); both findings were the fork's first full
+format/lint/test pass, not new failures.
+
+Verified green: weave run **43534383948** at `9bae44008` (the woven APK,
+signed `3993cee1…`) and checks run **43534416600** at `9bae44008`
+(rustfmt, clippy in both feature states, the whole workspace test suite
+and doc tests: 155 test binaries green, 0 failures, including
+`game::close_button::tests::the_close_button_sits_inside_the_frames_top_right_corner`
+and `game::close_button::tests::a_left_press_closes_and_a_right_press_is_only_swallowed`).
+
 ## Verify
 
 ```sh
