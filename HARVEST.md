@@ -548,37 +548,7 @@ and neither edge reaches a slot, tab or the scrollbar. `game.rs` draws it in
 `game/close_button.rs` adds a test pinning the rect inside the panel's top row, above the
 scrollbar and clear of the search box and the trash. Its first check run found clippy's
 `collapsible_if` on the carried-stack return (rust 1.100 wants one let-chain there), fixed in
-`162b3632f`, which the resourcify-check run below covers.
-
-## Resourcify: the `resourcify-0.1.2.hnmod` native mod, built into the game
-
-Resourcify — browse and install Modrinth resource packs from inside the game, behind the "+"
-button on the Resource Packs screen — is a feature of the game itself now. The mod was a native
-mixin mod by tariksabanuz, written from Modrinth's public API; the Java Resourcify it follows is
-by DeDiamondPro (LGPL-3.0; [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
-
-- `game/resourcify.rs`: the logic as it was — the JSON reader, the Modrinth answers, the
-  layout, the installed-pack record — with its 22 tests. The re-entrancy guard the mixin needed
-  for its own hook (`Guard`/`DRAW`) went with the hook, and the module's identity constants
-  went with the Options > Mods row: built-in features are not listed there (the Mod Menu port
-  dropped its row the same way).
-- `game/resourcify_ui.rs`: the browser screen — the search box, the pack list with icons, the
-  detail pane with the versions made for this game, the Install button, the download threads.
-  The icon download reads capped in chunks: `ureq` hands back a boxed reader, on which the
-  by-value `Read::take` cannot be called (the same fix the Mod Menu port needed).
-- The mixin's injections are direct calls at the same points: the six Options-screen calls in
-  `game/options.rs` (`draw_options`, `options_mouse`, `options_drag`, `options_key`,
-  `options_shortcut`, `options_scroll`) and the once-a-frame stale-browser check in
-  `native_hooks.rs`'s `native_frame`, beside the Mod Menu's own. Escape, Done and the browser's
-  own "leave" alike close it, and a browser left open by the Options screen going away closes
-  itself (a world loading, a disconnect).
-
-Verified green: the temporary resourcify-check run **43641260495** at `247a5da6a` (782 gameplay
-tests — the 22 ported `game::resourcify::tests` among them — and the client library's 1,509,
-passing; `cargo fmt` produced a patch over the two ported files, applied in `162b3632f`) and
-the run **43642129583** at `162b3632f` (the same checks clean: no clippy finding left, an empty
-fmt patch, the tests again), with the weave runs **43641260433** at `247a5da6a` and
-**43642129513** at `162b3632f` (the woven APKs).
+`162b3632f` (verified by the full checks run **43643624746** at `8cfa4249a`).
 
 ## Verify
 

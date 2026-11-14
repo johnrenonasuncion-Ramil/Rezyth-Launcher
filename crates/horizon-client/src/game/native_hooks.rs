@@ -2037,9 +2037,6 @@ impl Game<'_> {
         // what the screen asked for, and feeds the title's and the pause
         // menu's buttons (game/modmenu_glue.rs).
         super::modmenu_glue::frame(self);
-        // Resourcify, built into the game: a browser left open by the
-        // Options screen going away is closed (game/resourcify_ui.rs).
-        super::resourcify_ui::frame(self);
         mod_api::dispatch_frame(self, mod_api::mods(), elapsed);
     }
     /// The frame rate this window is about to be held to: Max Framerate after the
