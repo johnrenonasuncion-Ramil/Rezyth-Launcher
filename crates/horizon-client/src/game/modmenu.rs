@@ -18,14 +18,77 @@ pub const MODMENU_CONFIGURE: usize = 0x4D4D_4346;
 /// Mod Menu's own credits (its `fabric.mod.json`), and the port's.
 pub const AUTHORS: &[&str] = &["Prospector", "haykam821", "gniftygnome", "TerraformersMC"];
 pub const CONTRIBUTORS: &[&str] = &[
-    "shedaniel", "Draylar", "Mordna", "Madis0", "Yanis48", "LemmaEOF", "fewizz", "XuyuEre", "geniiii", "thiagokenis",
-    "Juuxel", "Chloe Dawn", "modmuss50", "Patbox", "Lykrast", "Pyrofab", "UpcraftLP", "swordglowsblue", "hinataaki",
-    "LeonXu98", "magneticflux", "vanja-san", "AlexIIL", "masoncook16", "el97", "Hephaestus-Dev", "zabi94", "dexman545",
-    "dhouck", "Hambaka", "po-stulate", "FlashyReese", "egeesin", "TheGlitch76", "ludg1e", "williambl", "PepperCode1",
-    "ThatTrollzer", "ToffeeMax", "kalucky0", "Maaster", "MartrixX", "NotSteven", "Dolphin 2.1", "ENDERZOMBI102",
-    "anatom3000", "OroArmor", "jackassmc", "Vaerian", "RDKRACZ", "Hulenkius", "XfedeX", "spnda", "Jab125", "SolidBlock",
-    "Tkain", "nfitzen", "DenaryDev", "legenden", "NaiNonTH", "MagnusHJensen", "Benjamin-Norton", "triphora", "Pyrrha",
-    "sakura-ryoko", "lowercasebtw", "tnoctua", "litetex", "Starmoe(Celestia)", "Coredex", "DeportedToHell",
+    "shedaniel",
+    "Draylar",
+    "Mordna",
+    "Madis0",
+    "Yanis48",
+    "LemmaEOF",
+    "fewizz",
+    "XuyuEre",
+    "geniiii",
+    "thiagokenis",
+    "Juuxel",
+    "Chloe Dawn",
+    "modmuss50",
+    "Patbox",
+    "Lykrast",
+    "Pyrofab",
+    "UpcraftLP",
+    "swordglowsblue",
+    "hinataaki",
+    "LeonXu98",
+    "magneticflux",
+    "vanja-san",
+    "AlexIIL",
+    "masoncook16",
+    "el97",
+    "Hephaestus-Dev",
+    "zabi94",
+    "dexman545",
+    "dhouck",
+    "Hambaka",
+    "po-stulate",
+    "FlashyReese",
+    "egeesin",
+    "TheGlitch76",
+    "ludg1e",
+    "williambl",
+    "PepperCode1",
+    "ThatTrollzer",
+    "ToffeeMax",
+    "kalucky0",
+    "Maaster",
+    "MartrixX",
+    "NotSteven",
+    "Dolphin 2.1",
+    "ENDERZOMBI102",
+    "anatom3000",
+    "OroArmor",
+    "jackassmc",
+    "Vaerian",
+    "RDKRACZ",
+    "Hulenkius",
+    "XfedeX",
+    "spnda",
+    "Jab125",
+    "SolidBlock",
+    "Tkain",
+    "nfitzen",
+    "DenaryDev",
+    "legenden",
+    "NaiNonTH",
+    "MagnusHJensen",
+    "Benjamin-Norton",
+    "triphora",
+    "Pyrrha",
+    "sakura-ryoko",
+    "lowercasebtw",
+    "tnoctua",
+    "litetex",
+    "Starmoe(Celestia)",
+    "Coredex",
+    "DeportedToHell",
 ];
 
 /// The game's language is Russian (`ru_ru`).
@@ -68,13 +131,21 @@ pub fn pause_icon() -> Option<(f32, f32)> {
 /// The pause menu grid's corner (`PauseScreen`'s GridLayout aligned at
 /// (0.5, 0.25)), `extra` rows below the icons.
 fn pause_grid(w: f32, h: f32, extra: u8) -> (f32, f32) {
-    (((w - 212.0) * 0.5).floor(), ((h - (166.0 + 24.0 * f32::from(extra))) * 0.25).floor())
+    (
+        ((w - 212.0) * 0.5).floor(),
+        ((h - (166.0 + 24.0 * f32::from(extra))) * 0.25).floor(),
+    )
 }
 
 /// The pause menu's buttons with the Mods button: a sixth icon after the
 /// five (Icon), or a full-width row under them that pushes the rest down
 /// (Insert).
-pub fn pause_buttons(mut v: Vec<(f32, f32, f32, &'static str, u8, bool)>, w: f32, h: f32, extra: u8) -> Vec<(f32, f32, f32, &'static str, u8, bool)> {
+pub fn pause_buttons(
+    mut v: Vec<(f32, f32, f32, &'static str, u8, bool)>,
+    w: f32,
+    h: f32,
+    extra: u8,
+) -> Vec<(f32, f32, f32, &'static str, u8, bool)> {
     match PAUSE_STYLE.load(Ordering::Relaxed) {
         1 => {
             let (x0, y0) = pause_grid(w, h, extra);
@@ -94,11 +165,21 @@ pub fn pause_buttons(mut v: Vec<(f32, f32, f32, &'static str, u8, bool)>, w: f32
                 let below = b.1 > old_y0 + 98.0;
                 b.1 += dy + if below { 24.0 } else { 0.0 };
             }
-            v.push((x0 + 4.0, y0 + 122.0, 204.0, "horizon.pages.mods", PAUSE_BUTTON, true));
+            v.push((
+                x0 + 4.0,
+                y0 + 122.0,
+                204.0,
+                "horizon.pages.mods",
+                PAUSE_BUTTON,
+                true,
+            ));
         }
         _ => {}
     }
-    let links = v.iter().find(|b| b.4 == 11 || b.4 == 14).map_or([f32::NAN; 3], |b| [b.0, b.1, b.2]);
+    let links = v
+        .iter()
+        .find(|b| b.4 == 11 || b.4 == 14)
+        .map_or([f32::NAN; 3], |b| [b.0, b.1, b.2]);
     for (slot, value) in PAUSE_LINKS.iter().zip(links) {
         slot.store(value.to_bits(), Ordering::Relaxed);
     }
@@ -107,7 +188,12 @@ pub fn pause_buttons(mut v: Vec<(f32, f32, f32, &'static str, u8, bool)>, w: f32
 
 /// The pause menu's icon row: 12 px left for the Mods icon (Icon), or down
 /// with the grid (Insert). This game's row is five icons (`screens.rs`).
-pub fn pause_icons(mut icons: [(f32, f32, &'static str); 5], w: f32, h: f32, extra: u8) -> [(f32, f32, &'static str); 5] {
+pub fn pause_icons(
+    mut icons: [(f32, f32, &'static str); 5],
+    w: f32,
+    h: f32,
+    extra: u8,
+) -> [(f32, f32, &'static str); 5] {
     match PAUSE_STYLE.load(Ordering::Relaxed) {
         1 => {
             for i in &mut icons {
@@ -125,7 +211,6 @@ pub fn pause_icons(mut icons: [(f32, f32, &'static str); 5], w: f32, h: f32, ext
     icons
 }
 
-
 // ---- the settings (`ModMenuConfig`) --------------------------------------------------
 
 /// One option of the options screen: its key in the settings, its caption
@@ -137,43 +222,182 @@ pub struct Opt {
     pub default: &'static str,
 }
 
-const COUNTED: &[(&str, &str, &str)] = &[("true", "Counted", "Учитывать"), ("false", "Not Counted", "Не учитывать")];
-const SHOWN_HIDDEN: &[(&str, &str, &str)] = &[("true", "Hidden", "Скрыты"), ("false", "Shown", "Показаны")];
+const COUNTED: &[(&str, &str, &str)] = &[
+    ("true", "Counted", "Учитывать"),
+    ("false", "Not Counted", "Не учитывать"),
+];
+const SHOWN_HIDDEN: &[(&str, &str, &str)] =
+    &[("true", "Hidden", "Скрыты"), ("false", "Shown", "Показаны")];
 const ENABLED: &[(&str, &str, &str)] = &[("true", "Enabled", "Вкл"), ("false", "Disabled", "Выкл")];
 
 /// The options screen's options, in its order (`ModMenuConfig`'s fields).
 pub const OPTIONS: &[Opt] = &[
-    Opt { key: "sorting", caption: ("Sort", "Сортировка"), values: &[("ascending", "A-Z", "A-Z"), ("descending", "Z-A", "Z-A"), ("has_update", "Has Update", "Has Update")], default: "ascending" },
-    Opt { key: "count_libraries", caption: ("Libraries", "Библиотеки"), values: COUNTED, default: "true" },
-    Opt { key: "compact_list", caption: ("List", "Список"), values: &[("true", "Compact", "Компактный"), ("false", "Standard", "Обычный")], default: "false" },
-    Opt { key: "count_children", caption: ("Children", "Дочерние моды"), values: COUNTED, default: "true" },
+    Opt {
+        key: "sorting",
+        caption: ("Sort", "Сортировка"),
+        values: &[
+            ("ascending", "A-Z", "A-Z"),
+            ("descending", "Z-A", "Z-A"),
+            ("has_update", "Has Update", "Has Update"),
+        ],
+        default: "ascending",
+    },
+    Opt {
+        key: "count_libraries",
+        caption: ("Libraries", "Библиотеки"),
+        values: COUNTED,
+        default: "true",
+    },
+    Opt {
+        key: "compact_list",
+        caption: ("List", "Список"),
+        values: &[
+            ("true", "Compact", "Компактный"),
+            ("false", "Standard", "Обычный"),
+        ],
+        default: "false",
+    },
+    Opt {
+        key: "count_children",
+        caption: ("Children", "Дочерние моды"),
+        values: COUNTED,
+        default: "true",
+    },
     Opt {
         key: "mods_button_style",
         caption: ("Title Screen", "Кнопка"),
-        values: &[("classic", "Below Realms", "Под «Realms»"), ("replace_realms", "Replace Realms", "Вместо «Realms»"), ("shrink", "Adjacent", "Рядом с «Realms»"), ("icon", "Icon", "Отдельный значок")],
+        values: &[
+            ("classic", "Below Realms", "Под «Realms»"),
+            ("replace_realms", "Replace Realms", "Вместо «Realms»"),
+            ("shrink", "Adjacent", "Рядом с «Realms»"),
+            ("icon", "Icon", "Отдельный значок"),
+        ],
         default: "icon",
     },
-    Opt { key: "game_menu_button_style", caption: ("Game Menu", "В игре"), values: &[("insert", "Insert", "Посередине"), ("icon", "Icon", "Отдельный значок")], default: "icon" },
-    Opt { key: "count_hidden_mods", caption: ("Hidden Mods", "Скрытые моды"), values: COUNTED, default: "true" },
+    Opt {
+        key: "game_menu_button_style",
+        caption: ("Game Menu", "В игре"),
+        values: &[
+            ("insert", "Insert", "Посередине"),
+            ("icon", "Icon", "Отдельный значок"),
+        ],
+        default: "icon",
+    },
+    Opt {
+        key: "count_hidden_mods",
+        caption: ("Hidden Mods", "Скрытые моды"),
+        values: COUNTED,
+        default: "true",
+    },
     Opt {
         key: "mod_count_location",
         caption: ("Mod Count", "Счётчик модов"),
-        values: &[("title_screen", "Title Corner", "В углу меню"), ("mods_button", "Mods Button", "На кнопке"), ("title_screen_and_mods_button", "Both", "Везде"), ("none", "Neither", "Отключён")],
+        values: &[
+            ("title_screen", "Title Corner", "В углу меню"),
+            ("mods_button", "Mods Button", "На кнопке"),
+            ("title_screen_and_mods_button", "Both", "Везде"),
+            ("none", "Neither", "Отключён"),
+        ],
         default: "title_screen",
     },
-    Opt { key: "hide_mod_links", caption: ("Mod Links", "Ссылки мода"), values: SHOWN_HIDDEN, default: "false" },
-    Opt { key: "show_libraries", caption: ("Libraries", "Библиотеки"), values: &[("false", "Hidden", "Скрыты"), ("with_config", "With Config", "With Config"), ("true", "Shown", "Показаны")], default: "with_config" },
-    Opt { key: "hide_mod_license", caption: ("Mod License", "Лицензия мода"), values: &[("true", "Hidden", "Скрыта"), ("false", "Shown", "Показана")], default: "false" },
-    Opt { key: "hide_badges", caption: ("Mod Badges", "Метки модов"), values: SHOWN_HIDDEN, default: "false" },
-    Opt { key: "hide_mod_credits", caption: ("Mod Credits", "Авторы мода"), values: SHOWN_HIDDEN, default: "false" },
-    Opt { key: "easter_eggs", caption: ("Easter Eggs", "Пасхалки"), values: &[("true", "Enabled", "Включены"), ("false", "Disabled", "Выключены")], default: "true" },
-    Opt { key: "random_java_colors", caption: ("Java Color", "Цвет Java"), values: &[("true", "Vendor", "От поставщика"), ("false", "Always Red", "Всегда красный")], default: "false" },
-    Opt { key: "translate_names", caption: ("Names", "Локализация названий"), values: &[("true", "Localized", "Вкл"), ("false", "Not Localized", "Выкл")], default: "true" },
-    Opt { key: "translate_descriptions", caption: ("Descriptions", "Локализация описаний"), values: &[("true", "Localized", "Вкл"), ("false", "Not Localized", "Выкл")], default: "true" },
-    Opt { key: "update_checker", caption: ("Update Checker", "Проверка обновлений"), values: ENABLED, default: "true" },
-    Opt { key: "button_update_badge", caption: ("Update Indicator", "Индикатор обновлений"), values: &[("true", "Shown", "Вкл"), ("false", "Hidden", "Выкл")], default: "true" },
-    Opt { key: "update_channel", caption: ("Update Channel", "Канал обновлений"), values: &[("alpha", "All", "Все"), ("beta", "Release & Beta", "Релиз и Бета"), ("release", "Release", "Релиз")], default: "release" },
-    Opt { key: "quick_configure", caption: ("Quick Configure", "Быстрые настройки"), values: ENABLED, default: "true" },
+    Opt {
+        key: "hide_mod_links",
+        caption: ("Mod Links", "Ссылки мода"),
+        values: SHOWN_HIDDEN,
+        default: "false",
+    },
+    Opt {
+        key: "show_libraries",
+        caption: ("Libraries", "Библиотеки"),
+        values: &[
+            ("false", "Hidden", "Скрыты"),
+            ("with_config", "With Config", "With Config"),
+            ("true", "Shown", "Показаны"),
+        ],
+        default: "with_config",
+    },
+    Opt {
+        key: "hide_mod_license",
+        caption: ("Mod License", "Лицензия мода"),
+        values: &[("true", "Hidden", "Скрыта"), ("false", "Shown", "Показана")],
+        default: "false",
+    },
+    Opt {
+        key: "hide_badges",
+        caption: ("Mod Badges", "Метки модов"),
+        values: SHOWN_HIDDEN,
+        default: "false",
+    },
+    Opt {
+        key: "hide_mod_credits",
+        caption: ("Mod Credits", "Авторы мода"),
+        values: SHOWN_HIDDEN,
+        default: "false",
+    },
+    Opt {
+        key: "easter_eggs",
+        caption: ("Easter Eggs", "Пасхалки"),
+        values: &[
+            ("true", "Enabled", "Включены"),
+            ("false", "Disabled", "Выключены"),
+        ],
+        default: "true",
+    },
+    Opt {
+        key: "random_java_colors",
+        caption: ("Java Color", "Цвет Java"),
+        values: &[
+            ("true", "Vendor", "От поставщика"),
+            ("false", "Always Red", "Всегда красный"),
+        ],
+        default: "false",
+    },
+    Opt {
+        key: "translate_names",
+        caption: ("Names", "Локализация названий"),
+        values: &[
+            ("true", "Localized", "Вкл"),
+            ("false", "Not Localized", "Выкл"),
+        ],
+        default: "true",
+    },
+    Opt {
+        key: "translate_descriptions",
+        caption: ("Descriptions", "Локализация описаний"),
+        values: &[
+            ("true", "Localized", "Вкл"),
+            ("false", "Not Localized", "Выкл"),
+        ],
+        default: "true",
+    },
+    Opt {
+        key: "update_checker",
+        caption: ("Update Checker", "Проверка обновлений"),
+        values: ENABLED,
+        default: "true",
+    },
+    Opt {
+        key: "button_update_badge",
+        caption: ("Update Indicator", "Индикатор обновлений"),
+        values: &[("true", "Shown", "Вкл"), ("false", "Hidden", "Выкл")],
+        default: "true",
+    },
+    Opt {
+        key: "update_channel",
+        caption: ("Update Channel", "Канал обновлений"),
+        values: &[
+            ("alpha", "All", "Все"),
+            ("beta", "Release & Beta", "Релиз и Бета"),
+            ("release", "Release", "Релиз"),
+        ],
+        default: "release",
+    },
+    Opt {
+        key: "quick_configure",
+        caption: ("Quick Configure", "Быстрые настройки"),
+        values: ENABLED,
+        default: "true",
+    },
 ];
 
 pub fn option(key: &str) -> Option<&'static Opt> {
@@ -256,7 +480,9 @@ impl Config {
         let token = |key: &str| -> String {
             let stored = get(key).map(|v| v.trim().to_owned());
             match option(key) {
-                Some(o) => stored.filter(|v| o.values.iter().any(|x| x.0 == v)).unwrap_or_else(|| o.default.to_owned()),
+                Some(o) => stored
+                    .filter(|v| o.values.iter().any(|x| x.0 == v))
+                    .unwrap_or_else(|| o.default.to_owned()),
                 None => stored.unwrap_or_default(),
             }
         };
@@ -268,7 +494,9 @@ impl Config {
         };
         let index = |key: &str| -> u8 {
             let t = token(key);
-            option(key).and_then(|o| o.values.iter().position(|v| v.0 == t)).unwrap_or(0) as u8
+            option(key)
+                .and_then(|o| o.values.iter().position(|v| v.0 == t))
+                .unwrap_or(0) as u8
         };
         Config {
             sorting: match token("sorting").as_str() {
@@ -303,7 +531,14 @@ impl Config {
             modify_title_screen: flag("modify_title_screen", true),
             modify_game_menu: flag("modify_game_menu", true),
             hide_config_buttons: flag("hide_config_buttons", false),
-            hidden_mods: get("hidden_mods").map(|v| v.split(',').map(|s| s.trim().to_owned()).filter(|s| !s.is_empty()).collect()).unwrap_or_default(),
+            hidden_mods: get("hidden_mods")
+                .map(|v| {
+                    v.split(',')
+                        .map(|s| s.trim().to_owned())
+                        .filter(|s| !s.is_empty())
+                        .collect()
+                })
+                .unwrap_or_default(),
         }
     }
 }
@@ -431,13 +666,21 @@ impl Mod {
 /// `VersionUtil.getPrefixedVersion`: "1.2" → "v1.2", "version3" → "v3".
 pub fn version_text(version: &str) -> String {
     let v = version.trim();
-    let v = ["version", "ver", "v"].iter().find_map(|p| v.strip_prefix(p)).unwrap_or(v);
+    let v = ["version", "ver", "v"]
+        .iter()
+        .find_map(|p| v.strip_prefix(p))
+        .unwrap_or(v);
     format!("v{v}")
 }
 
 /// Whether version `a` is newer than `b`: their numbers compared in turn.
 pub fn newer(a: &str, b: &str) -> bool {
-    let nums = |s: &str| -> Vec<u64> { s.split(|c: char| !c.is_ascii_digit()).filter(|p| !p.is_empty()).filter_map(|p| p.parse().ok()).collect() };
+    let nums = |s: &str| -> Vec<u64> {
+        s.split(|c: char| !c.is_ascii_digit())
+            .filter(|p| !p.is_empty())
+            .filter_map(|p| p.parse().ok())
+            .collect()
+    };
     nums(a) > nums(b)
 }
 
@@ -495,7 +738,10 @@ pub fn score(m: &Mod, query: &str, ru: bool) -> u8 {
     if name.contains(&q) || id.contains(&q) {
         return if q.chars().count() >= 3 { 2 } else { 1 };
     }
-    if m.description.to_lowercase().contains(&q) || m.summary.to_lowercase().contains(&q) || m.authors.iter().any(|a| a.to_lowercase().contains(&q)) {
+    if m.description.to_lowercase().contains(&q)
+        || m.summary.to_lowercase().contains(&q)
+        || m.authors.iter().any(|a| a.to_lowercase().contains(&q))
+    {
         return 1;
     }
     let term = |key: &str| tr(ru, key).contains(q.as_str());
@@ -540,7 +786,10 @@ pub fn rows(mods: &[Mod], order: &[usize], query: &str, config: &Config, ru: boo
     let mut scored: Vec<(u8, usize)> = order
         .iter()
         .copied()
-        .filter(|&i| !config.hidden_mods.contains(&mods[i].id) && !library_hidden(&mods[i], config.show_libraries))
+        .filter(|&i| {
+            !config.hidden_mods.contains(&mods[i].id)
+                && !library_hidden(&mods[i], config.show_libraries)
+        })
         .map(|i| (score(&mods[i], query, ru), i))
         .filter(|(s, _)| *s > 0)
         .collect();
@@ -556,11 +805,19 @@ pub fn rows(mods: &[Mod], order: &[usize], query: &str, config: &Config, ru: boo
 /// `TranslationUtil.translateNumeric`'s key part for a count: ".1" for one,
 /// ".n" otherwise (a "12/25" fraction is ".n").
 fn plural(visible: usize, total: usize) -> &'static str {
-    if visible == total && total == 1 { "1" } else { "n" }
+    if visible == total && total == 1 {
+        "1"
+    } else {
+        "n"
+    }
 }
 
 fn count_arg(visible: usize, total: usize) -> String {
-    if visible == total { total.to_string() } else { format!("{visible}/{total}") }
+    if visible == total {
+        total.to_string()
+    } else {
+        format!("{visible}/{total}")
+    }
 }
 
 /// "Showing 25 mods", "Showing 12/25 mods and 3 libraries"
@@ -569,19 +826,29 @@ pub fn showing(ru: bool, mods: (usize, usize), libs: (usize, usize)) -> String {
     let m = count_arg(mods.0, mods.1);
     if libs.1 > 0 {
         let l = count_arg(libs.0, libs.1);
-        let key = format!("showing_ml_{}{}", plural(mods.0, mods.1), plural(libs.0, libs.1));
+        let key = format!(
+            "showing_ml_{}{}",
+            plural(mods.0, mods.1),
+            plural(libs.0, libs.1)
+        );
         return tr(ru, &key).replacen("%s", &m, 1).replacen("%s", &l, 1);
     }
     tr(ru, &format!("showing_mods_{}", plural(mods.0, mods.1))).replace("%s", &m)
 }
 
 pub fn showing_libraries(ru: bool, libs: (usize, usize)) -> String {
-    tr(ru, &format!("showing_libs_{}", plural(libs.0, libs.1))).replace("%s", &count_arg(libs.0, libs.1))
+    tr(ru, &format!("showing_libs_{}", plural(libs.0, libs.1)))
+        .replace("%s", &count_arg(libs.0, libs.1))
 }
 
 /// The mod count Mod Menu shows (`ModMenu.getDisplayedModCount`).
 pub fn displayed_count(mods: &[Mod], config: &Config) -> usize {
-    mods.iter().filter(|m| (config.count_libraries || !m.has(Badge::Library)) && (config.count_hidden_mods || !config.hidden_mods.contains(&m.id))).count()
+    mods.iter()
+        .filter(|m| {
+            (config.count_libraries || !m.has(Badge::Library))
+                && (config.count_hidden_mods || !config.hidden_mods.contains(&m.id))
+        })
+        .count()
 }
 
 /// " (25 Mods)" after the title screen's version (`menu.modded` replaced).
@@ -604,9 +871,16 @@ pub fn button_text(ru: bool, count: usize, config: &Config) -> String {
         return base;
     }
     if config.title_style == 2 {
-        return format!("{base} {}", tr(ru, "loaded_short").replace("%s", &count.to_string()));
+        return format!(
+            "{base} {}",
+            tr(ru, "loaded_short").replace("%s", &count.to_string())
+        );
     }
-    let key = if config.easter_eggs && (count == 69 || count == 420) { format!("loaded_{count}") } else { "loaded".to_owned() };
+    let key = if config.easter_eggs && (count == 69 || count == 420) {
+        format!("loaded_{count}")
+    } else {
+        "loaded".to_owned()
+    };
     format!("{base} {}", tr(ru, &key).replace("%s", &count.to_string()))
 }
 
@@ -618,7 +892,10 @@ pub fn tr(ru: bool, key: &str) -> &'static str {
     let (en, ru_text) = match key {
         "title" => ("Mods", "Моды"),
         "modmenu_name" => ("Mod Menu", "Mod Menu"),
-        "modmenu_description" => ("Adds a mod menu to view the list of mods you have installed.", "Удобное меню для просмотра списка установленных модов."),
+        "modmenu_description" => (
+            "Adds a mod menu to view the list of mods you have installed.",
+            "Удобное меню для просмотра списка установленных модов.",
+        ),
         "loaded" => ("(%s Loaded)", "(загружено: %s)"),
         "loaded_short" => ("(%s)", "(%s)"),
         "loaded_69" => ("(%s Loaded...nice)", "(загружено: %s... идеально)"),
@@ -632,10 +909,22 @@ pub fn tr(ru: bool, key: &str) -> &'static str {
         "showing_mods_1" => ("Showing %s mod", "Показан %s мод"),
         "showing_libs_n" => ("Showing %s libraries", "Показано %s библиотек"),
         "showing_libs_1" => ("Showing %s library", "Показана %s библиотека"),
-        "showing_ml_nn" => ("Showing %s mods and %s libraries", "Показано %s модов и %s библиотек"),
-        "showing_ml_n1" => ("Showing %s mods and %s library", "Показано %s модов и %s библиотека"),
-        "showing_ml_1n" => ("Showing %s mod and %s libraries", "Показан %s мод и %s библиотек"),
-        "showing_ml_11" => ("Showing %s mod and %s library", "Показан %s мод и %s библиотека"),
+        "showing_ml_nn" => (
+            "Showing %s mods and %s libraries",
+            "Показано %s модов и %s библиотек",
+        ),
+        "showing_ml_n1" => (
+            "Showing %s mods and %s library",
+            "Показано %s модов и %s библиотека",
+        ),
+        "showing_ml_1n" => (
+            "Showing %s mod and %s libraries",
+            "Показан %s мод и %s библиотек",
+        ),
+        "showing_ml_11" => (
+            "Showing %s mod and %s library",
+            "Показан %s мод и %s библиотека",
+        ),
         "mod_id" => ("Mod ID: %s", "ID мода: %s"),
         "by" => ("By %s", "Авторы: %s"),
         "configure" => ("Configure...", "Настройки..."),
@@ -647,7 +936,10 @@ pub fn tr(ru: bool, key: &str) -> &'static str {
         "links" => ("Links:", "Ссылки:"),
         "source" => ("Source", "Исходный код"),
         "has_update" => ("An update is available:", "Доступно обновление:"),
-        "experimental" => ("(Mod Menu update checker is experimental!)", "(проверка обновлений ModMenu экспериментальна)"),
+        "experimental" => (
+            "(Mod Menu update checker is experimental!)",
+            "(проверка обновлений ModMenu экспериментальна)",
+        ),
         "update_text" => ("v%s on %s", "v%s на %s"),
         "catalog" => ("Horizon", "Horizon"),
         "role_authors" => ("Authors:", "Авторы:"),
@@ -655,16 +947,28 @@ pub fn tr(ru: bool, key: &str) -> &'static str {
         "role_maintainers" => ("Maintainers:", "Основные разработчики:"),
         "mods_folder" => ("Open Mods Folder", "Папка с модами"),
         "minecraft_description" => ("The base game.", "Основная игра."),
-        "horizon_description" => ("Minecraft: Java Edition rewritten in Rust.", "Minecraft: Java Edition, переписанный на Rust."),
+        "horizon_description" => (
+            "Minecraft: Java Edition rewritten in Rust.",
+            "Minecraft: Java Edition, переписанный на Rust.",
+        ),
         "options_title" => ("Mod Menu Options", "Настройки списка модов"),
         "key_open" => ("Open Mod Menu", "Открыть список модов"),
-        "description" => ("Mod Menu: a list of your mods from the title screen and the pause menu.", "Mod Menu: список модов из главного меню и меню паузы."),
+        "description" => (
+            "Mod Menu: a list of your mods from the title screen and the pause menu.",
+            "Mod Menu: список модов из главного меню и меню паузы.",
+        ),
         "terms_library" => ("api library", "апи библиотека"),
         "terms_patchwork" => ("patchwork forge fml", "patchwork forge fml фордж"),
         "terms_modpack" => ("modpack pack", "набор сборка модпак"),
-        "terms_deprecated" => ("deprecated outdated old", "устаревший доисторический старый"),
+        "terms_deprecated" => (
+            "deprecated outdated old",
+            "устаревший доисторический старый",
+        ),
         "terms_clientside" => ("clientside gameside", "клиент клиентский клиентские"),
-        "terms_configurable" => ("configurations configs configures configurable options settings", "настройки настраиваемый настраиваемые опции"),
+        "terms_configurable" => (
+            "configurations configs configures configurable options settings",
+            "настройки настраиваемый настраиваемые опции",
+        ),
         "terms_has_update" => ("updates version", "обновления версия"),
         _ => ("", ""),
     };
@@ -703,7 +1007,13 @@ mod tests {
         assert_eq!((c.title_style, c.game_menu_style), (3, 1));
         assert_eq!(c.count_at, CountAt::TitleScreen);
         assert_eq!(c.show_libraries, Libraries::WithConfig);
-        assert!(c.count_libraries && c.easter_eggs && c.update_checker && c.quick_configure && !c.compact_list);
+        assert!(
+            c.count_libraries
+                && c.easter_eggs
+                && c.update_checker
+                && c.quick_configure
+                && !c.compact_list
+        );
         let c = Config::read(|k| (k == "sorting").then(|| "descending".to_owned()));
         assert_eq!(c.sorting, Sorting::Descending);
         assert_eq!(cycle("sorting", "has_update", false), "ascending");
@@ -717,8 +1027,14 @@ mod tests {
         assert_eq!(version_text("version3"), "v3");
         assert!(newer("1.0.10", "1.0.9") && !newer("1.0.0", "1.0.0"));
         assert_eq!(showing(false, (25, 25), (0, 0)), "Showing 25 mods");
-        assert_eq!(showing(false, (12, 25), (3, 3)), "Showing 12/25 mods and 3 libraries");
-        assert_eq!(showing(true, (1, 1), (1, 1)), "Показан 1 мод и 1 библиотека");
+        assert_eq!(
+            showing(false, (12, 25), (3, 3)),
+            "Showing 12/25 mods and 3 libraries"
+        );
+        assert_eq!(
+            showing(true, (1, 1), (1, 1)),
+            "Показан 1 мод и 1 библиотека"
+        );
         assert_eq!(title_count(false, 25, true), " (25 Mods)");
         assert_eq!(title_count(false, 1, true), " (1 Mod)");
         assert_eq!(title_count(true, 69, true), "(69 модов... идеально)");
@@ -737,7 +1053,12 @@ mod tests {
         lib.badges.push(Badge::Library);
         let mut rei = m("roughlyenoughitems", "Roughly Enough Items");
         rei.summary = "recipes".into();
-        let mods = vec![m("zoomify", "Zoomify"), rei, m("clientsort", "ClientSort"), lib];
+        let mods = vec![
+            m("zoomify", "Zoomify"),
+            rei,
+            m("clientsort", "ClientSort"),
+            lib,
+        ];
         let order = sorted(&mods, Sorting::Ascending);
         assert_eq!(order, vec![2, 3, 1, 0]);
         let c = Config::default();
@@ -753,7 +1074,10 @@ mod tests {
 
     #[test]
     fn markdown_reads_as_text() {
-        assert_eq!(plain_markdown("A port of [REI](https://x) by **shedaniel**.\n\n- `@mod`"), "A port of REI by shedaniel.\n\n- @mod");
+        assert_eq!(
+            plain_markdown("A port of [REI](https://x) by **shedaniel**.\n\n- `@mod`"),
+            "A port of REI by shedaniel.\n\n- @mod"
+        );
     }
 
     #[test]

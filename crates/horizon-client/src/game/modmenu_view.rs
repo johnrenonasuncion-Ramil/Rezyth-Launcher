@@ -51,7 +51,14 @@ fn fill(game: &Game<'_>, batch: &mut HudBatch, x0: f32, y0: f32, x1: f32, y1: f3
 }
 
 fn text(game: &Game<'_>, batch: &mut HudBatch, s: &str, x: f32, y: f32, color: u32, shadow: bool) {
-    batch.text(&game.gui.atlas, s, x.floor(), y.floor(), argb(color), shadow);
+    batch.text(
+        &game.gui.atlas,
+        s,
+        x.floor(),
+        y.floor(),
+        argb(color),
+        shadow,
+    );
 }
 
 fn width(game: &Game<'_>, s: &str) -> f32 {
@@ -75,7 +82,14 @@ fn blit(game: &Game<'_>, batch: &mut HudBatch, s: &Sprite, x: f32, y: f32, size:
     let k = size / f32::from(s.width);
     let atlas = &game.gui.atlas;
     for &(px, py, len, c) in s.runs {
-        batch.fill(atlas, x + f32::from(px) * k, y + f32::from(py) * k, f32::from(len) * k, k, c);
+        batch.fill(
+            atlas,
+            x + f32::from(px) * k,
+            y + f32::from(py) * k,
+            f32::from(len) * k,
+            k,
+            c,
+        );
     }
 }
 
@@ -93,7 +107,14 @@ fn image(game: &Game<'_>, batch: &mut HudBatch, img: &Image, x: f32, y: f32, siz
                 len += 1;
             }
             if c >> 24 != 0 {
-                batch.fill(atlas, x + px as f32 * k, y + py as f32 * k, len as f32 * k, k, argb(c));
+                batch.fill(
+                    atlas,
+                    x + px as f32 * k,
+                    y + py as f32 * k,
+                    len as f32 * k,
+                    k,
+                    argb(c),
+                );
             }
             px += len;
         }
@@ -140,13 +161,28 @@ fn wrap(game: &Game<'_>, s: &str, w: f32) -> Vec<Text> {
     if s.is_empty() {
         return Vec::new();
     }
-    game.gui.atlas.font.split_lines(&Text::legacy(s), w.max(1.0)).into_iter().map(|(t, _)| t).collect()
+    game.gui
+        .atlas
+        .font
+        .split_lines(&Text::legacy(s), w.max(1.0))
+        .into_iter()
+        .map(|(t, _)| t)
+        .collect()
 }
 
 /// `DrawingUtil.drawWrappedString`: at most `lines` lines, the last with
 /// "..." when more were cut.
 #[allow(clippy::too_many_arguments)]
-fn wrapped(game: &Game<'_>, batch: &mut HudBatch, s: &str, x: f32, y: f32, w: f32, lines: usize, color: u32) {
+fn wrapped(
+    game: &Game<'_>,
+    batch: &mut HudBatch,
+    s: &str,
+    x: f32,
+    y: f32,
+    w: f32,
+    lines: usize,
+    color: u32,
+) {
     let all = wrap(game, s, w);
     let atlas = &game.gui.atlas;
     for (i, line) in all.iter().take(lines).enumerate() {
@@ -154,13 +190,28 @@ fn wrapped(game: &Game<'_>, batch: &mut HudBatch, s: &str, x: f32, y: f32, w: f3
         if i + 1 == lines && all.len() > lines {
             t = t.append(Text::literal("..."));
         }
-        batch.text_styled(atlas, &t, x.floor(), (y + 9.0 * i as f32).floor(), argb(color), true);
+        batch.text_styled(
+            atlas,
+            &t,
+            x.floor(),
+            (y + 9.0 * i as f32).floor(),
+            argb(color),
+            true,
+        );
     }
 }
 
 /// `ModBadgeRenderer`: each badge's box with its corners cut, while it fits
 /// before `end`.
-fn badges(game: &Game<'_>, batch: &mut HudBatch, ru: bool, list: &[Badge], start: f32, y: f32, end: f32) {
+fn badges(
+    game: &Game<'_>,
+    batch: &mut HudBatch,
+    ru: bool,
+    list: &[Badge],
+    start: f32,
+    y: f32,
+    end: f32,
+) {
     let mut bx = start;
     for &badge in list {
         let label = badge.text(ru);
@@ -175,7 +226,15 @@ fn badges(game: &Game<'_>, batch: &mut HudBatch, ru: bool, list: &[Badge], start
         fill(game, batch, bx + 1.0, y + 9.0, bx + w, y + 10.0, outline);
         fill(game, batch, bx + w, y, bx + w + 1.0, y + 9.0, outline);
         fill(game, batch, bx + 1.0, y, bx + w, y + 9.0, inner);
-        text(game, batch, label, (bx + 1.0 + (w - tw) / 2.0).floor(), y + 1.0, 0xffca_caca, false);
+        text(
+            game,
+            batch,
+            label,
+            (bx + 1.0 + (w - tw) / 2.0).floor(),
+            y + 1.0,
+            0xffca_caca,
+            false,
+        );
         bx += w + 3.0;
     }
 }
@@ -186,12 +245,27 @@ fn list_background(game: &Game<'_>, batch: &mut HudBatch, r: Rect) {
     rect(game, batch, [r[0], r[1] - 2.0, r[2], 1.0], 0x33ff_ffff);
     rect(game, batch, [r[0], r[1] - 1.0, r[2], 1.0], 0xbf00_0000);
     rect(game, batch, [r[0], r[1] + r[3], r[2], 1.0], 0xbf00_0000);
-    rect(game, batch, [r[0], r[1] + r[3] + 1.0, r[2], 1.0], 0x33ff_ffff);
+    rect(
+        game,
+        batch,
+        [r[0], r[1] + r[3] + 1.0, r[2], 1.0],
+        0x33ff_ffff,
+    );
 }
 
 fn button(game: &Game<'_>, batch: &mut HudBatch, r: Rect, label: &Text, active: bool) {
     let hover = active && inside(game.cursor, r);
-    ui::button(batch, &game.gui.atlas, r[0], r[1], r[2], r[3], label, active, hover);
+    ui::button(
+        batch,
+        &game.gui.atlas,
+        r[0],
+        r[1],
+        r[2],
+        r[3],
+        label,
+        active,
+        hover,
+    );
 }
 
 /// An icon button (`SpriteIconButton`): the game's button with Mod Menu's
@@ -214,9 +288,16 @@ fn update_badge(game: &Game<'_>, batch: &mut HudBatch, x: f32, y: f32) {
     static START: std::sync::OnceLock<std::time::Instant> = std::sync::OnceLock::new();
     let atlas = &game.gui.atlas;
     let frame = atlas.sprites.get(TREND).and_then(|rect| {
-        let (_, animation) = atlas.sprite_animations.iter().find(|(r, _)| r.u0 == rect.u0 && r.v0 == rect.v0)?;
+        let (_, animation) = atlas
+            .sprite_animations
+            .iter()
+            .find(|(r, _)| r.u0 == rect.u0 && r.v0 == rect.v0)?;
         let (w, h) = rect.texels((atlas.width, atlas.height));
-        let tick = START.get_or_init(std::time::Instant::now).elapsed().as_millis() as u64 / 50;
+        let tick = START
+            .get_or_init(std::time::Instant::now)
+            .elapsed()
+            .as_millis() as u64
+            / 50;
         let px = animation.pixels(animation.frame(tick));
         (w > 0 && h > 0 && px.len() == (w * h * 4) as usize).then_some((w, h, px))
     });
@@ -229,7 +310,14 @@ fn update_badge(game: &Game<'_>, batch: &mut HudBatch, x: f32, y: f32) {
         for tx in 0..w {
             let i = ((ty * w + tx) * 4) as usize;
             if px[i + 3] != 0 {
-                batch.fill(atlas, x + tx as f32 * k, y + ty as f32 * k, k, k, rgba(px[i], px[i + 1], px[i + 2], px[i + 3]));
+                batch.fill(
+                    atlas,
+                    x + tx as f32 * k,
+                    y + ty as f32 * k,
+                    k,
+                    k,
+                    rgba(px[i], px[i + 1], px[i + 2], px[i + 3]),
+                );
             }
         }
     }
@@ -238,7 +326,11 @@ fn update_badge(game: &Game<'_>, batch: &mut HudBatch, x: f32, y: f32) {
 // ---- the hook --------------------------------------------------------------------------
 
 /// After a screen's own drawing (`screen_render_post`).
-pub(super) fn render(game: &Game<'_>, batch: &mut HudBatch, screen: &horizon_client::mod_api::NativeScreenView<'_>) {
+pub(super) fn render(
+    game: &Game<'_>,
+    batch: &mut HudBatch,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+) {
     if !glue::on(game) {
         return;
     }
@@ -314,7 +406,12 @@ fn pause_extras(game: &Game<'_>, batch: &mut HudBatch, s: &State) {
     {
         let label = Text::translate("menu.custom_options.tooltip", &[]);
         let atlas = &game.gui.atlas;
-        let lines: Vec<Text> = atlas.font.split_lines(&label, batch.width).into_iter().map(|(l, _)| l).collect();
+        let lines: Vec<Text> = atlas
+            .font
+            .split_lines(&label, batch.width)
+            .into_iter()
+            .map(|(l, _)| l)
+            .collect();
         ui::tooltip(batch, atlas, &lines, game.cursor);
         return;
     }
@@ -327,12 +424,19 @@ fn pause_extras(game: &Game<'_>, batch: &mut HudBatch, s: &State) {
         let label = match i {
             0 => Text::translate("menu.reportBugs", &[]),
             1 => Text::translate("menu.sendFeedback", &[]),
-            2 if game.friends_view().shown => Text::literal(horizon_client::friends_screen::title()),
+            2 if game.friends_view().shown => {
+                Text::literal(horizon_client::friends_screen::title())
+            }
             3 => Text::translate("menu.playerReporting", &[]),
             _ => return,
         };
         let atlas = &game.gui.atlas;
-        let lines: Vec<Text> = atlas.font.split_lines(&label, batch.width).into_iter().map(|(l, _)| l).collect();
+        let lines: Vec<Text> = atlas
+            .font
+            .split_lines(&label, batch.width)
+            .into_iter()
+            .map(|(l, _)| l)
+            .collect();
         ui::tooltip(batch, atlas, &lines, game.cursor);
     }
 }
@@ -345,18 +449,45 @@ fn option_label(game: &Game<'_>, ru: bool, key: &str) -> String {
         return String::new();
     };
     let token = glue::option_token(game, key);
-    let value = o.values.iter().find(|v| v.0 == token).map_or("", |v| if ru { v.2 } else { v.1 });
+    let value = o
+        .values
+        .iter()
+        .find(|v| v.0 == token)
+        .map_or("", |v| if ru { v.2 } else { v.1 });
     format!("{}: {value}", if ru { o.caption.1 } else { o.caption.0 })
 }
 
 /// The counts' texts now: everything, mods alone, libraries alone.
 fn count_texts(s: &State) -> (String, String, String) {
     let hidden = |m: &Mod| s.config.hidden_mods.contains(&m.id);
-    let mods_total = s.mods.iter().filter(|m| !hidden(m) && !m.has(Badge::Library)).count();
-    let libs_total = s.mods.iter().filter(|m| !hidden(m) && m.has(Badge::Library) && !mm::library_hidden(m, s.config.show_libraries)).count();
-    let shown = |lib: bool| s.rows.iter().filter(|&&i| s.mods[i].has(Badge::Library) == lib).count();
+    let mods_total = s
+        .mods
+        .iter()
+        .filter(|m| !hidden(m) && !m.has(Badge::Library))
+        .count();
+    let libs_total = s
+        .mods
+        .iter()
+        .filter(|m| {
+            !hidden(m) && m.has(Badge::Library) && !mm::library_hidden(m, s.config.show_libraries)
+        })
+        .count();
+    let shown = |lib: bool| {
+        s.rows
+            .iter()
+            .filter(|&&i| s.mods[i].has(Badge::Library) == lib)
+            .count()
+    };
     let (mods, libs) = ((shown(false), mods_total), (shown(true), libs_total));
-    (mm::showing(s.ru, mods, libs), mm::showing(s.ru, mods, (0, 0)), if libs.1 > 0 { mm::showing_libraries(s.ru, libs) } else { String::new() })
+    (
+        mm::showing(s.ru, mods, libs),
+        mm::showing(s.ru, mods, (0, 0)),
+        if libs.1 > 0 {
+            mm::showing_libraries(s.ru, libs)
+        } else {
+            String::new()
+        },
+    )
 }
 
 fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
@@ -380,7 +511,12 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
     let fbs = 22.0;
     let search_w = pane_w - 32.0 - fbs;
     let search_x = (pane_w / 2.0).floor() - (search_w / 2.0).floor() - fbs / 2.0;
-    let filters = [(pane_w / 2.0).floor() + (search_w / 2.0).floor() - 10.0 + 2.0, 22.0, 20.0, 20.0];
+    let filters = [
+        (pane_w / 2.0).floor() + (search_w / 2.0).floor() - 10.0 + 2.0,
+        22.0,
+        20.0,
+        20.0,
+    ];
     let search_row_w = search_x + search_w + 22.0;
     let layout = match s.layout {
         Some(l) if l.size == (w, h) => l,
@@ -388,10 +524,24 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
             let sort_w = width(game, &option_label(game, ru, "sorting")) + 28.0;
             let lib_w = width(game, &option_label(game, ru, "show_libraries")) + 20.0;
             let filters_w = sort_w + lib_w + 2.0;
-            let n = s.mods.iter().filter(|m| !m.has(Badge::Library) && !s.config.hidden_mods.contains(&m.id)).count();
-            let centred = filters_w + width(game, &mm::showing(ru, (n, n), (0, 0))) + 20.0 >= search_row_w;
-            let filters_x = if centred { (pane_w / 2.0).floor() - (filters_w / 2.0).floor() } else { search_row_w - filters_w + 1.0 };
-            let l = Layout { size: (w, h), filters_x, sort_w, lib_w };
+            let n = s
+                .mods
+                .iter()
+                .filter(|m| !m.has(Badge::Library) && !s.config.hidden_mods.contains(&m.id))
+                .count();
+            let centred =
+                filters_w + width(game, &mm::showing(ru, (n, n), (0, 0))) + 20.0 >= search_row_w;
+            let filters_x = if centred {
+                (pane_w / 2.0).floor() - (filters_w / 2.0).floor()
+            } else {
+                search_row_w - filters_w + 1.0
+            };
+            let l = Layout {
+                size: (w, h),
+                filters_x,
+                sort_w,
+                lib_w,
+            };
             s.layout = Some(l);
             l
         }
@@ -407,9 +557,26 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
     }
     if s.filters_shown {
         let sort = [layout.filters_x, 45.0, layout.sort_w, 20.0];
-        let libs = [layout.filters_x + layout.sort_w + 2.0, 45.0, layout.lib_w, 20.0];
-        button(game, batch, sort, &Text::literal(option_label(game, ru, "sorting")), true);
-        button(game, batch, libs, &Text::literal(option_label(game, ru, "show_libraries")), true);
+        let libs = [
+            layout.filters_x + layout.sort_w + 2.0,
+            45.0,
+            layout.lib_w,
+            20.0,
+        ];
+        button(
+            game,
+            batch,
+            sort,
+            &Text::literal(option_label(game, ru, "sorting")),
+            true,
+        );
+        button(
+            game,
+            batch,
+            libs,
+            &Text::literal(option_label(game, ru, "show_libraries")),
+            true,
+        );
         s.hits.push((sort, Hit::Sort));
         s.hits.push((libs, Hit::Libraries));
     }
@@ -424,12 +591,28 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
         }
         let url_w = (pane_w / 2.0).floor() - 2.0;
         let cap_w = url_w.min(200.0);
-        let website = [right_x + (url_w / 2.0).floor() - (cap_w / 2.0).floor(), 84.0, cap_w, 20.0];
-        let issues = [right_x + url_w + 4.0 + (url_w / 2.0).floor() - (cap_w / 2.0).floor(), 84.0, cap_w, 20.0];
+        let website = [
+            right_x + (url_w / 2.0).floor() - (cap_w / 2.0).floor(),
+            84.0,
+            cap_w,
+            20.0,
+        ];
+        let issues = [
+            right_x + url_w + 4.0 + (url_w / 2.0).floor() - (cap_w / 2.0).floor(),
+            84.0,
+            cap_w,
+            20.0,
+        ];
         let (wl, il) = if m.id == "minecraft" {
-            (Text::translate("menu.sendFeedback", &[]), Text::translate("menu.reportBugs", &[]))
+            (
+                Text::translate("menu.sendFeedback", &[]),
+                Text::translate("menu.reportBugs", &[]),
+            )
         } else {
-            (Text::literal(mm::tr(ru, "website")), Text::literal(mm::tr(ru, "issues")))
+            (
+                Text::literal(mm::tr(ru, "website")),
+                Text::literal(mm::tr(ru, "issues")),
+            )
         };
         button(game, batch, website, &wl, m.website.is_some());
         button(game, batch, issues, &il, m.issues.is_some());
@@ -438,7 +621,13 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
     }
     let folder = [(w / 2.0).floor() - 154.0, h - 28.0, 150.0, 20.0];
     let done = [(w / 2.0).floor() + 4.0, h - 28.0, 150.0, 20.0];
-    button(game, batch, folder, &Text::literal(mm::tr(ru, "mods_folder")), true);
+    button(
+        game,
+        batch,
+        folder,
+        &Text::literal(mm::tr(ru, "mods_folder")),
+        true,
+    );
     button(game, batch, done, &Text::translate("gui.done", &[]), true);
     s.hits.push((folder, Hit::ModsFolder));
     s.hits.push((done, Hit::Done));
@@ -465,7 +654,14 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
                 update_badge(game, batch, x, y + 2.0);
                 x += 11.0;
             }
-            batch.text_styled(atlas, &line.text, x.floor(), (y + 2.0).floor(), argb(line.color), true);
+            batch.text_styled(
+                atlas,
+                &line.text,
+                x.floor(),
+                (y + 2.0).floor(),
+                argb(line.color),
+                true,
+            );
             if let Some(link) = &line.link {
                 let tw = atlas.font.width_text(&line.text);
                 if let Some(hr) = intersect([x, y, tw, 10.0], r) {
@@ -476,8 +672,17 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
         }
         batch.clip_since(start, r[0], r[1], r[0] + r[2], r[1] + r[3]);
         if max > 0.0 {
-            ui::scrollbar(batch, atlas, r[0] + r[2] - 6.0, r[1], r[1] + r[3], content, s.desc_scroll);
-            s.hits.push(([r[0] + r[2] - 6.0, r[1], 6.0, r[3]], Hit::Bar(1)));
+            ui::scrollbar(
+                batch,
+                atlas,
+                r[0] + r[2] - 6.0,
+                r[1],
+                r[1] + r[3],
+                content,
+                s.desc_scroll,
+            );
+            s.hits
+                .push(([r[0] + r[2] - 6.0, r[1], 6.0, r[3]], Hit::Bar(1)));
         }
     }
 
@@ -497,7 +702,13 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
     let hovered = {
         let t = (cursor.1 - pane_y).floor() + scroll - 4.0;
         let index = (t / item_h).floor();
-        (inside(cursor, list) && cursor.0 < pane_w - 6.0 && cursor.0 >= 6.0 && cursor.0 <= 6.0 + row_w && t >= 0.0 && (index as usize) < n).then_some(index as usize)
+        (inside(cursor, list)
+            && cursor.0 < pane_w - 6.0
+            && cursor.0 >= 6.0
+            && cursor.0 <= 6.0 + row_w
+            && t >= 0.0
+            && (index as usize) < n)
+            .then_some(index as usize)
     };
     for (i, &mi) in s.rows.iter().enumerate() {
         let ey = pane_y + 2.0 - scroll + item_h * i as f32;
@@ -507,14 +718,34 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
         let m = &s.mods[mi];
         if s.selected.as_deref() == Some(&m.id) {
             let bottom = ey + if compact { 25.0 } else { 38.0 };
-            fill(game, batch, 4.0, ey + 2.0, 6.0 + row_w + 2.0, bottom, if s.list_focused { WHITE } else { 0xff80_8080 });
-            fill(game, batch, 5.0, ey + 3.0, 6.0 + row_w + 1.0, bottom - 1.0, 0xff00_0000);
+            fill(
+                game,
+                batch,
+                4.0,
+                ey + 2.0,
+                6.0 + row_w + 2.0,
+                bottom,
+                if s.list_focused { WHITE } else { 0xff80_8080 },
+            );
+            fill(
+                game,
+                batch,
+                5.0,
+                ey + 3.0,
+                6.0 + row_w + 1.0,
+                bottom - 1.0,
+                0xff00_0000,
+            );
         }
         let (x, y) = (6.0, ey + 4.0);
         let cw = row_w - 4.0;
         icon(game, batch, s, m, x, y, size);
         let full_w = width(game, &m.name);
-        let name = if full_w > cw - size - 3.0 { trim(game, &m.name, cw - size - 3.0 - 6.0 + width(game, "...")) } else { m.name.clone() };
+        let name = if full_w > cw - size - 3.0 {
+            trim(game, &m.name, cw - size - 3.0 - 6.0 + width(game, "..."))
+        } else {
+            m.name.clone()
+        };
         text(game, batch, &name, x + size + 3.0, y + 1.0, WHITE, true);
         let mut shift = 0.0;
         if s.config.update_checker && m.update.is_some() {
@@ -522,27 +753,79 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
             shift = 11.0;
         }
         if !s.config.hide_badges {
-            badges(game, batch, ru, &m.badges, x + size + 3.0 + full_w + 2.0 + shift, y, x + cw);
+            badges(
+                game,
+                batch,
+                ru,
+                &m.badges,
+                x + size + 3.0 + full_w + 2.0 + shift,
+                y,
+                x + cw,
+            );
         }
         if compact {
-            wrapped(game, batch, &mm::version_text(&m.version), x + size + 3.0, y + 11.0, cw - size - 7.0, 2, SUMMARY);
+            wrapped(
+                game,
+                batch,
+                &mm::version_text(&m.version),
+                x + size + 3.0,
+                y + 11.0,
+                cw - size - 7.0,
+                2,
+                SUMMARY,
+            );
         } else {
-            wrapped(game, batch, &m.summary, x + size + 7.0, y + 11.0, cw - size - 7.0, 2, SUMMARY);
+            wrapped(
+                game,
+                batch,
+                &m.summary,
+                x + size + 7.0,
+                y + 11.0,
+                cw - size - 7.0,
+                2,
+                SUMMARY,
+            );
         }
         // Quick configure over the hovered row's icon.
         if hovered == Some(i) && s.config.quick_configure && m.configurable() {
             rect(game, batch, [x, y, size, size], 0xa090_9090);
             let over = cursor.0 - x < size;
-            blit(game, batch, if over { &sprites::QUICK_CONFIGURE_HOVER } else { &sprites::QUICK_CONFIGURE }, x, y, size);
+            blit(
+                game,
+                batch,
+                if over {
+                    &sprites::QUICK_CONFIGURE_HOVER
+                } else {
+                    &sprites::QUICK_CONFIGURE
+                },
+                x,
+                y,
+                size,
+            );
         }
         if let Some(hr) = intersect([6.0, ey, row_w, item_h], list) {
             s.hits.push((hr, Hit::Row(i)));
         }
     }
-    batch.clip_since(start, list[0], list[1], list[0] + list[2], list[1] + list[3]);
+    batch.clip_since(
+        start,
+        list[0],
+        list[1],
+        list[0] + list[2],
+        list[1] + list[3],
+    );
     if max > 0.0 {
-        ui::scrollbar(batch, atlas, pane_w - 6.0, pane_y, list[1] + list[3], content, s.list_scroll);
-        s.hits.push(([pane_w - 6.0, pane_y, 6.0, list[3]], Hit::Bar(0)));
+        ui::scrollbar(
+            batch,
+            atlas,
+            pane_w - 6.0,
+            pane_y,
+            list[1] + list[3],
+            content,
+            s.list_scroll,
+        );
+        s.hits
+            .push(([pane_w - 6.0, pane_y, 6.0, list[3]], Hit::Bar(0)));
     }
 
     // The search box (no placeholder: Mod Menu sets none).
@@ -556,14 +839,30 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
 
     // The title and the mod count.
     let title = mm::tr(ru, "title");
-    text(game, batch, title, (pane_w / 2.0 - width(game, title) / 2.0).floor(), 8.0, WHITE, true);
+    text(
+        game,
+        batch,
+        title,
+        (pane_w / 2.0 - width(game, title) / 2.0).floor(),
+        8.0,
+        WHITE,
+        true,
+    );
     let (full, mods_only, libs_only) = count_texts(s);
     let a = layout.sort_w + layout.lib_w + 2.0 + width(game, &full) + 20.0 >= search_row_w;
     let b = layout.sort_w + layout.lib_w + 2.0 + width(game, &mods_only) + 20.0 >= search_row_w;
     let c = layout.sort_w + layout.lib_w + 2.0 + width(game, &libs_only) + 20.0 >= search_row_w;
-    let show_count = if a && (b || c) { !s.filters_shown } else { true };
+    let show_count = if a && (b || c) {
+        !s.filters_shown
+    } else {
+        true
+    };
     if show_count {
-        let limit = if s.filters_shown { layout.filters_x - 5.0 } else { list[2] - 5.0 };
+        let limit = if s.filters_shown {
+            layout.filters_x - 5.0
+        } else {
+            list[2] - 5.0
+        };
         if width(game, &full) <= limit {
             text(game, batch, &full, search_x, 52.0, WHITE, true);
         } else {
@@ -583,14 +882,39 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
             tip = Some(vec![mm::tr(ru, "mod_id").replace("%s", &m.id)]);
         }
         if !s.config.hide_badges {
-            badges(game, batch, ru, &m.badges, x + 36.0 + nw + 2.0, 48.0, w - 28.0);
+            badges(
+                game,
+                batch,
+                ru,
+                &m.badges,
+                x + 36.0 + nw + 2.0,
+                48.0,
+                w - 28.0,
+            );
         }
         if !m.version.is_empty() {
-            text(game, batch, &mm::version_text(&m.version), x + 36.0, 60.0, GRAY_TEXT, true);
+            text(
+                game,
+                batch,
+                &mm::version_text(&m.version),
+                x + 36.0,
+                60.0,
+                GRAY_TEXT,
+                true,
+            );
         }
         if !m.authors.is_empty() {
             let by = mm::tr(ru, "by").replace("%s", &m.authors.join(", "));
-            wrapped(game, batch, &by, x + 36.0, 70.0, pane_w - 40.0, 1, GRAY_TEXT);
+            wrapped(
+                game,
+                batch,
+                &by,
+                x + 36.0,
+                70.0,
+                pane_w - 40.0,
+                1,
+                GRAY_TEXT,
+            );
         }
     }
     if let Some(lines) = tip {
@@ -614,10 +938,30 @@ fn description(game: &Game<'_>, s: &State, m: &Mod, ww: f32) -> Vec<Line> {
     let ru = s.ru;
     let c = &s.config;
     let mut out = Vec::new();
-    let blank = |out: &mut Vec<Line>| out.push(Line { text: Text::empty(), indent: 0.0, color: GRAY_TEXT, link: None, badge: false });
-    let add = |out: &mut Vec<Line>, s: &str, first: f32, rest: f32, w: f32, link: Option<Link>, badge: bool| {
+    let blank = |out: &mut Vec<Line>| {
+        out.push(Line {
+            text: Text::empty(),
+            indent: 0.0,
+            color: GRAY_TEXT,
+            link: None,
+            badge: false,
+        })
+    };
+    let add = |out: &mut Vec<Line>,
+               s: &str,
+               first: f32,
+               rest: f32,
+               w: f32,
+               link: Option<Link>,
+               badge: bool| {
         for (i, t) in wrap(game, s, w).into_iter().enumerate() {
-            out.push(Line { text: t, indent: if i == 0 { first } else { rest }, color: GRAY_TEXT, link: link.clone(), badge: badge && i == 0 });
+            out.push(Line {
+                text: t,
+                indent: if i == 0 { first } else { rest },
+                color: GRAY_TEXT,
+                link: link.clone(),
+                badge: badge && i == 0,
+            });
         }
     };
     if !m.description.is_empty() {
@@ -627,17 +971,51 @@ fn description(game: &Game<'_>, s: &State, m: &Mod, ww: f32) -> Vec<Line> {
         && let Some(update) = &m.update
     {
         blank(&mut out);
-        add(&mut out, mm::tr(ru, "has_update"), 0.0, 0.0, ww - 11.0, None, true);
-        add(&mut out, &format!("§6{}", mm::tr(ru, "experimental")), 8.0, 8.0, ww - 16.0, None, false);
-        let message = mm::tr(ru, "update_text").replacen("%s", update.version.trim_start_matches('v'), 1).replacen("%s", mm::tr(ru, "catalog"), 1);
-        add(&mut out, &format!("§9§n{message}"), 8.0, 8.0, ww - 16.0, Some(Link::Url(update.url.clone())), false);
+        add(
+            &mut out,
+            mm::tr(ru, "has_update"),
+            0.0,
+            0.0,
+            ww - 11.0,
+            None,
+            true,
+        );
+        add(
+            &mut out,
+            &format!("§6{}", mm::tr(ru, "experimental")),
+            8.0,
+            8.0,
+            ww - 16.0,
+            None,
+            false,
+        );
+        let message = mm::tr(ru, "update_text")
+            .replacen("%s", update.version.trim_start_matches('v'), 1)
+            .replacen("%s", mm::tr(ru, "catalog"), 1);
+        add(
+            &mut out,
+            &format!("§9§n{message}"),
+            8.0,
+            8.0,
+            ww - 16.0,
+            Some(Link::Url(update.url.clone())),
+            false,
+        );
     }
     if !c.hide_mod_links
         && let Some(source) = &m.source
     {
         blank(&mut out);
         add(&mut out, mm::tr(ru, "links"), 0.0, 0.0, ww, None, false);
-        add(&mut out, &format!("§9§n{}", mm::tr(ru, "source")), 8.0, 16.0, ww - 8.0, Some(Link::Url(source.clone())), false);
+        add(
+            &mut out,
+            &format!("§9§n{}", mm::tr(ru, "source")),
+            8.0,
+            16.0,
+            ww - 8.0,
+            Some(Link::Url(source.clone())),
+            false,
+        );
     }
     if !c.hide_mod_license && !m.licenses.is_empty() {
         blank(&mut out);
@@ -649,13 +1027,25 @@ fn description(game: &Game<'_>, s: &State, m: &Mod, ww: f32) -> Vec<Line> {
     if !c.hide_mod_credits {
         if m.id == "minecraft" {
             blank(&mut out);
-            add(&mut out, &format!("§9§n{}", mm::tr(ru, "view_credits")), 0.0, 0.0, ww, Some(Link::Credits), false);
+            add(
+                &mut out,
+                &format!("§9§n{}", mm::tr(ru, "view_credits")),
+                0.0,
+                0.0,
+                ww,
+                Some(Link::Credits),
+                false,
+            );
         } else if !m.authors.is_empty() || !m.contributors.is_empty() || !m.maintainers.is_empty() {
             // `Mod.getCredits`: by role, the roles in name order (Author,
             // Contributor, Maintainer).
             blank(&mut out);
             add(&mut out, mm::tr(ru, "credits"), 0.0, 0.0, ww, None, false);
-            for (role, names) in [("role_authors", &m.authors), ("role_contributors", &m.contributors), ("role_maintainers", &m.maintainers)] {
+            for (role, names) in [
+                ("role_authors", &m.authors),
+                ("role_contributors", &m.contributors),
+                ("role_maintainers", &m.maintainers),
+            ] {
                 if names.is_empty() {
                     continue;
                 }
@@ -681,7 +1071,15 @@ fn options_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
     }
     ui::menu_background(batch, atlas, 0.0, 0.0, w, h, in_world);
     let title = mm::tr(ru, "options_title");
-    text(game, batch, title, (w / 2.0 - width(game, title) / 2.0).floor(), 12.0, WHITE, true);
+    text(
+        game,
+        batch,
+        title,
+        (w / 2.0 - width(game, title) / 2.0).floor(),
+        12.0,
+        WHITE,
+        true,
+    );
     ui::list_background(batch, atlas, 33.0, h - 33.0, in_world);
     ui::separators(batch, atlas, 33.0, h - 33.0, in_world);
     let rows = mm::OPTIONS.len().div_ceil(2);
@@ -700,15 +1098,40 @@ fn options_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
         }
         let r = [x, y, 150.0, 20.0];
         let hover = inside(game.cursor, r) && inside(game.cursor, area);
-        ui::button(batch, atlas, x, y, 150.0, 20.0, &Text::literal(option_label(game, ru, o.key)), true, hover);
+        ui::button(
+            batch,
+            atlas,
+            x,
+            y,
+            150.0,
+            20.0,
+            &Text::literal(option_label(game, ru, o.key)),
+            true,
+            hover,
+        );
         if let Some(hr) = intersect(r, area) {
             s.hits.push((hr, Hit::Option(i)));
         }
     }
-    batch.clip_since(start, area[0], area[1], area[0] + area[2], area[1] + area[3]);
+    batch.clip_since(
+        start,
+        area[0],
+        area[1],
+        area[0] + area[2],
+        area[1] + area[3],
+    );
     if max > 0.0 {
-        ui::scrollbar(batch, atlas, cx + 163.0, area[1], area[1] + area[3], content, s.options_scroll);
-        s.hits.push(([cx + 163.0, area[1], 6.0, area[3]], Hit::Bar(2)));
+        ui::scrollbar(
+            batch,
+            atlas,
+            cx + 163.0,
+            area[1],
+            area[1] + area[3],
+            content,
+            s.options_scroll,
+        );
+        s.hits
+            .push(([cx + 163.0, area[1], 6.0, area[3]], Hit::Bar(2)));
     }
     let done = [cx - 100.0, h - 27.0, 200.0, 20.0];
     button(game, batch, done, &Text::translate("gui.done", &[]), true);
@@ -726,11 +1149,25 @@ fn link_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State, url: &str) {
     }
     ui::menu_background(batch, atlas, 0.0, 0.0, w, h, in_world);
     let warning = Text::translate("chat.link.warning", &[]).with_color(0xFF_CCCC);
-    let message = Text::literal(url).append(Text::literal("\n")).append(warning);
-    let choice = horizon_client::confirm_screen::Choice::new(&atlas.font, (w, h), &Text::translate("chat.link.confirm", &[]), &message, 3, 100.0);
-    let labels = [Text::translate("gui.yes", &[]), Text::translate("chat.copy", &[]), Text::translate("gui.no", &[])];
+    let message = Text::literal(url)
+        .append(Text::literal("\n"))
+        .append(warning);
+    let choice = horizon_client::confirm_screen::Choice::new(
+        &atlas.font,
+        (w, h),
+        &Text::translate("chat.link.confirm", &[]),
+        &message,
+        3,
+        100.0,
+    );
+    let labels = [
+        Text::translate("gui.yes", &[]),
+        Text::translate("chat.copy", &[]),
+        Text::translate("gui.no", &[]),
+    ];
     choice.draw(batch, atlas, game.cursor, &labels);
     for (i, &(x, y)) in choice.buttons.iter().enumerate() {
-        s.hits.push(([x, y, choice.width, 20.0], Hit::LinkButton(i)));
+        s.hits
+            .push(([x, y, choice.width, 20.0], Hit::LinkButton(i)));
     }
 }

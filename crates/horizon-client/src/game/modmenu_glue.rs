@@ -206,7 +206,13 @@ impl State {
     /// The rows again (`ModListWidget.filter`): the sort's order, the search
     /// and the filters; the selection kept, or the first row.
     pub(super) fn refilter(&mut self) {
-        self.rows = mm::rows(&self.mods, &self.order, &self.search.value, &self.config, self.ru);
+        self.rows = mm::rows(
+            &self.mods,
+            &self.order,
+            &self.search.value,
+            &self.config,
+            self.ru,
+        );
         if self.selected.is_none() {
             self.selected = self.rows.first().map(|&i| self.mods[i].id.clone());
         }
@@ -251,7 +257,9 @@ pub(super) fn set_option(game: &Game<'_>, s: &mut State, key: &str, token: &str)
 
 /// The value an option has now, as stored.
 pub(super) fn option_token(game: &Game<'_>, key: &str) -> String {
-    let stored = game.native_setting(mm::ID, key).map(|v| v.trim().to_owned());
+    let stored = game
+        .native_setting(mm::ID, key)
+        .map(|v| v.trim().to_owned());
     let o = mm::option(key);
     match (stored, o) {
         (Some(v), Some(o)) if o.values.iter().any(|x| x.0 == v) => v,
@@ -269,7 +277,9 @@ fn bound(game: &Game<'_>) -> String {
 /// "Name 1.0.1" as the game lists a mod: the name and the version.
 fn split_title(title: &str) -> (String, String) {
     match title.rsplit_once(' ') {
-        Some((name, v)) if v.chars().next().is_some_and(|c| c.is_ascii_digit()) => (name.to_owned(), v.to_owned()),
+        Some((name, v)) if v.chars().next().is_some_and(|c| c.is_ascii_digit()) => {
+            (name.to_owned(), v.to_owned())
+        }
         _ => (title.to_owned(), String::new()),
     }
 }
@@ -279,7 +289,8 @@ fn issues_of(source: &str) -> Option<String> {
     let rest = source.strip_prefix("https://github.com/")?;
     let mut parts = rest.split('/');
     let (owner, repo) = (parts.next()?, parts.next()?);
-    (!owner.is_empty() && !repo.is_empty()).then(|| format!("https://github.com/{owner}/{repo}/issues"))
+    (!owner.is_empty() && !repo.is_empty())
+        .then(|| format!("https://github.com/{owner}/{repo}/issues"))
 }
 
 /// What a mod says of itself: `modmenu.json` in its data folder, which the
@@ -302,18 +313,45 @@ struct Meta {
 
 fn meta(game: &Game<'_>, id: &str, ru: bool) -> Meta {
     let dir = game.native_data_dir(id);
-    let Some(v) = std::fs::read_to_string(dir.join("modmenu.json")).ok().and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok()) else {
+    let Some(v) = std::fs::read_to_string(dir.join("modmenu.json"))
+        .ok()
+        .and_then(|t| serde_json::from_str::<serde_json::Value>(&t).ok())
+    else {
         return Meta::default();
     };
-    let text = |k: &str| v.get(k).and_then(|x| x.as_str()).map(str::trim).filter(|s| !s.is_empty()).map(str::to_owned);
-    let list = |k: &str| -> Vec<String> {
-        v.get(k).and_then(|x| x.as_array()).map(|a| a.iter().filter_map(|x| x.as_str()).map(str::to_owned).collect()).unwrap_or_default()
+    let text = |k: &str| {
+        v.get(k)
+            .and_then(|x| x.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned)
     };
-    let link = |k: &str| v.get("links").and_then(|l| l.get(k)).and_then(|x| x.as_str()).filter(|s| s.starts_with("https://")).map(str::to_owned);
+    let list = |k: &str| -> Vec<String> {
+        v.get(k)
+            .and_then(|x| x.as_array())
+            .map(|a| {
+                a.iter()
+                    .filter_map(|x| x.as_str())
+                    .map(str::to_owned)
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let link = |k: &str| {
+        v.get("links")
+            .and_then(|l| l.get(k))
+            .and_then(|x| x.as_str())
+            .filter(|s| s.starts_with("https://"))
+            .map(str::to_owned)
+    };
     let icon = dir.join("icon.png");
     Meta {
         name: text("name"),
-        description: if ru { text("description_ru").or_else(|| text("description")) } else { text("description") },
+        description: if ru {
+            text("description_ru").or_else(|| text("description"))
+        } else {
+            text("description")
+        },
         authors: list("authors"),
         contributors: list("contributors"),
         maintainers: list("maintainers"),
@@ -330,7 +368,10 @@ fn meta(game: &Game<'_>, id: &str, ru: bool) -> Meta {
                 _ => None,
             })
             .collect(),
-        config_screen: v.get("config_screen").and_then(|x| x.as_bool()).unwrap_or(false),
+        config_screen: v
+            .get("config_screen")
+            .and_then(|x| x.as_bool())
+            .unwrap_or(false),
         icon: icon.is_file().then(|| icon.to_string_lossy().into_owned()),
     }
 }
@@ -339,11 +380,18 @@ fn meta(game: &Game<'_>, id: &str, ru: bool) -> Meta {
 /// into this game and every content mod turned on, each with what the
 /// catalog knows of it.
 pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
-    let catalog: HashMap<String, horizon_mods::index::Project> = std::fs::read_to_string(Game::game_dir().join(CACHE))
-        .ok()
-        .and_then(|text| horizon_mods::index::Index::parse(&text).ok())
-        .map(|index| index.projects.into_iter().map(|p| (p.id.clone(), p)).collect())
-        .unwrap_or_default();
+    let catalog: HashMap<String, horizon_mods::index::Project> =
+        std::fs::read_to_string(Game::game_dir().join(CACHE))
+            .ok()
+            .and_then(|text| horizon_mods::index::Index::parse(&text).ok())
+            .map(|index| {
+                index
+                    .projects
+                    .into_iter()
+                    .map(|p| (p.id.clone(), p))
+                    .collect()
+            })
+            .unwrap_or_default();
     // The build's receipt: the native mods compiled into this game.
     let built: Vec<(String, String)> = std::env::current_exe()
         .ok()
@@ -352,12 +400,23 @@ pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
         .and_then(|v| v.get("mods").and_then(|m| m.as_array()).cloned())
         .map(|list| {
             list.iter()
-                .filter_map(|m| Some((m.get("id")?.as_str()?.to_owned(), m.get("version").and_then(|v| v.as_str()).unwrap_or("").to_owned())))
+                .filter_map(|m| {
+                    Some((
+                        m.get("id")?.as_str()?.to_owned(),
+                        m.get("version")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_owned(),
+                    ))
+                })
                 .collect()
         })
         .unwrap_or_default();
     let installed = &game.settings.mods.installed;
-    let mut ids: Vec<(String, String, bool)> = built.iter().map(|(id, v)| (id.clone(), v.clone(), true)).collect();
+    let mut ids: Vec<(String, String, bool)> = built
+        .iter()
+        .map(|(id, v)| (id.clone(), v.clone(), true))
+        .collect();
     for (i, row) in installed.iter().enumerate() {
         if ids.iter().any(|(id, _, _)| *id == row.id) || row.problem.is_some() {
             continue;
@@ -416,9 +475,17 @@ pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
         let project = catalog.get(&id);
         // The mod's own word first, as Java's Mod Menu reads the mod's jar,
         // then the catalog's, then the game's line on Options > Mods.
-        let meta = if native { meta(game, &id, ru) } else { Meta::default() };
+        let meta = if native {
+            meta(game, &id, ru)
+        } else {
+            Meta::default()
+        };
         let (row_name, row_version) = row.map(|r| split_title(&r.title)).unwrap_or_default();
-        let version = if version.is_empty() { row_version } else { version };
+        let version = if version.is_empty() {
+            row_version
+        } else {
+            version
+        };
         let name = meta
             .name
             .clone()
@@ -426,20 +493,37 @@ pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
             .or_else(|| (!row_name.is_empty()).then(|| row_name.clone()))
             .unwrap_or_else(|| id.clone());
         let row_description = row.map(|r| r.description.clone()).unwrap_or_default();
-        let summary = meta.description.clone().or_else(|| project.map(|p| p.summary.clone()).filter(|s| !s.is_empty())).unwrap_or_else(|| row_description.clone());
+        let summary = meta
+            .description
+            .clone()
+            .or_else(|| project.map(|p| p.summary.clone()).filter(|s| !s.is_empty()))
+            .unwrap_or_else(|| row_description.clone());
         let description = meta
             .description
             .clone()
-            .or_else(|| project.map(|p| mm::plain_markdown(&p.description)).filter(|s| !s.is_empty()))
+            .or_else(|| {
+                project
+                    .map(|p| mm::plain_markdown(&p.description))
+                    .filter(|s| !s.is_empty())
+            })
             .unwrap_or_else(|| row_description.clone());
-        let source = meta.sources.clone().or_else(|| project.map(|p| p.source.clone()).filter(|s| !s.is_empty()));
+        let source = meta
+            .sources
+            .clone()
+            .or_else(|| project.map(|p| p.source.clone()).filter(|s| !s.is_empty()));
         // Mod Menu itself, before the catalog lists it: the port's own source.
-        let source = source.or_else(|| (id == mm::ID).then(|| "https://github.com/DeportedToHell/MCRE-Mods/tree/main/modmenu".to_owned()));
+        let source = source.or_else(|| {
+            (id == mm::ID)
+                .then(|| "https://github.com/DeportedToHell/MCRE-Mods/tree/main/modmenu".to_owned())
+        });
         let configure = if id == mm::ID {
             Configure::ModMenu
         } else if native && meta.config_screen {
             Configure::Screen(id.clone())
-        } else if row.and_then(|r| r.native.as_ref()).is_some_and(|p| !p.keys.is_empty() || !p.buttons.is_empty()) {
+        } else if row
+            .and_then(|r| r.native.as_ref())
+            .is_some_and(|p| !p.keys.is_empty() || !p.buttons.is_empty())
+        {
             Configure::Native(id.clone())
         } else {
             Configure::None
@@ -452,16 +536,38 @@ pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
             badges.push(Badge::Client);
         }
         let update = project.and_then(|p| {
-            let latest = p.versions.iter().map(|v| v.version.clone()).max_by(|a, b| if mm::newer(a, b) { std::cmp::Ordering::Greater } else if mm::newer(b, a) { std::cmp::Ordering::Less } else { std::cmp::Ordering::Equal })?;
-            (!version.is_empty() && mm::newer(&latest, &version)).then(|| Update { version: latest, url: format!("{SITE}/{id}") })
+            let latest = p
+                .versions
+                .iter()
+                .map(|v| v.version.clone())
+                .max_by(|a, b| {
+                    if mm::newer(a, b) {
+                        std::cmp::Ordering::Greater
+                    } else if mm::newer(b, a) {
+                        std::cmp::Ordering::Less
+                    } else {
+                        std::cmp::Ordering::Equal
+                    }
+                })?;
+            (!version.is_empty() && mm::newer(&latest, &version)).then(|| Update {
+                version: latest,
+                url: format!("{SITE}/{id}"),
+            })
         });
         let (summary, description) = if id == mm::ID {
-            (mm::tr(ru, "modmenu_description").to_owned(), mm::tr(ru, "modmenu_description").to_owned())
+            (
+                mm::tr(ru, "modmenu_description").to_owned(),
+                mm::tr(ru, "modmenu_description").to_owned(),
+            )
         } else {
             (summary, description)
         };
         out.push(Mod {
-            name: if id == mm::ID { mm::tr(ru, "modmenu_name").to_owned() } else { name },
+            name: if id == mm::ID {
+                mm::tr(ru, "modmenu_name").to_owned()
+            } else {
+                name
+            },
             version,
             summary,
             description,
@@ -472,7 +578,11 @@ pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
             } else {
                 project.map(|p| p.authors.clone()).unwrap_or_default()
             },
-            contributors: if id == mm::ID { mm::CONTRIBUTORS.iter().map(|a| (*a).to_owned()).collect() } else { meta.contributors.clone() },
+            contributors: if id == mm::ID {
+                mm::CONTRIBUTORS.iter().map(|a| (*a).to_owned()).collect()
+            } else {
+                meta.contributors.clone()
+            },
             maintainers: meta.maintainers.clone(),
             licenses: meta
                 .license
@@ -485,7 +595,10 @@ pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
                 .homepage
                 .clone()
                 .or_else(|| (project.is_some() || id == mm::ID).then(|| format!("{SITE}/{id}"))),
-            issues: meta.issues.clone().or_else(|| source.as_deref().and_then(issues_of)),
+            issues: meta
+                .issues
+                .clone()
+                .or_else(|| source.as_deref().and_then(issues_of)),
             source,
             badges,
             icon: match (meta.icon.clone(), project.and_then(|p| p.icon.clone())) {
@@ -529,9 +642,20 @@ fn agent() -> &'static ureq::Agent {
 /// An https download, at most `cap` bytes (`mod_registry::download` upstream).
 fn download(url: &str, cap: usize) -> Result<Vec<u8>, String> {
     let response = agent().get(url).call().map_err(|e| e.to_string())?;
+    let mut reader = response.into_reader();
     let mut out = Vec::new();
-    std::io::Read::read_to_end(&mut response.into_reader().take(cap as u64), &mut out)
-        .map_err(|e| e.to_string())?;
+    let mut buffer = vec![0u8; 64 * 1024];
+    loop {
+        let read = std::io::Read::read(&mut reader, &mut buffer).map_err(|e| e.to_string())?;
+        if read == 0 {
+            break;
+        }
+        out.extend_from_slice(&buffer[..read]);
+        if out.len() >= cap {
+            out.truncate(cap);
+            break;
+        }
+    }
     Ok(out)
 }
 
@@ -568,7 +692,8 @@ fn fetch_icons(game: &Game<'_>, s: &mut State) {
         .collect();
     for (id, path) in files {
         let image = std::fs::read(&path).ok().as_deref().and_then(decode);
-        s.icons.insert(id, image.map_or(IconState::Failed, IconState::Ready));
+        s.icons
+            .insert(id, image.map_or(IconState::Failed, IconState::Ready));
     }
     let jobs: Vec<(String, String)> = s
         .mods
@@ -612,7 +737,8 @@ fn take_icons(s: &mut State) {
         done.push(item);
     }
     for (id, image) in done {
-        s.icons.insert(id, image.map_or(IconState::Failed, IconState::Ready));
+        s.icons
+            .insert(id, image.map_or(IconState::Failed, IconState::Ready));
     }
 }
 
@@ -659,7 +785,11 @@ fn open(game: &mut Game<'_>, origin: Origin) {
             s.horizon_icon = horizon;
         }
         s.resort();
-        s.count = Some((Instant::now(), mm::displayed_count(&s.mods, &s.config), s.mods.iter().any(|m| m.update.is_some())));
+        s.count = Some((
+            Instant::now(),
+            mm::displayed_count(&s.mods, &s.config),
+            s.mods.iter().any(|m| m.update.is_some()),
+        ));
         fetch_icons(game, s);
     });
 }
@@ -687,7 +817,9 @@ pub(super) fn open_from_pause(game: &mut Game<'_>) {
 
 /// The title screen shows its main screen.
 fn title_main(game: &Game<'_>) -> bool {
-    game.title.as_ref().is_some_and(|t| matches!(t.mode, horizon_client::title::Mode::Main))
+    game.title
+        .as_ref()
+        .is_some_and(|t| matches!(t.mode, horizon_client::title::Mode::Main))
 }
 
 // ---- hooks ---------------------------------------------------------------------------
@@ -713,26 +845,46 @@ pub(super) fn frame(game: &mut Game<'_>) {
         let g: &Game<'_> = game;
         let ru = language_ru();
         // The count on the title and the Mods button, read again every few seconds.
-        let stale = with(|s| s.count.is_none_or(|(at, _, _)| at.elapsed().as_secs() >= 5)).unwrap_or(false);
+        let stale =
+            with(|s| s.count.is_none_or(|(at, _, _)| at.elapsed().as_secs() >= 5)).unwrap_or(false);
         let fresh = stale.then(|| load_mods(g, ru));
         with(|s| {
             if !s.config_read || stale {
                 read_config(g, s);
             }
             if let Some(mods) = fresh {
-                s.count = Some((Instant::now(), mm::displayed_count(&mods, &s.config), mods.iter().any(|m| m.update.is_some())));
+                s.count = Some((
+                    Instant::now(),
+                    mm::displayed_count(&mods, &s.config),
+                    mods.iter().any(|m| m.update.is_some()),
+                ));
             }
             let count = s.count.map_or(0, |c| c.1);
             let c = &s.config;
-            let style = if c.modify_title_screen { c.title_style } else { title_side::NONE };
+            let style = if c.modify_title_screen {
+                c.title_style
+            } else {
+                title_side::NONE
+            };
             title_side::STYLE.store(style, Ordering::Relaxed);
-            mm::PAUSE_STYLE.store(if c.modify_game_menu { c.game_menu_style } else { mm::NONE }, Ordering::Relaxed);
+            mm::PAUSE_STYLE.store(
+                if c.modify_game_menu {
+                    c.game_menu_style
+                } else {
+                    mm::NONE
+                },
+                Ordering::Relaxed,
+            );
             let text = mm::button_text(ru, count, c);
             if let Ok(mut label) = title_side::LABEL.lock() {
                 label.clone_from(&text);
             }
             // " (25 Mods)" after the title's version (`MixinTitleScreen`).
-            let after = if c.modify_title_screen && c.count_at.title() { mm::title_count(ru, count, c.easter_eggs) } else { String::new() };
+            let after = if c.modify_title_screen && c.count_at.title() {
+                mm::title_count(ru, count, c.easter_eggs)
+            } else {
+                String::new()
+            };
             if let Ok(mut slot) = title_side::COUNT.lock()
                 && *slot != after
             {
@@ -753,15 +905,23 @@ pub(super) fn frame(game: &mut Game<'_>) {
     let origin = with(|s| s.open).flatten();
     let gone = match origin {
         Some(Origin::Title) => game.title.is_none(),
-        Some(Origin::Pause | Origin::Playing) => game.title.is_some() || game.screen == Screen::Playing,
+        Some(Origin::Pause | Origin::Playing) => {
+            game.title.is_some() || game.screen == Screen::Playing
+        }
         None => false,
     };
     if gone {
         close(game);
     }
     let origin = with(|s| s.open).flatten();
-    title_side::COVER.store(origin == Some(Origin::Title) && game.screen == Screen::Playing && title_main(game), Ordering::Relaxed);
-    mm::PAUSE_COVER.store(matches!(origin, Some(Origin::Pause | Origin::Playing)) && game.screen == Screen::Paused, Ordering::Relaxed);
+    title_side::COVER.store(
+        origin == Some(Origin::Title) && game.screen == Screen::Playing && title_main(game),
+        Ordering::Relaxed,
+    );
+    mm::PAUSE_COVER.store(
+        matches!(origin, Some(Origin::Pause | Origin::Playing)) && game.screen == Screen::Paused,
+        Ordering::Relaxed,
+    );
 }
 
 /// What the title shows, kept for the startup screen of the next start.
@@ -786,7 +946,9 @@ fn act(game: &mut Game<'_>, action: Action) {
         }
         Action::Close => close(game),
         Action::Click => game.audio.play_button_click(),
-        Action::OpenFolder => super::packs::open_folder(&Game::game_dir().join(horizon_client::mod_list::NATIVE_DIR)),
+        Action::OpenFolder => {
+            super::packs::open_folder(&Game::game_dir().join(horizon_client::mod_list::NATIVE_DIR))
+        }
         Action::Uri(url) => super::packs::open_uri(&url),
         Action::Copy(text) => {
             if !text.is_empty() {
@@ -810,21 +972,43 @@ fn act(game: &mut Game<'_>, action: Action) {
             match target {
                 Configure::Native(id) => {
                     game.list_native_mods();
-                    if let Some(i) = game.settings.mods.installed.iter().position(|m| m.id == id && m.native.is_some()) {
-                        game.open_options_at(from_title, horizon_client::options_ui::Page::NativeMod(i));
+                    if let Some(i) = game
+                        .settings
+                        .mods
+                        .installed
+                        .iter()
+                        .position(|m| m.id == id && m.native.is_some())
+                    {
+                        game.open_options_at(
+                            from_title,
+                            horizon_client::options_ui::Page::NativeMod(i),
+                        );
                         game.native_settings_refresh(i);
                     }
                 }
                 Configure::Screen(id) => {
                     game.list_native_mods();
-                    if let Some(i) = game.settings.mods.installed.iter().position(|m| m.id == id && m.native.is_some()) {
-                        game.open_options_at(from_title, horizon_client::options_ui::Page::NativeMod(i));
+                    if let Some(i) = game
+                        .settings
+                        .mods
+                        .installed
+                        .iter()
+                        .position(|m| m.id == id && m.native.is_some())
+                    {
+                        game.open_options_at(
+                            from_title,
+                            horizon_client::options_ui::Page::NativeMod(i),
+                        );
                         game.native_settings_refresh(i);
                         game.native_settings_click(&id, mm::MODMENU_CONFIGURE);
                     }
                 }
-                Configure::Options => game.open_options_at(from_title, horizon_client::options_ui::Page::Main),
-                Configure::Horizon => game.open_options_at(from_title, horizon_client::options_ui::Page::Horizon),
+                Configure::Options => {
+                    game.open_options_at(from_title, horizon_client::options_ui::Page::Main)
+                }
+                Configure::Horizon => {
+                    game.open_options_at(from_title, horizon_client::options_ui::Page::Horizon)
+                }
                 Configure::ModMenu => {
                     with(|s| {
                         s.page = Page::Options;
@@ -838,7 +1022,10 @@ fn act(game: &mut Game<'_>, action: Action) {
 }
 
 /// The mods screen is up over `screen` (its hooks take everything there).
-pub(super) fn covers(game: &Game<'_>, screen: &horizon_client::mod_api::NativeScreenView<'_>) -> bool {
+pub(super) fn covers(
+    game: &Game<'_>,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+) -> bool {
     if !on(game) {
         return false;
     }
@@ -878,10 +1065,19 @@ pub(super) fn key(game: &Game<'_>, key: &str, pressed: bool) {
 }
 
 fn hit_at(s: &State, p: (f32, f32)) -> Option<Hit> {
-    s.hits.iter().rev().find(|(r, _)| p.0 >= r[0] && p.0 < r[0] + r[2] && p.1 >= r[1] && p.1 < r[1] + r[3]).map(|(_, h)| *h)
+    s.hits
+        .iter()
+        .rev()
+        .find(|(r, _)| p.0 >= r[0] && p.0 < r[0] + r[2] && p.1 >= r[1] && p.1 < r[1] + r[3])
+        .map(|(_, h)| *h)
 }
 
-pub(super) fn pressed(game: &Game<'_>, screen: &horizon_client::mod_api::NativeScreenView<'_>, button: i32, modifiers: u32) -> bool {
+pub(super) fn pressed(
+    game: &Game<'_>,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+    button: i32,
+    modifiers: u32,
+) -> bool {
     if !covers(game, screen) {
         return false;
     }
@@ -919,7 +1115,12 @@ pub(super) fn pressed(game: &Game<'_>, screen: &horizon_client::mod_api::NativeS
                         s.pending.push(Action::Click);
                         leave_options(s);
                     }
-                    Some(Hit::Bar(2)) => s.drag = Some(Drag { bar: 2, last_y: p.1 }),
+                    Some(Hit::Bar(2)) => {
+                        s.drag = Some(Drag {
+                            bar: 2,
+                            last_y: p.1,
+                        })
+                    }
                     _ => {}
                 }
                 return true;
@@ -948,7 +1149,11 @@ pub(super) fn pressed(game: &Game<'_>, screen: &horizon_client::mod_api::NativeS
             }
             Some(Hit::Libraries) if left => {
                 s.pending.push(Action::Click);
-                let next = mm::cycle("show_libraries", &option_token(game, "show_libraries"), shift);
+                let next = mm::cycle(
+                    "show_libraries",
+                    &option_token(game, "show_libraries"),
+                    shift,
+                );
                 set_option(game, s, "show_libraries", &next);
                 s.refilter();
             }
@@ -994,7 +1199,10 @@ pub(super) fn pressed(game: &Game<'_>, screen: &horizon_client::mod_api::NativeS
                 let m = &s.mods[mi];
                 let size = if s.config.compact_list { 19.0 } else { 32.0 };
                 let on_icon = p.0 - 6.0 <= size;
-                let double = s.last_click.as_ref().is_some_and(|(at, last)| *last == id && at.elapsed().as_millis() < 250);
+                let double = s
+                    .last_click
+                    .as_ref()
+                    .is_some_and(|(at, last)| *last == id && at.elapsed().as_millis() < 250);
                 if s.config.quick_configure && m.configurable() && (on_icon || double) {
                     let target = m.configure.clone();
                     s.pending.push(Action::Configure(target));
@@ -1025,7 +1233,11 @@ fn leave_options(s: &mut State) {
     s.resort();
 }
 
-pub(super) fn released(game: &Game<'_>, screen: &horizon_client::mod_api::NativeScreenView<'_>, _button: i32) -> bool {
+pub(super) fn released(
+    game: &Game<'_>,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+    _button: i32,
+) -> bool {
     if !covers(game, screen) {
         return false;
     }
@@ -1035,7 +1247,10 @@ pub(super) fn released(game: &Game<'_>, screen: &horizon_client::mod_api::Native
 
 /// A scroll bar follows the pointer (`AbstractScrollArea`'s drag): the
 /// content moves `max scroll / (bar - thumb)` per pixel.
-pub(super) fn dragged(game: &Game<'_>, screen: &horizon_client::mod_api::NativeScreenView<'_>) -> bool {
+pub(super) fn dragged(
+    game: &Game<'_>,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+) -> bool {
     if !covers(game, screen) {
         return false;
     }
@@ -1069,14 +1284,19 @@ pub(super) fn dragged(game: &Game<'_>, screen: &horizon_client::mod_api::NativeS
 
 /// The wheel: the list 18 px a notch (11 compact), the description 5, the
 /// options 12 (half a row each, `AbstractSelectionList`).
-pub(super) fn scrolled(game: &Game<'_>, screen: &horizon_client::mod_api::NativeScreenView<'_>, scroll: [f64; 2]) -> bool {
+pub(super) fn scrolled(
+    game: &Game<'_>,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+    scroll: [f64; 2],
+) -> bool {
     if !covers(game, screen) {
         return false;
     }
     let p = (screen.mouse[0], screen.mouse[1]);
     let delta = scroll[1] as f32;
     with(|s| {
-        let inside = |r: [f32; 4]| p.0 >= r[0] && p.0 < r[0] + r[2] && p.1 >= r[1] && p.1 < r[1] + r[3];
+        let inside =
+            |r: [f32; 4]| p.0 >= r[0] && p.0 < r[0] + r[2] && p.1 >= r[1] && p.1 < r[1] + r[3];
         for bar in 0..3u8 {
             let Some((r, content)) = s.bars[usize::from(bar)] else {
                 continue;
@@ -1116,7 +1336,12 @@ fn writes(key: &str) -> bool {
     name.chars().count() == 1 || name == "space" || name.starts_with("keypad.") && name.len() == 8
 }
 
-pub(super) fn key_pressed(game: &Game<'_>, screen: &horizon_client::mod_api::NativeScreenView<'_>, key: &str, modifiers: u32) -> bool {
+pub(super) fn key_pressed(
+    game: &Game<'_>,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+    key: &str,
+    modifiers: u32,
+) -> bool {
     if !covers(game, screen) {
         return false;
     }
@@ -1142,7 +1367,9 @@ pub(super) fn key_pressed(game: &Game<'_>, screen: &horizon_client::mod_api::Nat
         if s.search.focused {
             match key {
                 "key.keyboard.v" if control => s.pending.push(Action::Paste),
-                "key.keyboard.c" if control => s.pending.push(Action::Copy(s.search.selected_text())),
+                "key.keyboard.c" if control => {
+                    s.pending.push(Action::Copy(s.search.selected_text()))
+                }
                 "key.keyboard.x" if control => {
                     s.pending.push(Action::Copy(s.search.selected_text()));
                     s.search.delete_chars(0);
@@ -1166,7 +1393,10 @@ pub(super) fn key_pressed(game: &Game<'_>, screen: &horizon_client::mod_api::Nat
         }
         // The list: Up and Down move the selection (vanilla's focus moves).
         if s.list_focused && (key == "key.keyboard.up" || key == "key.keyboard.down") {
-            let at = s.selected.as_deref().and_then(|id| s.rows.iter().position(|&i| s.mods[i].id == id));
+            let at = s
+                .selected
+                .as_deref()
+                .and_then(|id| s.rows.iter().position(|&i| s.mods[i].id == id));
             let n = s.rows.len();
             if n > 0 {
                 let next = match (at, key) {
@@ -1194,7 +1424,11 @@ pub(super) fn key_pressed(game: &Game<'_>, screen: &horizon_client::mod_api::Nat
 }
 
 /// A character typed over the pause menu (the title's come through `title_typed`).
-pub(super) fn char_typed(game: &Game<'_>, screen: &horizon_client::mod_api::NativeScreenView<'_>, c: char) -> bool {
+pub(super) fn char_typed(
+    game: &Game<'_>,
+    screen: &horizon_client::mod_api::NativeScreenView<'_>,
+    c: char,
+) -> bool {
     if !covers(game, screen) {
         return false;
     }

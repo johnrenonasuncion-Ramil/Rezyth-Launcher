@@ -36,12 +36,52 @@ pub static COUNT: Mutex<String> = Mutex::new(String::new());
 
 /// `textures/gui/sprites/mods/enabled.png` (Mod Menu, MIT), 20x20: runs of
 /// pixels (x, y, length, colour as the game packs it).
-const MODS_ICON: &[(u8, u8, u8, u32)] = &[(4,4,10,0xffffffff),(15,4,1,0xffffffff),(5,5,10,0xff3f3f3f),(16,5,1,0xff3f3f3f),(4,6,2,0xffffffff),(7,6,9,0xffffffff),(4,7,2,0xffffffff),(6,7,1,0xff3f3f3f),(7,7,9,0xffffffff),(16,7,1,0xff3f3f3f),(5,8,2,0xff3f3f3f),(8,8,9,0xff3f3f3f),(4,9,2,0xffffffff),(7,9,9,0xffffffff),(4,10,2,0xffffffff),(6,10,1,0xff3f3f3f),(7,10,9,0xffffffff),(16,10,1,0xff3f3f3f),(5,11,2,0xff3f3f3f),(8,11,9,0xff3f3f3f),(4,12,2,0xffffffff),(7,12,9,0xffffffff),(4,13,2,0xffffffff),(6,13,1,0xff3f3f3f),(7,13,9,0xffffffff),(16,13,1,0xff3f3f3f),(5,14,2,0xff3f3f3f),(8,14,9,0xff3f3f3f),(4,15,5,0xffffffff),(11,15,5,0xffffffff),(5,16,5,0xff3f3f3f),(12,16,5,0xff3f3f3f)];
+const MODS_ICON: &[(u8, u8, u8, u32)] = &[
+    (4, 4, 10, 0xffffffff),
+    (15, 4, 1, 0xffffffff),
+    (5, 5, 10, 0xff3f3f3f),
+    (16, 5, 1, 0xff3f3f3f),
+    (4, 6, 2, 0xffffffff),
+    (7, 6, 9, 0xffffffff),
+    (4, 7, 2, 0xffffffff),
+    (6, 7, 1, 0xff3f3f3f),
+    (7, 7, 9, 0xffffffff),
+    (16, 7, 1, 0xff3f3f3f),
+    (5, 8, 2, 0xff3f3f3f),
+    (8, 8, 9, 0xff3f3f3f),
+    (4, 9, 2, 0xffffffff),
+    (7, 9, 9, 0xffffffff),
+    (4, 10, 2, 0xffffffff),
+    (6, 10, 1, 0xff3f3f3f),
+    (7, 10, 9, 0xffffffff),
+    (16, 10, 1, 0xff3f3f3f),
+    (5, 11, 2, 0xff3f3f3f),
+    (8, 11, 9, 0xff3f3f3f),
+    (4, 12, 2, 0xffffffff),
+    (7, 12, 9, 0xffffffff),
+    (4, 13, 2, 0xffffffff),
+    (6, 13, 1, 0xff3f3f3f),
+    (7, 13, 9, 0xffffffff),
+    (16, 13, 1, 0xff3f3f3f),
+    (5, 14, 2, 0xff3f3f3f),
+    (8, 14, 9, 0xff3f3f3f),
+    (4, 15, 5, 0xffffffff),
+    (11, 15, 5, 0xffffffff),
+    (5, 16, 5, 0xff3f3f3f),
+    (12, 16, 5, 0xff3f3f3f),
+];
 
 /// The Mods icon, 20 px wide.
 pub fn draw_icon(batch: &mut HudBatch, atlas: &HudAtlas, x: f32, y: f32) {
     for &(px, py, len, c) in MODS_ICON {
-        batch.fill(atlas, x + f32::from(px), y + f32::from(py), f32::from(len), 1.0, c);
+        batch.fill(
+            atlas,
+            x + f32::from(px),
+            y + f32::from(py),
+            f32::from(len),
+            1.0,
+            c,
+        );
     }
 }
 
@@ -49,8 +89,12 @@ pub fn draw_icon(batch: &mut HudBatch, atlas: &HudAtlas, x: f32, y: f32) {
 /// text and the count, a line each) for the startup screen, which shows the
 /// title before the game is up: Mod Menu's data folder.
 pub fn startup_path() -> std::path::PathBuf {
-    let dir = std::env::current_dir().unwrap_or_default().join(crate::mod_list::DIR);
-    dir.join(".horizon-mod-data").join("modmenu").join("startup.txt")
+    let dir = std::env::current_dir()
+        .unwrap_or_default()
+        .join(crate::mod_list::DIR);
+    dir.join(".horizon-mod-data")
+        .join("modmenu")
+        .join("startup.txt")
 }
 
 /// Before the game is up (the startup screen draws the title without the
