@@ -458,6 +458,57 @@ tree's copy, and the build before it has none). No code changed: the
 atlas reads the sprite's native size, 20x20, unchanged. Verified green:
 checks run **43548990433** and weave run **43548831117** at `0cb8ea54a`.
 
+## Mod Menu: the `modmenu-1.1.2.hnmod` native mod, built into the game
+
+TerraformersMC's Mod Menu — a port to Horizon's native mod format by
+DeportedToHell, shipped as `modmenu-1.1.2.hnmod` — is a feature of the
+game itself now (MIT; [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md),
+`licenses/modmenu-MIT.txt`). Its mixin sources became
+`game/modmenu.rs` (the runtime), `game/modmenu_glue.rs` (the game side),
+`game/modmenu_view.rs`, `game/modmenu_sprites.rs`, and
+`title/modmenu_title.rs` for the title screen's side — the title lives in
+the client library, which cannot reach the game, so the game feeds its
+statics once a frame and the title reads the presses back, as the mod did.
+Every hook the mixin fired is a call in the game now: `native_frame`
+(frame), `native_screen_render_post` (render), the seven screen input
+hooks, the key hook and `clipboard::title_edit`. `native_on` is "always
+there" (the Options > Mods off-switch went with the mod), the catalog
+index is read from `mods-index.json` beside the game when the launcher
+leaves one (this game has no registry client of its own), catalog icons
+fetch through a local ureq helper with a capped chunked read, and images
+decode through `hud::decode_bytes`. The Mod Menu lists itself like any
+mod, its own options behind Configure. Its settings keep the mod's
+per-key files (`horizon-mods/.horizon-mod-data/modmenu/`), so a player's
+config — and a key bound while it was a mod — carry over.
+
+Conflicts with this fork's own changes, resolved: the title's icon row
+was four wide (Friends, Language, Accessibility, Volt Settings) and the
+mod's icon style wanted the same corner — the row is five, recentred
+(Volt Settings and Mod Menu), with every `mods_button_style` supported
+(Below Realms / Replace Realms / Adjacent / Icon) as `title.rs` builds
+it, and the two tests pinning the row moved with it. The pause menu's row
+is six now (its five, 12 px left, Mod Menu last) and the mod's `Insert`
+row keeps its shifts; its Mods button joins `pause_buttons`, with the
+icon and tooltip drawn by `modmenu_view`'s `pause_extras` (the pause
+menu's `screen_render_post`) and the cover hiding the menu underneath,
+exactly as the mod's priority-200 injections did. The screen's
+`native_apply_screen_blur` became the tree's own `batch.blur_at` mark,
+and `Button::action`/`does` (which this fork's title never had) are not
+used: the Mods button opens through `click_action` and `OPEN_REQUEST`.
+Its catalog also lacks `categories` in this fork's index: a Library
+badge comes from the mod's own `modmenu.json`, and a catalog project
+adds none.
+
+Verified green: the temporary modmenu-check run **43598045177** at
+`491a58850` (clippy `-D warnings` for horizon-client, horizon-client-render
+and horizon-client-lib, and the tests: 756 gameplay ones — the five ported
+`game::modmenu::tests` among them — and the client library's 1,509, all
+passing; `cargo fmt` clean, its patch empty) and the weave run
+**43598045247** at the same commit (the woven APK). The first run's two
+findings were fixed in `491a58850`: `Read::take` cannot be called on the
+boxed reader `ureq` returns (the download reads in chunks now), and the
+logo/icon geometry test still pinned the four-icon row.
+
 ## Verify
 
 ```sh
