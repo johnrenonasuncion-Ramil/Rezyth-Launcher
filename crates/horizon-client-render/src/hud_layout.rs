@@ -391,7 +391,12 @@ pub fn full_attack_indicator(scale: f32, delay: f32, target: Option<bool>) -> bo
 /// sprite through the inverting `CROSSHAIR` pipeline: `attack` is
 /// `getAttackStrengthScale(0)` in CROSSHAIR indicator mode and `full`
 /// whether the full indicator shows ([`full_attack_indicator`]).
-pub fn crosshair(
+pub fn crosshair(w: i32, h: i32, attack: Option<f32>, full: bool) -> Vec<GuiDraw> {
+    crosshair_styled(w, h, attack, full, CrosshairStyle::Vanilla)
+}
+/// [`crosshair`] with Horizon's Custom Crosshair styles; `Vanilla` is the
+/// sprite untouched, which is what the parity fixture compares.
+pub fn crosshair_styled(
     w: i32,
     h: i32,
     attack: Option<f32>,

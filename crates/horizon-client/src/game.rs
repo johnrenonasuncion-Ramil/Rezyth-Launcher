@@ -8473,7 +8473,7 @@ impl Game<'_> {
                     hud_layout::full_attack_indicator(a, delay, self.crosshair_living())
                 });
                 let style = self.settings.extras.volt_mods.custom_crosshair;
-                let draws = hud_layout::crosshair(wi, hi, attack, full, style);
+                let draws = hud_layout::crosshair_styled(wi, hi, attack, full, style);
                 // Under one creative window it hides; Bedrock Inventory has a gap at the middle.
                 if self.screen != Screen::Creative || CREATIVE_SHIFT.get() == 0.0 {
                     self.gui_layer("minecraft:crosshair", &mut batch, |g, batch| {
