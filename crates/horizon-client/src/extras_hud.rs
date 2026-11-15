@@ -69,7 +69,14 @@ pub fn draw_panel(
     let (x, y) = corners.place(corner, w, h);
     batch.fill(atlas, x, y, w, h, BACKGROUND);
     for (i, (text, color)) in rows.iter().enumerate() {
-        batch.text(atlas, text, x + 2.0, y + 2.0 + i as f32 * 10.0, *color, true);
+        batch.text(
+            atlas,
+            text,
+            x + 2.0,
+            y + 2.0 + i as f32 * 10.0,
+            *color,
+            true,
+        );
     }
 }
 
