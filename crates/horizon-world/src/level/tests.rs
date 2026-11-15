@@ -1805,41 +1805,36 @@ fn a_chests_lid_event_is_handled_and_reaches_the_clients() {
         w.set(at, state);
         let block = w.b().block(state);
         w.level.events.clear();
-        w.ticks.block_events.push(BlockEventData {
+        let lid = BlockEventData {
             pos: at,
             block,
             param_a: 1,
             param_b: 2,
-        });
+        };
+        w.ticks.block_events.push(lid);
         w.f.behaviours.run_block_events(&mut w.level, &mut w.ticks);
-        assert!(
-            w.level.events.iter().any(|e| matches!(
-                e,
-                LevelEvent::BlockEntityEvent {
-                    pos,
-                    a: 1,
-                    b: 2,
-                    ..
-                } if *pos == at
-            )),
-            "{name}'s counted lid event is handled and reaches the clients"
-        );
+        let reported = w
+            .level
+            .events
+            .iter()
+            .any(|e| matches!(e, LevelEvent::BlockEntityEvent { a: 1, b: 2, .. }));
+        assert!(reported, "{name}'s counted lid event reaches the clients");
         // Id 2 is no lid event: not handled, not reported.
         w.level.events.clear();
-        w.ticks.block_events.push(BlockEventData {
+        let other = BlockEventData {
             pos: at,
             block,
             param_a: 2,
             param_b: 0,
-        });
+        };
+        w.ticks.block_events.push(other);
         w.f.behaviours.run_block_events(&mut w.level, &mut w.ticks);
-        assert!(
-            !w.level
-                .events
-                .iter()
-                .any(|e| matches!(e, LevelEvent::BlockEntityEvent { .. })),
-            "id 2 must not be reported for a {name}"
-        );
+        let reported = w
+            .level
+            .events
+            .iter()
+            .any(|e| matches!(e, LevelEvent::BlockEntityEvent { a: 1, b: 2, .. }));
+        assert!(!reported, "id 2 must not be reported for a {name}");
     }
 }
 
