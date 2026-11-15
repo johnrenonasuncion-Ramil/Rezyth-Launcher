@@ -7,7 +7,9 @@ use crate::{
 
 /// The gap between an overlay and the screen edge or the next overlay.
 const MARGIN: f32 = 2.0;
-const BACKGROUND: u32 = 0x7800_0000;
+/// The translucent background of every corner panel (the minimap's is the
+/// map's own texture), shared with the game's own panels.
+pub const BACKGROUND: u32 = 0x7800_0000;
 
 /// Where the next overlay goes in each corner.
 pub struct Corners {
@@ -42,6 +44,32 @@ impl Corners {
             self.height - edge - h
         };
         (x, y)
+    }
+}
+
+/// A compact text panel in `corner`: one line a row at 10 px, on the
+/// overlays' background. Empty rows draw nothing. The Rezyth Settings HUD
+/// switches (the CPS counter, attack reach, compact potion timers) use it.
+pub fn draw_panel(
+    batch: &mut HudBatch,
+    atlas: &HudAtlas,
+    corners: &mut Corners,
+    corner: Corner,
+    rows: &[(String, u32)],
+) {
+    if rows.is_empty() {
+        return;
+    }
+    let w = rows
+        .iter()
+        .map(|(t, _)| HudBatch::text_width(atlas, t))
+        .fold(0.0_f32, f32::max)
+        + 4.0;
+    let h = rows.len() as f32 * 10.0 + 4.0;
+    let (x, y) = corners.place(corner, w, h);
+    batch.fill(atlas, x, y, w, h, BACKGROUND);
+    for (i, (text, color)) in rows.iter().enumerate() {
+        batch.text(atlas, text, x + 2.0, y + 2.0 + i as f32 * 10.0, *color, true);
     }
 }
 

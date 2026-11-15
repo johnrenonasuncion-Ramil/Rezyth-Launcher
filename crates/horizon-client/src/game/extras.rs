@@ -6,7 +6,7 @@ use super::{Dim, Game, Screen, native_hooks::NativeMinimap};
 use horizon_client::{
     extras::{Corner, Cps, FpsCounter, fov_target},
     extras_hud::{self, Corners},
-    hud::{HudBatch, MINIMAP_SPRITE},
+    hud::{HudBatch, MINIMAP_SPRITE, rgba},
     minimap::{self, Layer, Minimap, View},
     multiplayer,
     reconnect::{Retry, Tracker},
@@ -336,7 +336,111 @@ impl Game<'_> {
             };
             extras_hud::draw_minimap(batch, atlas, &mut corners, &look);
         }
+        self.draw_volt_hud(batch, &mut corners);
         self.native_hud(batch, &mut corners);
+    }
+    /// The Rezyth Settings HUD switches: armour & durability, the live CPS
+    /// counter, the attack reach and the compact potion timers, as corner
+    /// panels below (or above) whatever corner already holds.
+    fn draw_volt_hud(&mut self, batch: &mut HudBatch, corners: &mut Corners) {
+        if self.screen != Screen::Playing {
+            return;
+        }
+        let v = &self.settings.extras.volt_mods;
+        let (armor_hud, cps_hud, reach_hud, potion_hud) =
+            (v.armor_hud, v.cps_hud, v.reach_hud, v.potion_hud);
+        // The counts are the extras' own click records (the mod API's
+        // `input.clicks-per-second`), so the panel and a mod read one state.
+        let cps = if cps_hud {
+            Some(self.mouse_reading().0)
+        } else {
+            None
+        };
+        let reach_hit = if reach_hud {
+            self.tick_hit.clone().flatten()
+        } else {
+            None
+        };
+        let eye = reach_hit.and(self.eye_position());
+        let atlas = &self.gui.atlas;
+        // Armour & Durability HUD: the worn pieces, the remaining durability
+        // beside each (green, amber, red as it runs out).
+        if armor_hud && !self.debug {
+            let worn: Vec<_> = self.armor.iter().flatten().cloned().collect();
+            if !worn.is_empty() {
+                let h = worn.len() as f32 * 18.0 + 4.0;
+                let (x, y) = corners.place(Corner::TopLeft, 48.0, h);
+                batch.fill(atlas, x, y, 48.0, h, extras_hud::BACKGROUND);
+                for (i, stack) in worn.iter().enumerate() {
+                    let (ix, iy) = (x + 2.0, y + 2.0 + i as f32 * 18.0);
+                    self.draw_item(batch, stack, ix, iy);
+                    let max = self
+                        .res
+                        .items()
+                        .get(&stack.item)
+                        .map_or(0, |info| info.max_damage);
+                    if max > 0 {
+                        let left = max.saturating_sub(stack.damage);
+                        let color = if left * 3 < max {
+                            rgba(255, 85, 85, 255)
+                        } else if left * 2 < max {
+                            rgba(255, 255, 85, 255)
+                        } else {
+                            rgba(85, 255, 85, 255)
+                        };
+                        batch.text(atlas, &left.to_string(), ix + 20.0, iy + 5.0, color, true);
+                    }
+                }
+            }
+        }
+        if let Some((left, right)) = cps {
+            extras_hud::draw_panel(
+                batch,
+                atlas,
+                corners,
+                Corner::TopRight,
+                &[(format!("CPS {left} | {right}"), u32::MAX)],
+            );
+        }
+        if let (Some(hit), Some(eye)) = (reach_hit, eye) {
+            let (dx, dy, dz) = (
+                hit.point[0] - eye[0],
+                hit.point[1] - eye[1],
+                hit.point[2] - eye[2],
+            );
+            let d = (dx * dx + dy * dy + dz * dz).sqrt();
+            extras_hud::draw_panel(
+                batch,
+                atlas,
+                corners,
+                Corner::BottomRight,
+                &[(format!("Reach {d:.2}"), u32::MAX)],
+            );
+        }
+        if potion_hud {
+            let rows: Vec<(String, u32)> = self
+                .potions
+                .effects
+                .list
+                .iter()
+                .filter(|e| e.visible)
+                .map(|e| {
+                    let name = self
+                        .pack
+                        .names
+                        .display_get(&format!("effect.minecraft.{}", e.id))
+                        .unwrap_or_else(|| e.id.to_owned());
+                    let time = if e.duration < 0 {
+                        "\u{221e}".to_owned()
+                    } else {
+                        let s = e.duration / 20;
+                        format!("{}:{:02}", s / 60, s % 60)
+                    };
+                    (format!("{name} {time}"), u32::MAX)
+                })
+                .collect();
+            extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &rows);
+        }
     }
     /// The height the status effect icons take at the top right
     /// (`Hud.extractEffects`: beneficial at y 1, harmful at y 26).
