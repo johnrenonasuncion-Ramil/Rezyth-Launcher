@@ -502,9 +502,9 @@ impl Settings {
             improved_transparency: f.bool("improvedTransparency"),
             attack_indicator: f.int("attackIndicator") as u8,
             inactivity_fps_limit: f.name("inactivityFpsLimit"),
-            // Off unless the player turned it on; a file from before this
-            // key (Horizon wrote `javaCreativeInventory` instead) has none,
-            // so it loads as the Java-style screen too.
+            // Off unless the player turned it on. The old key name
+            // (`javaCreativeInventory`) was never in the options table, so
+            // nothing was ever read or saved for it.
             bedrock_inventory: f.bool("bedrockInventory"),
             prioritize_chunk_updates: f.int("prioritizeChunkUpdates") as u8,
             menu_blur: f.int("menuBackgroundBlurriness"),

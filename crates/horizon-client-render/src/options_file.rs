@@ -128,6 +128,7 @@ static TABLE: LazyLock<Vec<Def>> = LazyLock::new(|| {
             V::Double(0.75),
         ),
         b("cutoutLeaves", true),
+        b("bedrockInventory", false),
         b("enableVsync", true),
         def(
             "entityDistanceScaling",
