@@ -576,6 +576,43 @@ scrollbar and clear of the search box and the trash. Its first check run found c
 `collapsible_if` on the carried-stack return (rust 1.100 wants one let-chain there), fixed in
 `162b3632f` (verified by the full checks run **43643624746** at `8cfa4249a`).
 
+## Pistons: the extended base survives their own move
+
+A powered piston destroyed itself. Every `setBlock` that replaced a `moving_piston` ran
+`MovingPistonBlock.destroy`'s extended-base removal, so the head cell's completion — the normal
+end of every extension — took the extended base with it, and so did any `/setblock`, `/fill` or
+explosion over a moving piston (horizon-rust/horizon#7863; upstream's `7a79e25da4` is the fix
+this port follows). Sticky and normal pistons alike vanished as their move finished.
+
+- `horizon-world/src/level/update.rs`: `chunk_set_block_state` no longer calls
+  `destroy_moving_piston_base`; the function is `pub(crate)` for the player-break path now.
+- `horizon-world/src/level/hooks.rs`: `player_destroy` runs it when a player breaks a moving
+  piston, as `ServerPlayerGameMode.destroyBlock` does.
+- `horizon-world/src/level/tests.rs`: the break test drives `player_destroy_block`, and a new
+  test pins that a `setBlock` over a moving piston leaves a headless extended piston. (The
+  level tests skip without the prepared vanilla data, so CI compiles them without running them;
+  the fix is upstream's own, with its tests.)
+
+## Bedrock Inventory: off by default, and the choice saves
+
+The toggle could never persist: `OptionsFile` is table-driven, and its old key name
+(`javaCreativeInventory`) was never a row — `bool` reads only table keys, so the read always
+answered false (the option was hard-wired to the Bedrock screen) and `set` silently dropped the
+write. On top of that the act pushed no `Event::Changed`, the only event that makes the game
+save `options.txt`.
+
+- `horizon-client-render/src/options_file.rs`: `b("bedrockInventory", false)` is a row now,
+  beside the other booleans.
+- `horizon-client-render/src/settings.rs`: the setting reads and writes that key directly, off
+  by default — the Java-style creative screen unless the player opts into the Bedrock one.
+- `horizon-client-render/src/options_ui.rs`: the toggle pushes `Event::Changed`, so the game
+  saves at once. A round-trip test pins that on and off both survive save and load.
+
+Verified green: checks run **43682318289** at `d1e7a8ded` (fmt, clippy, the workspace's tests —
+760 gameplay, 1,509 client-library and 1,232 render ones among them, the new
+`the_bedrock_inventory_choice_is_off_by_default_and_round_trips` included) and the weave run
+**43682317740** at the same commit.
+
 ## Verify
 
 ```sh
