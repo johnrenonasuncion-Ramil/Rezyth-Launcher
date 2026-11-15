@@ -288,7 +288,9 @@ impl Default for Settings {
             improved_transparency: false,
             attack_indicator: 1,
             inactivity_fps_limit: "afk".into(),
-            bedrock_inventory: true,
+            // The Java-style screen is the default; the Bedrock one is
+            // opted into.
+            bedrock_inventory: false,
             prioritize_chunk_updates: 0,
             menu_blur: 5,
             invert_y: false,
@@ -500,8 +502,10 @@ impl Settings {
             improved_transparency: f.bool("improvedTransparency"),
             attack_indicator: f.int("attackIndicator") as u8,
             inactivity_fps_limit: f.name("inactivityFpsLimit"),
-            // Saved by what turns it off, so a file from before it has it on.
-            bedrock_inventory: !f.bool("javaCreativeInventory"),
+            // Off unless the player turned it on; a file from before this
+            // key (Horizon wrote `javaCreativeInventory` instead) has none,
+            // so it loads as the Java-style screen too.
+            bedrock_inventory: f.bool("bedrockInventory"),
             prioritize_chunk_updates: f.int("prioritizeChunkUpdates") as u8,
             menu_blur: f.int("menuBackgroundBlurriness"),
             invert_x: f.bool("invertXMouse"),
@@ -607,7 +611,7 @@ impl Settings {
         put_b(&mut f, "improvedTransparency", self.improved_transparency);
         put_i(&mut f, "attackIndicator", i32::from(self.attack_indicator));
         put_name(&mut f, "inactivityFpsLimit", &self.inactivity_fps_limit);
-        put_b(&mut f, "javaCreativeInventory", !self.bedrock_inventory);
+        put_b(&mut f, "bedrockInventory", self.bedrock_inventory);
         put_i(
             &mut f,
             "prioritizeChunkUpdates",
@@ -991,6 +995,24 @@ mod tests {
         let again = Settings::parse(&out);
         assert_eq!(again.fov, 90.0);
         assert_eq!(again.keys.get("key.jump"), "key.keyboard.j");
+    }
+    #[test]
+    fn the_bedrock_inventory_choice_is_off_by_default_and_round_trips() {
+        let mut s = Settings::default();
+        assert!(
+            !s.bedrock_inventory,
+            "the Java-style creative screen is the default"
+        );
+        s.bedrock_inventory = true;
+        assert!(
+            Settings::parse(&s.serialize()).bedrock_inventory,
+            "turning it on is saved"
+        );
+        s.bedrock_inventory = false;
+        assert!(
+            !Settings::parse(&s.serialize()).bedrock_inventory,
+            "so is turning it back off"
+        );
     }
     #[test]
     fn client_information_maps_the_stored_main_hand() {

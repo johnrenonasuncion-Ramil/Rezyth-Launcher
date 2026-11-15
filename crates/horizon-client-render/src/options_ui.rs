@@ -6149,7 +6149,13 @@ impl OptionsUi {
                             }
                         }
                         Act::TouchLayout => events.push(Event::TouchLayout),
-                        Act::BedrockInventory => s.bedrock_inventory = !s.bedrock_inventory,
+                        Act::BedrockInventory => {
+                            // The game saves on `Event::Changed`: without it the
+                            // choice lives only in memory and the next launch
+                            // reads the file's old value back.
+                            s.bedrock_inventory = !s.bedrock_inventory;
+                            events.push(Event::Changed);
+                        }
                         Act::Credits => events.push(Event::Credits),
                         Act::CopyAgentDetails => events.push(Event::CopyAgentDetails),
                         Act::NextSkin => {
