@@ -4,6 +4,7 @@
 //! hearts and the experience bar, plus the draw-call types and colour
 //! helpers the other layouts share (`hud_overlays`, `chat`). Computed without
 //! drawing so the parity fixture can compare them with the vanilla client.
+use crate::volt_qol::CrosshairStyle;
 use crate::{font::Font, text::Text};
 use horizon_core::random::{LegacyRandom, RandomSource};
 use std::borrow::Cow;
@@ -390,14 +391,68 @@ pub fn full_attack_indicator(scale: f32, delay: f32, target: Option<bool>) -> bo
 /// sprite through the inverting `CROSSHAIR` pipeline: `attack` is
 /// `getAttackStrengthScale(0)` in CROSSHAIR indicator mode and `full`
 /// whether the full indicator shows ([`full_attack_indicator`]).
-pub fn crosshair(w: i32, h: i32, attack: Option<f32>, full: bool) -> Vec<GuiDraw> {
-    crosshair_draws(w, h, attack, full)
+pub fn crosshair(
+    w: i32,
+    h: i32,
+    attack: Option<f32>,
+    full: bool,
+    style: CrosshairStyle,
+) -> Vec<GuiDraw> {
+    crosshair_draws(w, h, attack, full, style)
         .into_iter()
         .map(crosshair_blend)
         .collect()
 }
-fn crosshair_draws(w: i32, h: i32, attack: Option<f32>, full: bool) -> Vec<GuiDraw> {
-    let mut out = vec![sprite("hud/crosshair", (w - 15) / 2, (h - 15) / 2, 15, 15)];
+fn crosshair_draws(
+    w: i32,
+    h: i32,
+    attack: Option<f32>,
+    full: bool,
+    style: CrosshairStyle,
+) -> Vec<GuiDraw> {
+    let mut out = Vec::new();
+    // Vanilla's own blit origin `(width - 15) / 2` (truncated), so `Vanilla`
+    // stays the exact sprite the parity fixtures compare.
+    let (x0, y0) = ((w - 15) / 2, (h - 15) / 2);
+    let (cx, cy) = (x0 + 7, y0 + 7);
+    // The five styles all draw from the vanilla 15x15 `hud/crosshair` sprite
+    // (its arms and centre pixel), so no new art is needed. `Vanilla` is the
+    // sprite untouched: the parity fixtures' case.
+    let px = |u: i32, v: i32, x: i32, y: i32, sw: i32, sh: i32| {
+        region("hud/crosshair", [15, 15], [u, v], [x, y], sw, sh)
+    };
+    match style {
+        CrosshairStyle::Vanilla => out.push(sprite("hud/crosshair", x0, y0, 15, 15)),
+        // Vanilla plus a solid centre dot.
+        CrosshairStyle::PrecisionDot => {
+            out.push(sprite("hud/crosshair", x0, y0, 15, 15));
+            out.push(px(7, 7, cx - 1, cy - 1, 3, 3));
+        }
+        // A thinner cross with a gap around the centre, plus the dot.
+        CrosshairStyle::CrispPlus => {
+            out.push(px(7, 0, cx, cy - 8, 1, 6));
+            out.push(px(7, 9, cx, cy + 3, 1, 6));
+            out.push(px(0, 7, cx - 8, cy, 6, 1));
+            out.push(px(9, 7, cx + 3, cy, 6, 1));
+            out.push(px(7, 7, cx - 1, cy - 1, 3, 3));
+        }
+        // A hollow square bracket around the centre, plus the dot.
+        CrosshairStyle::CircleRing => {
+            out.push(px(3, 7, cx - 4, cy - 6, 9, 1));
+            out.push(px(3, 7, cx - 4, cy + 5, 9, 1));
+            out.push(px(7, 3, cx - 6, cy - 4, 1, 9));
+            out.push(px(7, 3, cx + 5, cy - 4, 1, 9));
+            out.push(px(7, 7, cx - 1, cy - 1, 3, 3));
+        }
+        // A pixel chevron over the centre, plus the dot.
+        CrosshairStyle::PvpChevron => {
+            for i in 0..4 {
+                out.push(px(7, 7, cx - 4 + i, cy - 1 - i, 1, 1));
+                out.push(px(7, 7, cx + 3 - i, cy - 1 - i, 1, 1));
+            }
+            out.push(px(7, 7, cx - 1, cy - 1, 3, 3));
+        }
+    }
     if let Some(scale) = attack {
         let (x, y) = (w / 2 - 8, h / 2 - 7 + 16);
         if full {

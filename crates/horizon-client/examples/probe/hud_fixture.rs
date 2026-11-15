@@ -196,7 +196,14 @@ fn decorations(c: &Value, atlas: &HudAtlas) -> Vec<GuiDraw> {
         let full = attack.is_some_and(|a| {
             hud_layout::full_attack_indicator(a, float("attackDelay", 5.0), target)
         });
-        draws.extend(hud_layout::crosshair(w, h, attack, full));
+        // The vanilla style: the fixture has no Horizon-only rows.
+        draws.extend(hud_layout::crosshair(
+            w,
+            h,
+            attack,
+            full,
+            horizon_client::volt_qol::CrosshairStyle::Vanilla,
+        ));
     }
     if mode != "spectator" {
         let pop = |v: &Value| v.as_f64().map(|p| p as f32 - partial);

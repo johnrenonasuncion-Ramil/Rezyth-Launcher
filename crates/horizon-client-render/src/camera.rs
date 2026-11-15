@@ -892,10 +892,18 @@ pub fn bob_view(state: &BobState, pose: &mut Mat4) {
     );
 }
 /// The bob matrix `GameRenderer.renderLevel` multiplies into the projection
-/// (and `renderItemInHand` into the hand's pose).
-pub fn bob_matrix(state: &BobState, damage_tilt_strength: f64, bob_view_option: bool) -> Mat4 {
+/// (and `renderItemInHand` into the hand's pose). `roll_deg` is Horizon's
+/// Camera Dutch Tilt: a screen roll about the view axis, applied where
+/// `bob_hurt`'s damage tilt is.
+pub fn bob_matrix(
+    state: &BobState,
+    damage_tilt_strength: f64,
+    roll_deg: f32,
+    bob_view_option: bool,
+) -> Mat4 {
     let mut pose = Mat4::IDENTITY;
     bob_hurt(state, damage_tilt_strength, &mut pose);
+    rotate_degrees(&mut pose, 2, roll_deg);
     if bob_view_option {
         bob_view(state, &mut pose);
     }

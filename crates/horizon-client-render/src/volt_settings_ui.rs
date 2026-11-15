@@ -1329,8 +1329,16 @@ impl VoltSettingsUi {
                 }
             }
             VoltRowKind::Volt(act) => {
-                act.trigger(&mut s.extras, right);
-                sync_catalog_from_engine(&mut s.extras, &s.horizon);
+                // A row that is a catalog mod drives the mod itself (the
+                // engine fields `apply_mod_to_engine` maps), so the Mod Menu,
+                // the Video Settings and this screen sit on one state.
+                if let Some(id) = act.mod_id() {
+                    let next = !s.extras.mod_catalog.is_on(id);
+                    apply_mod_to_engine(id, next, &mut s.extras, &mut s.horizon);
+                } else {
+                    act.trigger(&mut s.extras, right);
+                    sync_catalog_from_engine(&mut s.extras, &s.horizon);
+                }
                 self.changed = true;
                 vec![VoltUiAction::ButtonClick, VoltUiAction::Changed]
             }

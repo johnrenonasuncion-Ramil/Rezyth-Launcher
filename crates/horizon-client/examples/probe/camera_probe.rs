@@ -287,7 +287,9 @@ fn bob(c: &Value, out: &mut impl Write) -> Result<()> {
         }),
         player: c["player"].as_array().map(|p| (fl(&p[0]), fl(&p[1]))),
     };
-    let m = bob_matrix(&state, db(&c["tilt"]), b(&c["view"]));
+    // The fixture's parity rows know tilt and view; the Horizon-only camera
+    // roll is zero here (its own rows carry none).
+    let m = bob_matrix(&state, db(&c["tilt"]), 0.0, b(&c["view"]));
     let mut line = String::from("bob");
     for v in m.m {
         line.push(' ');

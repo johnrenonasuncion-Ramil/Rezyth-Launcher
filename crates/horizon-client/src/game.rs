@@ -8472,7 +8472,8 @@ impl Game<'_> {
                 let full = attack.is_some_and(|a| {
                     hud_layout::full_attack_indicator(a, delay, self.crosshair_living())
                 });
-                let draws = hud_layout::crosshair(wi, hi, attack, full);
+                let style = self.settings.extras.volt_mods.custom_crosshair;
+                let draws = hud_layout::crosshair(wi, hi, attack, full, style);
                 // Under one creative window it hides; Bedrock Inventory has a gap at the middle.
                 if self.screen != Screen::Creative || CREATIVE_SHIFT.get() == 0.0 {
                     self.gui_layer("minecraft:crosshair", &mut batch, |g, batch| {
@@ -8760,6 +8761,23 @@ impl Game<'_> {
             self.remote_hud(&mut batch);
             self.draw_sign_editor(&mut batch);
             self.draw_book(&mut batch);
+        }
+        // Cinema Letterbox Bars (Horizon's switch): the 21:9 bars framing the
+        // view, over everything, while playing with no screen open.
+        if self.screen == Screen::Playing && self.settings.extras.volt_qol.cam_letterbox {
+            let bar = ((batch.height - batch.width * 9.0 / 21.0) / 2.0).max(0.0);
+            self.gui_layer("horizon.letterbox", &mut batch, |g, batch| {
+                let atlas = &g.gui.atlas;
+                batch.fill(atlas, 0.0, 0.0, batch.width, bar, rgba(0, 0, 0, 255));
+                batch.fill(
+                    atlas,
+                    0.0,
+                    batch.height - bar,
+                    batch.width,
+                    bar,
+                    rgba(0, 0, 0, 255),
+                );
+            });
         }
         batch
     }

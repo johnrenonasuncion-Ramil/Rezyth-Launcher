@@ -744,6 +744,26 @@ impl VoltAct {
             Self::ModOledAfk => e.volt_mods.oled_afk_saver = !e.volt_mods.oled_afk_saver,
         }
     }
+
+    /// The catalog mod a row drives, when it is one: the row then goes
+    /// through `apply_mod_to_engine`, so the engine fields it maps and what
+    /// the Mod Menu shows are the same state as this screen.
+    pub fn mod_id(self) -> Option<crate::volt_mods::VoltModId> {
+        use crate::volt_mods::VoltModId;
+        Some(match self {
+            Self::ModArmorHud => VoltModId::ArmorHud,
+            Self::ModPotionHud => VoltModId::StatusEffectTimer,
+            Self::ModCpsHud => VoltModId::CpsDisplay,
+            Self::ModFpsPill => VoltModId::FpsDisplay,
+            Self::ModKeystrokes => VoltModId::KeystrokesHud,
+            Self::ModLowShieldFire => VoltModId::LowFire,
+            Self::ModAppleSkin => VoltModId::AppleSkin,
+            Self::ModShulkerPreview => VoltModId::ShulkerBoxTooltip,
+            Self::QolZoom => VoltModId::Zoomify,
+            Self::QolFreelook => VoltModId::Freelook,
+            _ => return None,
+        })
+    }
 }
 
 pub const QOL_SECTIONS: &[(&str, &[VoltAct])] = &[

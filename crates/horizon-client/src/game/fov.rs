@@ -177,9 +177,16 @@ impl Game<'_> {
                 self.avatar.interpolated_bob(partial),
             )),
         };
-        let tilt = self.settings.file.double("damageTiltStrength");
-        glam::Mat4::from_cols_array(&bob_matrix(&state, tilt, self.settings.view_bobbing).m)
-            * self.native_shake_matrix(partial)
+        // Reduced hurtcam (Horizon's switch): no damage tilt at all.
+        let tilt = if self.settings.extras.volt_mods.no_hurtcam {
+            0.0
+        } else {
+            self.settings.file.double("damageTiltStrength")
+        };
+        // Camera Dutch Tilt: the roll the lean is worth.
+        let roll = f32::from(self.settings.extras.volt_qol.cam_roll_deg);
+        let m = bob_matrix(&state, tilt, roll, self.settings.view_bobbing);
+        glam::Mat4::from_cols_array(&m.m) * self.native_shake_matrix(partial)
     }
     /// `AbstractClientPlayer.tick` and `aiStep` (`ClientAvatarState.tick`,
     /// `updateBob`), `rideTick`'s `resetBob` and `LocalPlayer.move`'s walked
