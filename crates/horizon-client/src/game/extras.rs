@@ -357,7 +357,7 @@ impl Game<'_> {
             None
         };
         let reach_hit = if reach_hud {
-            self.tick_hit.clone().flatten()
+            self.tick_hit.flatten()
         } else {
             None
         };
