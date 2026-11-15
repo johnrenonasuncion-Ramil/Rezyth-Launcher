@@ -768,7 +768,7 @@ impl VoltSettingsUi {
         style::fill(batch, atlas, [sx, sy + 1.0, 6.0, 6.0], style::ACCENT);
         batch.text_styled(
             atlas,
-            &Text::literal("Volt"),
+            &Text::literal("Rezyth"),
             sx + 9.0,
             sy,
             style::WHITE,
@@ -776,7 +776,7 @@ impl VoltSettingsUi {
         );
         batch.text_styled(
             atlas,
-            &Text::literal("Volt Settings"),
+            &Text::literal("Rezyth Settings"),
             sx,
             sy + 10.0,
             style::MUTED,

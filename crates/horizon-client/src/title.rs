@@ -1847,7 +1847,7 @@ impl Title {
                     ),
                     (
                         "horizon.pages.volt",
-                        "Volt Settings...",
+                        "Rezyth Settings...",
                         9,
                         "icon/volt_settings",
                         20.0,

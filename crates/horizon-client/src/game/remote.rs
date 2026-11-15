@@ -8715,11 +8715,16 @@ impl Game<'_> {
             return false;
         }
         let seq = self.next_sequence();
+        // The view's look, or the finger's with tap to interact: the server
+        // runs `BucketItem.use`'s own ray from what it is told, so a bucket
+        // aimed through a finger has to carry the finger's rotation (`aim`
+        // through `interaction_rotation`), not the camera's.
+        let (yaw, pitch) = self.interaction_rotation();
         self.send(S::UseItem(play::UseItem {
             hand: hand_id(hand),
             sequence: seq,
-            yaw: self.yaw,
-            pitch: self.pitch,
+            yaw,
+            pitch,
         }));
         let Some(info) = self.items().get(&held.item).cloned() else {
             return false;

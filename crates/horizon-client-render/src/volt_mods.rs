@@ -452,7 +452,7 @@ pub const CATALOG: [VoltModMeta; TOTAL_VOLT_MODS] = [
         category: VoltModCategory::PvpHud,
         default_on: true,
         summary: "Interactive in-game Mod Menu screen & live toggle manager.",
-        description: "Provides this split-pane Mod Menu screen (accessible from Options, Volt Settings, or pressing M in-game) to search, favorite, configure, and toggle all 49 native mods live.",
+        description: "Provides this split-pane Mod Menu screen (accessible from Options, Rezyth Settings, or pressing M in-game) to search, favorite, configure, and toggle all 49 native mods live.",
     },
     VoltModMeta {
         id: VoltModId::InventoryHudPlus,
