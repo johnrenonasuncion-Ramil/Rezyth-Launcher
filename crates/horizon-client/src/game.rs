@@ -14444,6 +14444,15 @@ impl Game<'_> {
         // LocalPlayer.refreshChatAbilities: the chat shows what the Chat option allows.
         let abilities = self.chat_abilities();
         self.ui.chat.set_abilities(&self.gui.atlas.font, abilities);
+        // Rezyth Settings' per-sound mufflers (Sound Physics Lite).
+        let q = &self.settings.extras.volt_qol;
+        self.audio.set_mufflers(
+            f32::from(q.muffle_portal_pct) / 100.0,
+            f32::from(q.muffle_piston_pct) / 100.0,
+            f32::from(q.muffle_minecart_pct) / 100.0,
+            f32::from(q.muffle_explosion_pct) / 100.0,
+            f32::from(q.muffle_rain_pct) / 100.0,
+        );
         self.streaming.radius = self.render_distance_in_use();
         // Options.biomeBlendRadius, ambientOcclusion, cutoutLeaves and the
         // leaf-culling mode: LevelExtractor.allChanged when they change.

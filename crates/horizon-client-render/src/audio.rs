@@ -222,6 +222,10 @@ pub struct Audio {
     /// Positional sounds played since the last drain, kept while the world
     /// is open to the network so guests hear them too.
     pub capture: Option<Vec<(String, [f64; 3], f32, f32)>>,
+    /// Rezyth Settings' per-sound mufflers (`volt_qol.muffle_*`), a factor
+    /// each: portal, piston/redstone, minecart, explosion, rain. 1.0 is the
+    /// untouched volume; the captured volume for guests stays unscaled.
+    mufflers: [f32; 5],
     /// How many times each positional sound played (the control socket's `status`),
     /// with or without an audio device.
     pub heard: std::collections::BTreeMap<String, u32>,
@@ -944,6 +948,7 @@ impl Audio {
             random: LegacyRandom::new(crate::sound_engine::unique_seed()),
             source_override: None,
             capture: None,
+            mufflers: [1.0; 5],
             heard: Default::default(),
             stopped: Default::default(),
             preview: Default::default(),
@@ -1099,6 +1104,7 @@ impl Audio {
             random: LegacyRandom::new(crate::sound_engine::unique_seed()),
             source_override: None,
             capture: None,
+            mufflers: [1.0; 5],
             heard: Default::default(),
             stopped: Default::default(),
             preview: Default::default(),
@@ -1273,6 +1279,48 @@ impl Audio {
         let seed = self.random.next_long();
         self.play_seeded(event, at, volume, pitch, seed);
     }
+    /// Rezyth Settings' per-sound mufflers (`volt_qol.muffle_*`): portal,
+    /// piston/redstone, minecart, explosion and rain volumes as factors.
+    pub fn set_mufflers(
+        &mut self,
+        portal: f32,
+        piston: f32,
+        minecart: f32,
+        explosion: f32,
+        rain: f32,
+    ) {
+        self.mufflers = [portal, piston, minecart, explosion, rain];
+    }
+    /// The muffler a sound event belongs to, or 1.0 for the sounds that keep
+    /// their volume.
+    fn muffler(&self, event: &str) -> f32 {
+        let name = event.strip_prefix("minecraft:").unwrap_or(event);
+        let i = if name.starts_with("block.portal.")
+            || name.starts_with("block.end_portal")
+            || name.starts_with("block.end_gateway")
+        {
+            0
+        } else if name.starts_with("block.piston.")
+            || name.starts_with("block.redstone_torch.")
+            || name.starts_with("block.lever.")
+            || name.starts_with("block.stone_button.")
+            || name.starts_with("block.wooden_button.")
+        {
+            1
+        } else if name.starts_with("entity.minecart.") {
+            2
+        } else if name.starts_with("entity.generic.explode")
+            || name.starts_with("entity.tnt")
+            || name.starts_with("block.tnt")
+        {
+            3
+        } else if name.starts_with("weather.rain") {
+            4
+        } else {
+            return 1.0;
+        };
+        self.mufflers[i]
+    }
     /// `ClientLevel.playLocalSound` with `distanceDelay`: a sound more than 10
     /// blocks from the camera starts `sqrt(distance) / 40` seconds later.
     pub fn play_distance_delayed(
@@ -1306,6 +1354,9 @@ impl Audio {
         *self.heard.entry(event.to_owned()).or_default() += 1;
         self.sync_volumes();
         let event = crate::sound_events::normalize(event);
+        // Rezyth Settings' mufflers scale this client's playback only; the
+        // captured volume above is what the guests hear.
+        let volume = volume * self.muffler(&event);
         let source = self
             .source_override
             .unwrap_or_else(|| crate::settings::sound_source(&event));
@@ -1391,6 +1442,9 @@ impl Audio {
         }
         self.sync_volumes();
         let event = crate::sound_events::normalize(event);
+        // Rezyth Settings' mufflers scale this client's playback only; the
+        // captured volume above is what the guests hear.
+        let volume = volume * self.muffler(&event);
         let source = self
             .source_override
             .unwrap_or_else(|| crate::settings::sound_source(&event));
