@@ -534,6 +534,32 @@ Verified green: checks run **43630512385** at `9eaef6023` (fmt, clippy `-D warni
 new `game::block_entity_anims::opener_recheck_tests` among the gameplay tests, and the client
 library's 1,509) and the weave run **43630436075** at the same commit.
 
+A second round closed the two gaps the first left. A shulker box's lid still stuck: its count
+never rode the opener counter and no tick arm recounted it. And — for every container — the
+recheck's correction never reached the clients at all, because `runBlockEvents` broadcasts an
+event only when the block reports it handled, and the world's block-level `triggerEvent`
+answered false for chests and shulker boxes, whose *block entities* are what handle id 1 in
+vanilla (`BaseEntityBlock.triggerEvent` forwards to the block entity).
+
+- `horizon-world/src/level/pistons.rs`: `Sim::trigger_event` reports id-1 chest,
+  ender-chest and shulker box events handled, so a corrected count is broadcast
+  (`LevelEvent::BlockEntityEvent` → the server's own lid state and
+  `ClientboundBlockEventPacket` for the window client and the guests, which re-run it through
+  `client_block_event`).
+- `horizon-world/src/level/tick.rs`: the `Class::ShulkerBox` tick arm (recount, broadcast a
+  changed count, reschedule while open), and the chest arm broadcasts on a change only, as
+  vanilla's `openerCountChanged` does.
+- `game/block_entity_anims.rs`: a shulker box's count rides `count_opener` (the chests'
+  counter), so its first opener schedules the five-tick recheck;
+  `game.rs`'s `recheck_container_openers` answers for `Class::ShulkerBox`.
+- `horizon-world/src/level/tests.rs`: a test pins that a chest's and a shulker box's counted
+  lid event is handled and reaches the clients, and that another id reports nothing.
+
+Verified green: checks run **43661338385** at `625c5bc32` (fmt, clippy `-D warnings`, the new
+`level::tests::a_chests_lid_event_is_handled_and_reaches_the_clients` among the workspace's
+tests) and the weave run **43661337993** at the same commit. The test's formatting follow-up
+`0c071896e` is verified by checks run **43662784525** and weave run **43662539132**.
+
 ## The creative inventory: Bedrock's X on the item panel
 
 The creative screen's item panel carries the same close button every container screen has: a
