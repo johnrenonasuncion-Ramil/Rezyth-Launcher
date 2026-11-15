@@ -626,7 +626,10 @@ impl Game<'_> {
             let o = &self.ui.chat.options;
             o.width != chat.width || o.scale != chat.scale || o.line_spacing != chat.line_spacing
         };
+        // Mention Ping compares a message against the local player's name.
+        let own_name = self.options.player_name();
         self.ui.chat.options = chat;
+        self.ui.chat.mention_name = own_name;
         if rescale {
             self.ui.chat.rescale(&self.gui.atlas);
         }

@@ -6331,6 +6331,12 @@ impl Game<'_> {
         self.repro_tick();
         // Hud.tick ends with ChatComponent.tick.
         self.ui.chat.tick(&self.gui.atlas, self.ticks);
+        // Name Mention Ping (Rezyth Settings): a message named this player; a
+        // soft pling, heard by this client alone.
+        if self.ui.chat.take_mention_ping() {
+            self.audio
+                .play("minecraft:block.note_block.pling", None, 0.8, 1.0);
+        }
         self.tick_sign_editor();
         self.track_experience_display();
         self.tick_enchanting_book();

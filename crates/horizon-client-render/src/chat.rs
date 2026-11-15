@@ -137,6 +137,12 @@ pub struct ChatOptions {
     /// Chat Colors (`chatColors`): legacy `§` codes format the text, or are
     /// left out.
     pub colors: bool,
+    /// Rezyth Settings' Chat switches (`volt_chat`): a `[HH:MM]` in-game
+    /// clock on every message, adjacent repeats collapsed into one line with
+    /// a count, and a ping when a message names the local player.
+    pub timestamps: bool,
+    pub compact_spam: bool,
+    pub mention_ping: bool,
 }
 impl Default for ChatOptions {
     fn default() -> Self {
@@ -149,6 +155,9 @@ impl Default for ChatOptions {
             height_focused: 1.0,
             height_unfocused: 70.0 / 160.0,
             line_spacing: 0.0,
+            timestamps: false,
+            compact_spam: false,
+            mention_ping: false,
         }
     }
 }
@@ -265,6 +274,14 @@ pub struct Chat {
     pub log: bool,
     /// Messages added since the start, for the control socket's events.
     pub received: u64,
+    /// The last message's plain text and its adjacent repeat count (Rezyth
+    /// Settings' Compact Duplicate Chat).
+    last_plain: Option<String>,
+    spam: u32,
+    /// A message named the local player since `take_mention_ping`.
+    mention_ping: bool,
+    /// The local player's name, for `mention_ping` (the game sets it).
+    pub mention_name: String,
     /// The Chat option's `visibleMessageFilter` (`set_abilities`).
     abilities: ChatAbilities,
     /// `ChatComponent.messageDeletionQueue`: deletions of messages still
@@ -360,7 +377,7 @@ impl Chat {
             focused,
         );
     }
-    fn push_message(&mut self, font: &crate::font::Font, message: Message, focused: bool) {
+    fn push_message(&mut self, font: &crate::font::Font, mut message: Message, focused: bool) {
         if !self.abilities.shows(message.source) {
             return;
         }
@@ -370,10 +387,43 @@ impl Chat {
         if self.log {
             println!("[CHAT] {plain}");
         }
+        // Compact Duplicate Chat (Rezyth Settings): an adjacent repeat is the
+        // same line with a count, not another line.
+        if self.options.compact_spam && self.last_plain.as_deref() == Some(&*plain) {
+            self.spam += 1;
+            if let Some(line) = self.lines.first_mut() {
+                line.content = Text::literal(format!("{plain} (x{})", self.spam));
+            }
+            self.received += 1;
+            return;
+        }
+        self.spam = 1;
+        self.last_plain = Some(plain.clone());
+        // Mention Ping: the local player's name earns the pling the game
+        // drains (`take_mention_ping`).
+        if self.options.mention_ping
+            && !self.mention_name.is_empty()
+            && plain
+                .to_lowercase()
+                .contains(&self.mention_name.to_lowercase())
+        {
+            self.mention_ping = true;
+        }
+        // Chat Timestamps: the in-game clock, tick 0 being 06:00 AM.
+        if self.options.timestamps {
+            let minutes = ((message.added.rem_euclid(24_000) + 6_000) % 24_000) * 60 / 1_000;
+            let stamp = Text::literal(format!("[{:02}:{:02}] ", minutes / 60, minutes % 60));
+            message.content = stamp.append(message.content);
+        }
         self.add_lines(font, &message, focused);
         self.messages.insert(0, message);
         self.messages.truncate(100);
         self.received += 1;
+    }
+    /// Whether a message has named the local player since the last call
+    /// (Rezyth Settings' Name Mention Ping): the game plays its pling.
+    pub fn take_mention_ping(&mut self) -> bool {
+        std::mem::take(&mut self.mention_ping)
     }
     fn add_lines(&mut self, font: &crate::font::Font, message: &Message, focused: bool) {
         // GuiMessage.splitLines: room for the tag's icon (its width, 4 before and 2 after).

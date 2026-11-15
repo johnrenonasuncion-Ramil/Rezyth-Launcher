@@ -761,6 +761,11 @@ impl Settings {
             height_unfocused: f64::from(self.chat_height_unfocused),
             line_spacing: f64::from(self.chat_line_spacing),
             colors: self.chat_colors,
+            // Rezyth Settings' Chat switches; the game fills Chat's
+            // mention_name with the local player's name.
+            timestamps: self.extras.volt_chat.chat_timestamps,
+            compact_spam: self.extras.volt_chat.chat_compact_spam,
+            mention_ping: self.extras.volt_chat.chat_mention_ping,
         }
     }
 }

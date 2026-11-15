@@ -307,6 +307,10 @@ fn chat(c: &Value, h: i32, atlas: &HudAtlas) -> Vec<GuiDraw> {
         height_unfocused: option("chatHeightUnfocused"),
         line_spacing: option("chatLineSpacing"),
         colors: c["chatColors"].as_bool().unwrap_or(true),
+        // The Rezyth Settings switches: the fixture has no such rows.
+        timestamps: false,
+        compact_spam: false,
+        mention_ping: false,
     };
     for m in c["messages"].as_array().into_iter().flatten() {
         // GuiMessageTag indicator colours: systemSinglePlayer and chatError.
