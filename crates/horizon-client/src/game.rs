@@ -11514,6 +11514,35 @@ impl Game<'_> {
             .collect()
     }
 
+    /// The Client Time & Weather switch (Rezyth Settings): the day time and
+    /// the rain/thunder levels the client's sky, fog and lighting sample, as
+    /// the mode picks them. `Server Live` leaves the server's own; loot,
+    /// spawns and everything a server decides still follow the server.
+    fn client_sky_inputs(&self, partial: f32) -> (i64, f32, f32) {
+        let (mut rain, mut thunder) = self.world.weather.levels(partial);
+        let day = self.world.day_time;
+        let at = |t: i64| day - day.rem_euclid(24_000) + t;
+        match self.settings.extras.volt_mods.time_weather.as_str() {
+            "noon" => {
+                rain = 0.0;
+                thunder = 0.0;
+                (at(6_000), rain, thunder)
+            }
+            "sunset" => {
+                rain = 0.0;
+                thunder = 0.0;
+                (at(23_000), rain, thunder)
+            }
+            "midnight" => {
+                rain = 0.0;
+                thunder = 0.0;
+                (at(18_000), rain, thunder)
+            }
+            // Cozy Rain: a steady downpour, never a thunderstorm.
+            "rain" => (day, rain.max(1.0), 0.0),
+            _ => (day, rain, thunder),
+        }
+    }
     fn sky_darken(&self) -> i32 {
         if self.dim == Dim::Nether {
             return 11;
@@ -11525,9 +11554,9 @@ impl Game<'_> {
                 .sample(self.world.day_time, None, None);
             return (15.0 - 15.0 * sky.sky_light_level).round() as i32;
         }
-        let (rain, thunder) = self.world.weather.levels(1.0);
+        let (day_time, rain, thunder) = self.client_sky_inputs(1.0);
         // Sampled once per (time, weather): every mob asks each tick.
-        let key = (self.world.day_time, rain.to_bits(), thunder.to_bits());
+        let key = (day_time, rain.to_bits(), thunder.to_bits());
         if let Some((k, darken)) = self.sky_darken_memo.get()
             && k == key
         {
@@ -11535,7 +11564,7 @@ impl Game<'_> {
         }
         let darken = horizon_client::environment::sky_darken(
             self.res.environment(),
-            self.world.day_time,
+            day_time,
             rain,
             thunder,
         );
@@ -15976,12 +16005,12 @@ impl Game<'_> {
         );
         // visual/water_fog_color: no dimension sets it, its default is #050533.
         let water_fog = blend(|b| Some(b.water_fog), [0.0; 3]);
-        let mut sky = environment.sample(self.world.day_time, Some(biome_sky), Some(biome_fog));
-        let (rain, thunder) = if self.dim == Dim::Overworld {
-            self.world.weather.levels(alpha as f32)
+        let (day_time, rain, thunder) = if self.dim == Dim::Overworld {
+            self.client_sky_inputs(alpha as f32)
         } else {
-            (0.0, 0.0)
+            (self.world.day_time, 0.0, 0.0)
         };
+        let mut sky = environment.sample(day_time, Some(biome_sky), Some(biome_fog));
         horizon_client::environment::apply_weather(&mut sky, rain, thunder);
         self.end_flash_sky(&mut sky, alpha);
         if self.flash > 0 && !self.settings.file.bool("hideLightningFlashes") {
