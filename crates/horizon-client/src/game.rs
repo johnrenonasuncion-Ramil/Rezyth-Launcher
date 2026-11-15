@@ -14054,6 +14054,25 @@ impl Game<'_> {
     }
     /// FirstPersonHandsAndItemsRenderer: the right arm or the held items of
     /// both hands in view space, converted to camera-relative world space.
+    /// Rezyth Settings' First-Person Hand sliders (`viewmodel_custom`): the
+    /// hand's local translate, roll and scale. Identity unless the switch is
+    /// on, so the vanilla hand is untouched by default.
+    fn viewmodel_matrix(&self) -> glam::Mat4 {
+        let v = &self.settings.extras.volt_qol;
+        if !v.viewmodel_custom {
+            return glam::Mat4::IDENTITY;
+        }
+        // 0.005 blocks a step (the sliders run -60..=60), the scale in
+        // percent and the roll in degrees, as their rows show them.
+        let t = glam::Mat4::from_translation(glam::Vec3::new(
+            f32::from(v.vm_offset_x) * 0.005,
+            f32::from(v.vm_offset_y) * 0.005,
+            f32::from(v.vm_offset_z) * 0.005,
+        ));
+        let r = glam::Mat4::from_rotation_z(f32::from(v.vm_roll_deg).to_radians());
+        let s = glam::Mat4::from_scale(glam::Vec3::splat(f32::from(v.vm_scale_pct) / 100.0));
+        t * r * s
+    }
     fn hand_geometry(&mut self, alpha: f64) -> Vec<Vertex> {
         let mut out = Vec::new();
         // GameRenderer.renderItemInHand: F1 hides the hand with the HUD.
@@ -14149,6 +14168,8 @@ impl Game<'_> {
             };
             // The main hand on its arm, the off hand on the other one.
             let left = self.settings.main_hand_left != (hand == Hand::Off);
+            // The hand's own transform (Rezyth Settings' First-Person Hand).
+            let vm = self.viewmodel_matrix();
             let Some(stack) = item else {
                 // renderArmWithItem: only the main hand's empty arm shows,
                 // on the main arm (the left one with the main hand set to
@@ -14158,6 +14179,7 @@ impl Game<'_> {
                 }
                 // renderPlayerArm
                 let m = to_world
+                    * vm
                     * horizon_client::first_person::player_arm_pose(left, inverse_height, attack);
                 self.first_person_arm(left, m, packed, &mut out);
                 continue;
@@ -14170,7 +14192,7 @@ impl Game<'_> {
                 if !self.own_invisible() {
                     for (arm, pose) in map_arm_poses(hold, left, self.pitch, inverse_height, attack)
                     {
-                        self.first_person_arm(arm, to_world * pose, packed, &mut out);
+                        self.first_person_arm(arm, to_world * vm * pose, packed, &mut out);
                     }
                 }
                 match hold {
@@ -14264,6 +14286,7 @@ impl Game<'_> {
                 _ => ItemPose::Swing,
             };
             let m = to_world
+                * vm
                 * horizon_client::first_person::item_pose(left, inverse_height, attack, pose);
             // Seeded by the player id plus the context ordinal.
             let (context, seed) = if left {

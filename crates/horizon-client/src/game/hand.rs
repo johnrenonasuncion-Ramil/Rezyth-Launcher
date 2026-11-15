@@ -191,7 +191,13 @@ impl Game<'_> {
             .amplifier("haste")
             .max(effects.amplifier("conduit_power"));
         let fatigue = effects.amplifier("mining_fatigue");
-        let duration = swing_duration(animation, dig_speed, fatigue);
+        let mut duration = swing_duration(animation, dig_speed, fatigue);
+        // Swing Animation Speed (Rezyth Settings): a faster swing runs the
+        // animation's ticks down; 100% is the vanilla duration.
+        let v = &self.settings.extras.volt_qol;
+        if v.viewmodel_custom && v.vm_swing_speed_pct != 100 {
+            duration = (duration * 100 / i32::from(v.vm_swing_speed_pct.max(1))).max(1);
+        }
         if self.swing.start_if_able(hand, animation, duration) {
             self.swings_started += 1;
         }
