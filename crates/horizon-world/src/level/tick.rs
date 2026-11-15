@@ -102,13 +102,15 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                     }
                 }
                 Class::Chest | Class::EnderChest => {
-                    // recheckOpen: openerCountChanged broadcasts the lid, a
-                    // trapped chest also updates its neighbours on a change,
-                    // and the recheck repeats while anyone has it open.
+                    // recheckOpen: openerCountChanged broadcasts the lid on a
+                    // change, a trapped chest also updates its neighbours on
+                    // one, and the recheck repeats while anyone has it open.
                     if let Some((previous, count)) = self.level.recheck_container_openers(pos) {
-                        self.block_event(pos, block, 1, count);
-                        if previous != count && b.data(state).is(Class::TrappedChest) {
-                            self.trapped_chest_update_neighbors(pos, state);
+                        if previous != count {
+                            self.block_event(pos, block, 1, count);
+                            if b.data(state).is(Class::TrappedChest) {
+                                self.trapped_chest_update_neighbors(pos, state);
+                            }
                         }
                         if count > 0 {
                             self.schedule_tick(pos, block, 5);
@@ -153,6 +155,22 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
                         }
                         // ContainerOpenersCounter.scheduleRecheck holds only
                         // while someone has it open.
+                        if count > 0 {
+                            self.schedule_tick(pos, block, 5);
+                        }
+                    }
+                }
+                Class::ShulkerBox => {
+                    // ShulkerBoxBlock.tick → ShulkerBoxBlockEntity.recheckOpen
+                    // → ContainerOpenersCounter.recheckOpeners: the box
+                    // recounts its openers, a changed count reaches the
+                    // clients as block event 1 (`BaseEntityBlock
+                    // .triggerEvent` → `ShulkerBoxBlockEntity.triggerEvent`),
+                    // and the recheck repeats while anyone has it open.
+                    if let Some((previous, count)) = self.level.recheck_container_openers(pos) {
+                        if previous != count {
+                            self.block_event(pos, block, 1, count);
+                        }
                         if count > 0 {
                             self.schedule_tick(pos, block, 5);
                         }

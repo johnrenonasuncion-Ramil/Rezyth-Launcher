@@ -151,6 +151,16 @@ impl<L: LevelAccess + ?Sized> Sim<'_, L> {
             // BellBlockEntity.triggerEvent handles event 1; the caller
             // reports handled events (`runBlockEvents` broadcasts them).
             a == 1
+        } else if data.is(super::classes::Class::Chest)
+            || data.is(super::classes::Class::EnderChest)
+            || data.is(super::classes::Class::ShulkerBox)
+        {
+            // `BaseEntityBlock.triggerEvent` forwards the event to the block
+            // entity: `ChestBlockEntity` and `ShulkerBoxBlockEntity` handle
+            // id 1 (the lid's open count) and report it handled, so
+            // `runBlockEvents` broadcasts it to the clients, whose lids
+            // follow the count.
+            a == 1
         } else if data.is(super::classes::Class::PotentSulfur) {
             // PotentSulfurBlock.triggerEvent: the block entity notes the
             // eruption's game time (the caller's), and the event is handled.

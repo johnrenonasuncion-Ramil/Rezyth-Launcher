@@ -143,15 +143,14 @@ impl Game<'_> {
                 self.barrel_openers_changed(key, open)
             }
             Some(Ticker::Shulker { .. }) => {
-                let shulker = self.be_anims.shulkers.entry(pos).or_default();
-                let (count, edge) = if open {
-                    shulker.start_open()
-                } else {
-                    shulker.stop_open()
-                };
+                // `ShulkerBoxBlockEntity.startOpen`/`stopOpen`: the count is
+                // the opener counter's (`ContainerOpenersCounter`), as for a
+                // chest, so the block tick recounts it too, and the event
+                // carries it to the lid on every side.
+                let (before, count) = self.count_opener(key, open);
                 self.block_entity_event(pos, 1, count);
                 self.lan_block_event(pos, 1, count);
-                edge
+                (before == 0) != (count == 0)
             }
             _ => false,
         }

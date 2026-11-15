@@ -1482,14 +1482,19 @@ impl LevelAccess for GameLevel<'_> {
         self.behaviours.is_raining_at(self, pos)
     }
     /// `ContainerOpenersCounter.recheckOpeners` for the block entity at `pos`,
-    /// through `ChestBlock.tick`, `EnderChestBlock.tick` and `BarrelBlock.tick`:
-    /// the count a recount of the players with that container open finds, and
-    /// the count it replaces. Only the block entities that keep a counter and
-    /// a scheduled recheck answer; anything else is `None`.
+    /// through `ChestBlock.tick`, `EnderChestBlock.tick`, `BarrelBlock.tick`
+    /// and `ShulkerBoxBlock.tick`: the count a recount of the players with
+    /// that container open finds, and the count it replaces. Only the block
+    /// entities that keep a counter and a scheduled recheck answer; anything
+    /// else is `None`.
     fn recheck_container_openers(&mut self, pos: BlockPos) -> Option<(i32, i32)> {
         use horizon_world::level::classes::Class;
         let data = self.behaviours.data(self.world.block(pos.x, pos.y, pos.z));
-        if !(data.is(Class::Chest) || data.is(Class::EnderChest) || data.is(Class::Barrel)) {
+        if !(data.is(Class::Chest)
+            || data.is(Class::EnderChest)
+            || data.is(Class::Barrel)
+            || data.is(Class::ShulkerBox))
+        {
             return None;
         }
         Some(block_entity_anims::recheck_opener_count(

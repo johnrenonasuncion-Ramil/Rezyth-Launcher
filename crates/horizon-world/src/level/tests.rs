@@ -1791,6 +1791,58 @@ fn a_handled_block_event_reaches_the_clients() {
     )));
 }
 
+/// `BaseEntityBlock.triggerEvent` forwards the event to the block entity:
+/// a chest's or a shulker box's lid event (id 1, the open count) is handled,
+/// so `runBlockEvents` reports it for the clients, whose lids follow the
+/// count; an id the block entity does not handle reports nothing.
+#[test]
+fn a_chests_lid_event_is_handled_and_reaches_the_clients() {
+    let mut w = world!();
+    w.floor(0, 10, "stone");
+    let at = BlockPos::new(0, 1, 0);
+    for name in ["chest", "shulker_box"] {
+        let state = w.id(name, &[("facing", "north")]);
+        w.set(at, state);
+        let block = w.b().block(state);
+        w.level.events.clear();
+        w.ticks.block_events.push(BlockEventData {
+            pos: at,
+            block,
+            param_a: 1,
+            param_b: 2,
+        });
+        w.f.behaviours.run_block_events(&mut w.level, &mut w.ticks);
+        assert!(
+            w.level.events.iter().any(|e| matches!(
+                e,
+                LevelEvent::BlockEntityEvent {
+                    pos,
+                    a: 1,
+                    b: 2,
+                    ..
+                } if *pos == at
+            )),
+            "{name}'s counted lid event is handled and reaches the clients"
+        );
+        // Id 2 is no lid event: not handled, not reported.
+        w.level.events.clear();
+        w.ticks.block_events.push(BlockEventData {
+            pos: at,
+            block,
+            param_a: 2,
+            param_b: 0,
+        });
+        w.f.behaviours.run_block_events(&mut w.level, &mut w.ticks);
+        assert!(
+            !w.level
+                .events
+                .iter()
+                .any(|e| matches!(e, LevelEvent::BlockEntityEvent { .. })),
+            "id 2 must not be reported for a {name}"
+        );
+    }
+}
+
 /// `ClientLevel.blockEvent`: the client re-runs `triggerEvent` on its own
 /// level, which builds the moving block entities a piston's `moveBlocks`
 /// makes, and ticks them to the placed block.
