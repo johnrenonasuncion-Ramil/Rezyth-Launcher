@@ -999,20 +999,11 @@ mod tests {
     #[test]
     fn the_bedrock_inventory_choice_is_off_by_default_and_round_trips() {
         let mut s = Settings::default();
-        assert!(
-            !s.bedrock_inventory,
-            "the Java-style creative screen is the default"
-        );
+        assert!(!s.bedrock_inventory, "the Java-style screen is the default");
         s.bedrock_inventory = true;
-        assert!(
-            Settings::parse(&s.serialize()).bedrock_inventory,
-            "turning it on is saved"
-        );
+        assert!(Settings::parse(&s.serialize()).bedrock_inventory, "on is saved");
         s.bedrock_inventory = false;
-        assert!(
-            !Settings::parse(&s.serialize()).bedrock_inventory,
-            "so is turning it back off"
-        );
+        assert!(!Settings::parse(&s.serialize()).bedrock_inventory, "off is saved");
     }
     #[test]
     fn client_information_maps_the_stored_main_hand() {
