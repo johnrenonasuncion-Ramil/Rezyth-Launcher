@@ -323,6 +323,7 @@ mod tests {
             overlay: leaves,
             leaves,
             pane: false,
+            glass: false,
             opaque_cube: opaque,
             blocks_flow: false,
             ice: false,

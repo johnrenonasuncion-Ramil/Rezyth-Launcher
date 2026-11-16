@@ -20,7 +20,7 @@ use horizon_assets::model::Direction as ModelDirection;
 use horizon_core::{
     biome::BiomeZoom, geometry::Direction, position::BlockPos, random::position_seed,
 };
-use horizon_optifine::ctm::connect::{Axes as CtmAxes, Face as CtmFace};
+use horizon_optifine::ctm::connect::{self as geometry, Axes as CtmAxes, Face as CtmFace};
 use horizon_world::{
     block_render::FaceVisibility,
     fluid::{FluidKind, FluidState},
@@ -532,6 +532,9 @@ struct Info {
     /// A glass pane: connected-texture tiles take the cube's UVs on it (OptiFine's pane models
     /// drop vanilla's mirrored faces).
     pane: bool,
+    /// A glass block (`glass`, `*_stained_glass`, `tinted_glass`): with the
+    /// Connected Glass option its faces inset their joined edges.
+    glass: bool,
     /// A full opaque cube: `RenderShape::Model`, `can_occlude`, `solid_render`
     /// and a full collision shape. The only block leaf culling treats as solid.
     opaque_cube: bool,
@@ -720,6 +723,7 @@ impl MeshTables {
                 overlay: s.has_class("HalfTransparentBlock") || s.has_class("LeavesBlock"),
                 leaves: s.has_class("LeavesBlock"),
                 pane: s.has_class("IronBarsBlock") && name.ends_with("glass_pane"),
+                glass: name.ends_with("glass"),
                 opaque_cube: leaf_culling::opaque_cube(
                     s.render_shape,
                     s.can_occlude,
@@ -1037,6 +1041,8 @@ fn hidden(rows: &[u32], x: i32, y: i32, z: i32) -> bool {
         r & r << 1 & r >> 1 & row(y - 1, z) & row(y + 1, z) & row(y, z - 1) & row(y, z + 1);
     around >> (x + B) & 1 != 0
 }
+#[cfg(test)]
+mod connected_glass_tests;
 #[cfg(test)]
 mod leaf_culling_tests;
 #[cfg(test)]
@@ -1365,6 +1371,10 @@ pub struct Mesher<'a> {
     pub smooth_lighting: bool,
     /// The `cutoutLeaves` option (fancy graphics); off makes leaves opaque.
     pub cutout_leaves: bool,
+    /// The Visuals tab's Connected Glass: a glass face insets each of its
+    /// edges that borders more glass one texel, so no frame is drawn
+    /// between two panes.
+    pub connected_glass: bool,
     /// Sprite layers a shader pack moves into the translucent pass, by layer.
     pub translucent_layers: &'a [bool],
     /// What the worker does with leaf faces inside a canopy.
@@ -1663,6 +1673,26 @@ impl Mesher<'_> {
                 &mut push,
             )
         };
+        // The Visuals tab's Connected Glass: with no connected-texture rule on
+        // the face, a glass face's edges that border more glass inset their
+        // texture edge one texel, so the frame between two panes goes away.
+        let own_uv = if self.connected_glass && state.glass && matches!(pick, Pick::Keep) {
+            let ctm_face = CtmFace::ALL[q.facing as usize];
+            let mask = geometry::neighbours(
+                CtmAxes::cube(ctm_face),
+                ctm_face.normal(),
+                false,
+                |offset| {
+                    self.tables
+                        .info
+                        .get(neighbour(offset) as usize)
+                        .is_some_and(|i| i.glass)
+                },
+            );
+            inset_uvs(q.uv, mask)
+        } else {
+            q.uv
+        };
         let vertices = |tint: Option<u32>, uv: [[f32; 2]; 4]| {
             std::array::from_fn::<_, 4, _>(|i| {
                 let g = gray[i] as u32;
@@ -1698,7 +1728,7 @@ impl Mesher<'_> {
             if state.pane && tiled {
                 standard()
             } else {
-                q.uv
+                own_uv
             },
         );
         // Opaque leaves (forceOpaque) and leaves a leaf-culling mode proved internal draw in the
@@ -1870,6 +1900,38 @@ fn crossing(c: &[(TerrainVertex, [f32; 2]); 4], to: usize) -> Option<f32> {
     let k = usize::from((b[1] - a[1]).abs() > (b[0] - a[0]).abs());
     let at = (0.5 - a[k]) / (b[k] - a[k]);
     (at > 0.0 && at < 1.0).then_some(at)
+}
+/// One texel of the quad's own texture, inset from each edge a neighbour
+/// joins ([`geometry::neighbours`]' bits): the joined frame pixel goes, so
+/// two panes' borders do not double up.
+fn inset_uvs(uv: [[f32; 2]; 4], mask: u8) -> [[f32; 2]; 4] {
+    let (mut umin, mut umax) = (f32::MAX, f32::MIN);
+    let (mut vmin, mut vmax) = (f32::MAX, f32::MIN);
+    for [u, v] in uv {
+        umin = umin.min(u);
+        umax = umax.max(u);
+        vmin = vmin.min(v);
+        vmax = vmax.max(v);
+    }
+    let (du, dv) = ((umax - umin) / 16.0, (vmax - vmin) / 16.0);
+    uv.map(|[u, v]| {
+        let u = if mask & geometry::R != 0 && u == umax {
+            u - du
+        } else if mask & geometry::L != 0 && u == umin {
+            u + du
+        } else {
+            u
+        };
+        // The texture's up is against v: a joined `U` edge insets the top.
+        let v = if mask & geometry::D != 0 && v == vmax {
+            v - dv
+        } else if mask & geometry::U != 0 && v == vmin {
+            v + dv
+        } else {
+            v
+        };
+        [u, v]
+    })
 }
 /// The cuts of a `ctm_compact` face, the same along `s` and `t`: both edges' crossings. Pieces
 /// on the quad's 0-2 diagonal are then square, so their own triangles lie on the quad's and a

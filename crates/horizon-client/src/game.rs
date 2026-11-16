@@ -14456,7 +14456,8 @@ impl Game<'_> {
         );
         self.streaming.radius = self.render_distance_in_use();
         // Options.biomeBlendRadius, ambientOcclusion, cutoutLeaves and the
-        // leaf-culling mode: LevelExtractor.allChanged when they change.
+        // leaf-culling mode: LevelExtractor.allChanged when they change, and
+        // so does the Visuals tab's Connected Glass (it changes the quads).
         let leaf_culling = self.effective_leaf_culling();
         let (s, st) = (&self.settings, &self.streaming);
         let remesh = (
@@ -14464,16 +14465,19 @@ impl Game<'_> {
             s.smooth_lighting,
             s.cutout_leaves,
             leaf_culling,
+            s.extras.volt_visuals.connected_glass,
         ) != (
             st.biome_blend,
             st.smooth_lighting,
             st.cutout_leaves,
             st.leaf_culling,
+            st.connected_glass,
         );
         self.streaming.biome_blend = self.settings.biome_blend;
         self.streaming.smooth_lighting = self.settings.smooth_lighting;
         self.streaming.cutout_leaves = self.settings.cutout_leaves;
         self.streaming.leaf_culling = leaf_culling;
+        self.streaming.connected_glass = self.settings.extras.volt_visuals.connected_glass;
         if remesh {
             self.all_sections_changed();
         }

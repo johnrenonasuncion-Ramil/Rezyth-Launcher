@@ -89,6 +89,7 @@ fn info(solid: bool) -> Info {
         overlay: false,
         leaves: false,
         pane: false,
+        glass: false,
         opaque_cube: solid,
         blocks_flow: false,
         ice: false,
