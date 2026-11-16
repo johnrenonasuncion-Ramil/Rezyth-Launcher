@@ -324,6 +324,7 @@ mod tests {
             leaves,
             pane: false,
             glass: false,
+            grass_block: false,
             opaque_cube: opaque,
             blocks_flow: false,
             ice: false,

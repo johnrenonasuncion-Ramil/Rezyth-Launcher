@@ -223,6 +223,7 @@ fn relit_columns_keep_every_mesh_current() {
             smooth_lighting: true,
             cutout_leaves: true,
             connected_glass: false,
+            better_grass_sides: false,
             translucent_layers: &[],
             leaf_culling: LeafCullingMode::Off,
             assets: &context.assets,

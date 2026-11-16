@@ -14466,18 +14466,21 @@ impl Game<'_> {
             s.cutout_leaves,
             leaf_culling,
             s.extras.volt_visuals.connected_glass,
+            s.extras.volt_visuals.better_grass_sides,
         ) != (
             st.biome_blend,
             st.smooth_lighting,
             st.cutout_leaves,
             st.leaf_culling,
             st.connected_glass,
+            st.better_grass_sides,
         );
         self.streaming.biome_blend = self.settings.biome_blend;
         self.streaming.smooth_lighting = self.settings.smooth_lighting;
         self.streaming.cutout_leaves = self.settings.cutout_leaves;
         self.streaming.leaf_culling = leaf_culling;
         self.streaming.connected_glass = self.settings.extras.volt_visuals.connected_glass;
+        self.streaming.better_grass_sides = self.settings.extras.volt_visuals.better_grass_sides;
         if remesh {
             self.all_sections_changed();
         }

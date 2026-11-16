@@ -83,6 +83,7 @@ fn mesh(
         smooth_lighting: false,
         cutout_leaves: true,
         connected_glass: false,
+        better_grass_sides: false,
         translucent_layers: &[],
         leaf_culling: mode,
     };

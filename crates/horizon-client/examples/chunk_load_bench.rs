@@ -225,6 +225,7 @@ fn mesher<'a>(context: &'a WorkerContext, seed: i64) -> Mesher<'a> {
         smooth_lighting: true,
         cutout_leaves: true,
         connected_glass: false,
+        better_grass_sides: false,
         translucent_layers: &[],
         leaf_culling: LeafCullingMode::Off,
         assets: &context.assets,

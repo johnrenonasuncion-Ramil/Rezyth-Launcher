@@ -268,6 +268,7 @@ struct MeshSettings {
     smooth_lighting: bool,
     cutout_leaves: bool,
     connected_glass: bool,
+    better_grass_sides: bool,
     translucent_layers: Arc<[bool]>,
     leaf_culling: LeafCullingMode,
 }
@@ -525,6 +526,9 @@ pub struct Streaming {
     pub cutout_leaves: bool,
     /// The Visuals tab's Connected Glass (`volt_visuals.connected_glass`).
     pub connected_glass: bool,
+    /// The Visuals tab's Better Grass Sides
+    /// (`volt_visuals.better_grass_sides`).
+    pub better_grass_sides: bool,
     /// Sprite layers a shader pack draws in the translucent pass (`[[materials]]
     /// translucent`), by layer; empty without one.
     pub translucent_layers: Arc<[bool]>,
@@ -948,6 +952,7 @@ impl<G: ChunkGenerator> Jobs<G> {
                     smooth_lighting: settings.smooth_lighting,
                     cutout_leaves: settings.cutout_leaves,
                     connected_glass: settings.connected_glass,
+                    better_grass_sides: settings.better_grass_sides,
                     translucent_layers: &settings.translucent_layers,
                     leaf_culling: settings.leaf_culling,
                     assets: &context.assets,
@@ -1061,6 +1066,7 @@ impl Streaming {
             smooth_lighting: true,
             cutout_leaves: true,
             connected_glass: false,
+            better_grass_sides: false,
             translucent_layers: Arc::from([]),
             leaf_culling: LeafCullingMode::Off,
             light_tables,
@@ -2045,6 +2051,7 @@ impl Streaming {
                             smooth_lighting: self.smooth_lighting,
                             cutout_leaves: self.cutout_leaves,
                             connected_glass: self.connected_glass,
+                            better_grass_sides: self.better_grass_sides,
                             translucent_layers: self.translucent_layers.clone(),
                             leaf_culling: self.leaf_culling,
                         },

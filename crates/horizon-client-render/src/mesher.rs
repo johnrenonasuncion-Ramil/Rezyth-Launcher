@@ -535,6 +535,9 @@ struct Info {
     /// A glass block (`glass`, `*_stained_glass`, `tinted_glass`): with the
     /// Connected Glass option its faces inset their joined edges.
     glass: bool,
+    /// `grass_block` (not snowy): with Better Grass Sides its exposed sides
+    /// draw the tinted top texture.
+    grass_block: bool,
     /// A full opaque cube: `RenderShape::Model`, `can_occlude`, `solid_render`
     /// and a full collision shape. The only block leaf culling treats as solid.
     opaque_cube: bool,
@@ -575,6 +578,8 @@ pub struct MeshTables {
     water_overlay: u16,
     lava_still: u16,
     lava_flow: u16,
+    /// `block/grass_block_top`, for Better Grass Sides.
+    grass_top: u16,
     animated_layers: Vec<bool>,
 }
 fn stem_color(age: u8) -> u32 {
@@ -724,6 +729,9 @@ impl MeshTables {
                 leaves: s.has_class("LeavesBlock"),
                 pane: s.has_class("IronBarsBlock") && name.ends_with("glass_pane"),
                 glass: name.ends_with("glass"),
+                // A snowy grass block's sides are snow, not grass.
+                grass_block: name == "grass_block"
+                    && props.get("snowy").map(String::as_str) != Some("true"),
                 opaque_cube: leaf_culling::opaque_cube(
                     s.render_shape,
                     s.can_occlude,
@@ -750,6 +758,7 @@ impl MeshTables {
             water_overlay: layer("minecraft:block/water_overlay")?,
             lava_still: layer("minecraft:block/lava_still")?,
             lava_flow: layer("minecraft:block/lava_flow")?,
+            grass_top: layer("minecraft:block/grass_block_top")?,
             animated_layers,
         })
     }
@@ -1041,6 +1050,8 @@ fn hidden(rows: &[u32], x: i32, y: i32, z: i32) -> bool {
         r & r << 1 & r >> 1 & row(y - 1, z) & row(y + 1, z) & row(y, z - 1) & row(y, z + 1);
     around >> (x + B) & 1 != 0
 }
+#[cfg(test)]
+mod better_grass_tests;
 #[cfg(test)]
 mod connected_glass_tests;
 #[cfg(test)]
@@ -1375,6 +1386,9 @@ pub struct Mesher<'a> {
     /// edges that borders more glass one texel, so no frame is drawn
     /// between two panes.
     pub connected_glass: bool,
+    /// The Visuals tab's Better Grass Sides: a grass block's exposed sides
+    /// draw the tinted top texture.
+    pub better_grass_sides: bool,
     /// Sprite layers a shader pack moves into the translucent pass, by layer.
     pub translucent_layers: &'a [bool],
     /// What the worker does with leaf faces inside a canopy.
@@ -1619,7 +1633,18 @@ impl Mesher<'_> {
             };
             ([lighting::gray(directional); 4], [coords; 4], [1.0f32; 4])
         };
-        let tint = Self::tint(state, q.tint_index, tints, pos);
+        // The Visuals tab's Better Grass Sides: a grass block's exposed side
+        // (the untinted base quad) draws the tinted top texture, so a slope
+        // reads green from the side.
+        let grass_side = self.better_grass_sides
+            && state.grass_block
+            && !matches!(q.facing, ModelDirection::Down | ModelDirection::Up)
+            && q.tint_index < 0;
+        let tint = if grass_side {
+            Self::tint(state, 0, tints, pos)
+        } else {
+            Self::tint(state, q.tint_index, tints, pos)
+        };
         // Fusion's and then OptiFine's connected textures: another sprite, or one per quarter,
         // and the overlays drawn over it (a few per face at most; more are dropped).
         let (fusion, connected) = (&self.render.fusion, &self.render.connected);
@@ -1735,7 +1760,11 @@ impl Mesher<'_> {
         // solid layer whatever their sprite.
         let solid_leaves = !self.cutout_leaves && state.leaves || interior_leaf;
         let own = TileLayer::Layer {
-            layer: face.layer as u16,
+            layer: if grass_side {
+                self.tables.grass_top
+            } else {
+                face.layer as u16
+            },
             translucent: face.translucent,
             opaque: face.opaque,
         };

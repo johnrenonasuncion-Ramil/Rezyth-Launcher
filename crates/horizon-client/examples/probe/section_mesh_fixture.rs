@@ -140,6 +140,7 @@ fn scene(
         smooth_lighting,
         cutout_leaves,
         connected_glass: false,
+        better_grass_sides: false,
         translucent_layers: &[],
         leaf_culling: LeafCullingMode::Off,
     };

@@ -618,24 +618,33 @@ impl Game<'_> {
                 }
             }
             // `extractItemGroupRenderState`: GROUND, seeded by the entity id.
+            // The Visuals tab's 3D Dropped Items asks for the item-frame
+            // presentation instead (full size, upright, resting on the
+            // ground), tumbling with the same spin; a pickup particle keeps
+            // vanilla's.
+            let three_d = entity && self.settings.extras.volt_visuals.dropped_items_3d;
             let owner = owner_at([q.x, q.y, q.z], 0.0, "minecraft:item");
-            let state = self.resolve_item(
-                &item.stack,
-                DisplayContext::Ground,
-                Some(&owner),
-                item.id as i32,
-            );
+            let display = if three_d {
+                DisplayContext::Fixed
+            } else {
+                DisplayContext::Ground
+            };
+            let state = self.resolve_item(&item.stack, display, Some(&owner), item.id as i32);
             if state.is_empty() {
                 continue;
             }
             let age = item.age as f32 + partial;
             let (lo, _) = state.bounding_box();
-            let min_offset_y = -lo.y + 0.0625;
             let bob = (age / 10.0 + item.bob_offset).sin() * 0.1 + 0.1;
             let spin = item_render::item_spin(age, item.bob_offset);
+            // The 3D presentation stands at half size, resting on the ground
+            // by its own box (the ground one is vanilla's quarter scale).
+            let scale = if three_d { 0.5 } else { 1.0 };
+            let min_offset_y = -lo.y * scale + 0.0625;
             let pose = glam::Mat4::from_translation(pos.as_vec3())
                 * glam::Mat4::from_translation(glam::Vec3::new(0.0, bob + min_offset_y, 0.0))
-                * glam::Mat4::from_rotation_y(spin);
+                * glam::Mat4::from_rotation_y(spin)
+                * glam::Mat4::from_scale(glam::Vec3::splat(scale));
             let packed = self.world.light(
                 q.x.floor() as i32,
                 (q.y + 0.1).floor() as i32,

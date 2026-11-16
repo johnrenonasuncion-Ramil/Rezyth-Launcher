@@ -90,6 +90,7 @@ fn info(solid: bool) -> Info {
         leaves: false,
         pane: false,
         glass: false,
+        grass_block: false,
         opaque_cube: solid,
         blocks_flow: false,
         ice: false,
