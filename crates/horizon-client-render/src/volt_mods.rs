@@ -1723,9 +1723,16 @@ pub fn sync_catalog_from_engine(extras: &mut Extras, horizon: &Graphics) {
     extras
         .mod_catalog
         .set(VoltModId::XaerosWorldMap, extras.volt_qol.atlas_enabled);
+    // The Boost+ rows and the engine's own toggles are one state: each side
+    // reads the other's switches back.
+    extras.volt_boost_plus.cave_chunk_occlusion = horizon.cave_culling;
+    extras.volt_boost_plus.offscreen_entity_skip = horizon.entity_culling != EntityCullingMode::Off;
+    extras
+        .mod_catalog
+        .set(VoltModId::Sodium, horizon.cave_culling);
     extras.mod_catalog.set(
         VoltModId::EntityCulling,
-        horizon.entity_culling != EntityCullingMode::Off,
+        extras.volt_boost_plus.offscreen_entity_skip,
     );
     extras
         .mod_catalog

@@ -18,8 +18,20 @@ use horizon_world::block_render::FaceVisibility;
 use horizon_world::worldgen::decoration_order::DecorationOrder;
 use std::{
     collections::{BinaryHeap, HashSet, VecDeque},
-    sync::{Arc, Condvar, Mutex, MutexGuard, RwLock, TryLockError},
+    sync::{
+        Arc, Condvar, Mutex, MutexGuard, RwLock, TryLockError,
+        atomic::{AtomicBool, Ordering},
+    },
 };
+
+/// The Boost tab's Zero-Stutter Mesh Pool (`volt_boost_plus.zero_stutter_mesh_pool`):
+/// workers recycle section buffers within a larger budget, so a burst of
+/// remeshing reallocs less (`MeshPool::put`).
+static EXPANDED_MESH_POOL: AtomicBool = AtomicBool::new(false);
+
+pub fn set_expanded_mesh_pool(on: bool) {
+    EXPANDED_MESH_POOL.store(on, Ordering::Relaxed);
+}
 
 /// How long a worker waits with nothing to do before it gives back its
 /// generator's scratch buffers ([`ChunkGenerator::idle`]).
@@ -356,6 +368,9 @@ struct MeshPool {
 impl MeshPool {
     const BYTES: usize = 16 << 20;
     const COUNT: usize = 128;
+    /// The larger budget of the Boost tab's Zero-Stutter Mesh Pool.
+    const EXPANDED_BYTES: usize = 64 << 20;
+    const EXPANDED_COUNT: usize = 512;
     fn take(&mut self) -> SectionMesh {
         let mesh = self.meshes.pop().unwrap_or_default();
         self.bytes -= mesh.capacity_bytes();
@@ -364,7 +379,17 @@ impl MeshPool {
     /// A rejected mesh is dropped by the caller, after releasing the lock.
     fn put(&mut self, mut mesh: SectionMesh) -> Option<SectionMesh> {
         let bytes = mesh.capacity_bytes();
-        if bytes == 0 || self.meshes.len() == Self::COUNT || bytes > Self::BYTES - self.bytes {
+        // The pool may hold more than the small budget when the option turned
+        // off with it full: `saturating_sub` keeps the check honest.
+        let (bytes_cap, count_cap) = if EXPANDED_MESH_POOL.load(Ordering::Relaxed) {
+            (Self::EXPANDED_BYTES, Self::EXPANDED_COUNT)
+        } else {
+            (Self::BYTES, Self::COUNT)
+        };
+        if bytes == 0
+            || self.meshes.len() == count_cap
+            || bytes > bytes_cap.saturating_sub(self.bytes)
+        {
             return Some(mesh);
         }
         mesh.clear();

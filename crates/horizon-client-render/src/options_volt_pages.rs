@@ -745,6 +745,27 @@ impl VoltAct {
         }
     }
 
+    /// The engine switch a Boost+ row drives, when it is one: the row and
+    /// the Video Settings screen's own row then sit on one state.
+    pub fn engine(self, e: &Extras, horizon: &mut crate::graphics::Graphics) -> bool {
+        use crate::graphics::EntityCullingMode;
+        match self {
+            Self::BoostCaveOcclusion => {
+                horizon.cave_culling = e.volt_boost_plus.cave_chunk_occlusion;
+                true
+            }
+            Self::BoostOffscreenSkip => {
+                horizon.entity_culling = if e.volt_boost_plus.offscreen_entity_skip {
+                    EntityCullingMode::Synchronous
+                } else {
+                    EntityCullingMode::Off
+                };
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// The catalog mod a row drives, when it is one: the row then goes
     /// through `apply_mod_to_engine`, so the engine fields it maps and what
     /// the Mod Menu shows are the same state as this screen.

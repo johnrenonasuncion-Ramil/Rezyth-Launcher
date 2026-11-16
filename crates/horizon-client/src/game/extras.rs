@@ -395,6 +395,7 @@ impl Game<'_> {
             self.draw_minimap_waypoints(batch, &view, mx, my, map_size);
         }
         self.draw_waypoint_markers(batch);
+        self.draw_waypoint_button(batch);
         self.draw_volt_hud(batch, &mut corners);
         self.native_hud(batch, &mut corners);
     }

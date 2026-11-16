@@ -1337,6 +1337,9 @@ impl VoltSettingsUi {
                     apply_mod_to_engine(id, next, &mut s.extras, &mut s.horizon);
                 } else {
                     act.trigger(&mut s.extras, right);
+                    // A Boost+ row also drives the engine switch it names, so
+                    // the Video Settings screen's own row moves with it.
+                    act.engine(&s.extras, &mut s.horizon);
                     sync_catalog_from_engine(&mut s.extras, &s.horizon);
                 }
                 self.changed = true;

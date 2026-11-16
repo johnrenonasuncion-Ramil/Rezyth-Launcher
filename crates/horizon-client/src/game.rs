@@ -14454,6 +14454,11 @@ impl Game<'_> {
             f32::from(q.muffle_explosion_pct) / 100.0,
             f32::from(q.muffle_rain_pct) / 100.0,
         );
+        // The Boost tab's Zero-Stutter Mesh Pool: workers keep recycled
+        // section buffers within its larger budget.
+        horizon_client::streaming::set_expanded_mesh_pool(
+            self.settings.extras.volt_boost_plus.zero_stutter_mesh_pool,
+        );
         self.streaming.radius = self.render_distance_in_use();
         // Options.biomeBlendRadius, ambientOcclusion, cutoutLeaves and the
         // leaf-culling mode: LevelExtractor.allChanged when they change, and
@@ -16843,6 +16848,20 @@ impl Game<'_> {
     /// A mouse button while playing (window or control socket).
     fn play_mouse(&mut self, button: MouseButton, pressed: bool) -> Result<()> {
         if self.sleeping.is_some() {
+            return Ok(());
+        }
+        // The Maps tab's Waypoint Button: a click files one where the player
+        // stands, before it reaches the world.
+        if pressed
+            && button == MouseButton::Left
+            && !self.pad_synthetic_input()
+            && let Some((x, y, w, h)) = self.waypoint_button_rect()
+            && self.cursor.0 >= x
+            && self.cursor.0 < x + w
+            && self.cursor.1 >= y
+            && self.cursor.1 < y + h
+        {
+            self.waypoint_key_press();
             return Ok(());
         }
         // key.spectatorHotbar (the middle button) opens the spectator menu

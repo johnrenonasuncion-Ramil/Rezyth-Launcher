@@ -154,6 +154,38 @@ impl Game<'_> {
             );
         }
     }
+    /// The Maps tab's Waypoint Button: where it sits `(x, y, side, side)`
+    /// while it shows — the waypoint master and button switches on, playing,
+    /// the HUD up — else None.
+    pub(super) fn waypoint_button_rect(&self) -> Option<(f32, f32, f32, f32)> {
+        let e = &self.settings.extras;
+        if !e.waypoints
+            || !e.waypoint_hud_button
+            || self.screen != Screen::Playing
+            || self.ui.hide_gui
+        {
+            return None;
+        }
+        let (w, h) = self.gui_size();
+        Some((w - 28.0, h - 28.0, 20.0, 20.0))
+    }
+    /// The Maps tab's Waypoint Button: a small marker in the HUD's bottom
+    /// right corner that files a waypoint where the player stands.
+    pub(super) fn draw_waypoint_button(&self, batch: &mut HudBatch) {
+        let Some((x, y, w, h)) = self.waypoint_button_rect() else {
+            return;
+        };
+        let atlas = &self.gui.atlas;
+        batch.fill(atlas, x, y, w, h, rgba(0, 0, 0, 0x78));
+        let [r, g, b] = self.settings.extras.waypoint_new_color.rgb();
+        let (cx, cy) = (x + w / 2.0, y + h / 2.0);
+        let d = 5.0;
+        batch.fill_quad(
+            atlas,
+            [[cx, cy - d], [cx + d, cy], [cx, cy + d], [cx - d, cy]],
+            rgba(r, g, b, 255),
+        );
+    }
     /// The Maps tab's Automatic Death Waypoints: marks where the player
     /// fell; the store keeps the newest three deaths of a world or server.
     pub(super) fn record_death_waypoint(&mut self) {

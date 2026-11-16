@@ -1123,6 +1123,18 @@ impl Game<'_> {
                 Action::Release(_) => {}
                 Action::Tap(p) => {
                     let now = Instant::now();
+                    // The Maps tab's Waypoint Button answers a tap before the
+                    // view's use (the finger's position as GUI pixels, as the
+                    // chat bar reads its own).
+                    if let Some((x, y, w, h)) = self.waypoint_button_rect() {
+                        let batch = HudBatch::new(self.touch_size());
+                        let lift = self.keyboard_height() as f32 / batch.scale;
+                        let at = (p[0] / batch.scale, p[1] / batch.scale + lift);
+                        if at.0 >= x && at.0 < x + w && at.1 >= y && at.1 < y + h {
+                            self.waypoint_key_press();
+                            continue;
+                        }
+                    }
                     // Tap to interact aims where it landed while the click is held.
                     if self.touch_taps() {
                         self.touch.tapped = Some((now + USE_PULSE * 2, p));
