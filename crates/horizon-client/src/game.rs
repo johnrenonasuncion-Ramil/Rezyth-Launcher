@@ -14278,6 +14278,12 @@ impl Game<'_> {
             let ticks_used =
                 owner.use_duration as f32 - (owner.use_item_remaining_ticks as f32 - a + 1.0);
             use horizon_client::first_person::ItemPose;
+            // The Viewmodel "1.7 Classic Eat & Guard": the eat/drink jiggle
+            // goes (the item stays held out), and a sword held with the
+            // right button shows the raised guard posture.
+            let classic = self.settings.extras.volt_qol.vm_classic_animations;
+            let classic_guard =
+                classic && !using && stack.item.ends_with("_sword") && self.mouse_reading().1[1];
             // ItemUseAnimation.SPEAR.
             let spear = using
                 .then(|| horizon_client::spear::Kinetic::of(&stack.item))
@@ -14288,6 +14294,7 @@ impl Game<'_> {
                     ticks_since_hit: self.kinetic_hit_ticks(a),
                 });
             let pose = match &*stack.item {
+                _ if classic_guard => ItemPose::Using,
                 _ if let Some(pose) = spear => pose,
                 "minecraft:bow" if using => ItemPose::Bow { ticks_used },
                 "minecraft:crossbow" => {
@@ -14317,12 +14324,23 @@ impl Game<'_> {
                             horizon_client::first_person::consumable_animation(c)
                         });
                     self.native_use_animation(&stack, &mut animation);
-                    item_use::use_pose(
+                    // 1.7 Classic: eating and drinking hold the item out
+                    // still, with none of the mouth jiggle.
+                    let eaten = matches!(
                         animation,
-                        owner.use_item_remaining_ticks as f32,
-                        owner.use_duration as f32,
-                        a,
-                    )
+                        horizon_world::consumable::UseAnimation::Eat
+                            | horizon_world::consumable::UseAnimation::Drink
+                    );
+                    if classic && eaten {
+                        ItemPose::Using
+                    } else {
+                        item_use::use_pose(
+                            animation,
+                            owner.use_item_remaining_ticks as f32,
+                            owner.use_duration as f32,
+                            a,
+                        )
+                    }
                 }
                 _ if spinning => ItemPose::SpinAttack,
                 // ItemInHandRenderer: a STAB swing of this hand jabs.

@@ -183,6 +183,11 @@ impl Game<'_> {
             to_world.transform_vector3(a).normalize(),
             to_world.transform_vector3(b).normalize(),
         );
+        // The Viewmodel "Totem Pop Scale" slider (Rezyth Settings): the
+        // activation overlay scales about the screen centre, so a small one
+        // blocks less of the view (100% is vanilla's).
+        let scale = f32::from(self.settings.extras.volt_qol.vm_totem_scale_pct) / 100.0;
+        let pose = glam::Mat4::from_scale(glam::Vec3::new(scale, scale, 1.0)) * pose;
         self.submit_item_lit(&state, to_world * pose, vertex_light(0xFF), lights, out);
     }
 }
