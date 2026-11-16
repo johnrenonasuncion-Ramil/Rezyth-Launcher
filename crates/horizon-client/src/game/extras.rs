@@ -391,8 +391,10 @@ impl Game<'_> {
                 arrow,
                 north,
             };
-            extras_hud::draw_minimap(batch, atlas, &mut corners, &look);
+            let (mx, my) = extras_hud::draw_minimap(batch, atlas, &mut corners, &look);
+            self.draw_minimap_waypoints(batch, &view, mx, my, map_size);
         }
+        self.draw_waypoint_markers(batch);
         self.draw_volt_hud(batch, &mut corners);
         self.native_hud(batch, &mut corners);
     }

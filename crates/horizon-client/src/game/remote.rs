@@ -4627,6 +4627,9 @@ impl Game<'_> {
                 let shown = self.remote.as_ref().is_none_or(|r| r.show_death_screen);
                 if p.health <= 0.0 && shown && self.screen != Screen::Dead && self.player.is_some()
                 {
+                    // The Maps tab's Automatic Death Waypoints (once per
+                    // death: the screen guard above).
+                    self.record_death_waypoint();
                     self.close_dialogs();
                     self.screen = Screen::Dead;
                     self.ui.death_time = 0;
@@ -4647,6 +4650,10 @@ impl Game<'_> {
                 // screen, whatever health was last sent, or `respawn()` at
                 // once when it is hidden.
                 if me && self.screen != Screen::Dead && self.player.is_some() {
+                    // The Maps tab's Automatic Death Waypoints: the health
+                    // path above records first when the screen shows; a
+                    // hidden screen records here.
+                    self.record_death_waypoint();
                     if self.remote.as_ref().is_none_or(|r| r.show_death_screen) {
                         self.close_dialogs();
                         self.screen = Screen::Dead;

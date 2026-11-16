@@ -91,12 +91,14 @@ pub struct MinimapLook {
     pub arrow: f32,
     pub north: Option<(f32, f32)>,
 }
+/// Draws the map and returns where it landed `(x, y)`, so overlays (the
+/// waypoints' own dots) sit on it.
 pub fn draw_minimap(
     batch: &mut HudBatch,
     atlas: &HudAtlas,
     corners: &mut Corners,
     look: &MinimapLook,
-) {
+) -> (f32, f32) {
     let MinimapLook {
         corner,
         size,
@@ -132,6 +134,7 @@ pub fn draw_minimap(
             true,
         );
     }
+    (x, y)
 }
 
 /// A box of text lines (a mod's HUD panel): `(text, 0xRRGGBB)` each.

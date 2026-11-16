@@ -368,6 +368,7 @@ mod update_offer;
 mod vault;
 mod villagers;
 mod wandering_trader;
+mod waypoints;
 mod win;
 mod wind;
 mod wither;
