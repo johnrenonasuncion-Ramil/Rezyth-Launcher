@@ -1206,6 +1206,19 @@ impl Game<'_> {
                 (self.pitch, self.yaw),
             );
         }
+        // The Blueprint hologram (`volt_qol.blueprint_*`): the selected
+        // template's blocks as green ghost cuboids at the anchor, sliced by
+        // the Y-Slice row (switched off, there is no anchor and none draw).
+        if let Some(anchor) = self.blueprint_anchor {
+            let q = &self.settings.extras.volt_qol;
+            for (min, max) in horizon_client::volt_features::blueprint_boxes(
+                q.blueprint_preset,
+                q.blueprint_layer,
+                anchor,
+            ) {
+                g.cuboid(min, max, 0x8000_FF80, 1.0);
+            }
+        }
         g
     }
 }

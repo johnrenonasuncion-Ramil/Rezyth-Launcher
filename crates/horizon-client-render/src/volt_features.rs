@@ -811,6 +811,27 @@ fn blueprint_ring(
     }
 }
 
+/// The hologram's ghost boxes: the template's blocks, sliced by `layer`
+/// (-1 shows every layer), each a unit cube at `anchor + offset`.
+pub fn blueprint_boxes(
+    preset: crate::volt_qol::BlueprintPreset,
+    layer: i16,
+    anchor: [i32; 3],
+) -> Vec<([f64; 3], [f64; 3])> {
+    blueprint_layout(preset)
+        .into_iter()
+        .filter(|(at, _)| layer < 0 || at[1] == layer)
+        .map(|(at, _)| {
+            let min = [
+                f64::from(anchor[0] + i32::from(at[0])),
+                f64::from(anchor[1] + i32::from(at[1])),
+                f64::from(anchor[2] + i32::from(at[2])),
+            ];
+            (min, [min[0] + 1.0, min[1] + 1.0, min[2] + 1.0])
+        })
+        .collect()
+}
+
 /// The template's materials for the checklist: a `layer` of -1 counts every
 /// layer, else only blocks whose Y offset equals it. Sorted by count
 /// (largest first), then by name.
@@ -862,6 +883,16 @@ mod tests {
             let empty = blueprint_layout(preset).is_empty();
             assert_eq!(empty, preset == P::WorldClipboard, "{preset:?}");
         }
+    }
+    /// The hologram's boxes sit at the anchor, sliced by the Y layer.
+    #[test]
+    fn blueprint_hologram_boxes_sit_at_the_anchor() {
+        use crate::volt_qol::BlueprintPreset as P;
+        let boxes = blueprint_boxes(P::PortalShrine, -1, [10, 64, -3]);
+        assert_eq!(boxes.len(), 14);
+        assert_eq!(boxes[0], ([10.0, 64.0, -3.0], [11.0, 65.0, -2.0]));
+        assert_eq!(blueprint_boxes(P::PortalShrine, 2, [0, 0, 0]).len(), 2);
+        assert!(blueprint_boxes(P::WorldClipboard, -1, [0, 0, 0]).is_empty());
     }
     #[test]
     fn waypoint_store_handles_death_limit_and_nether_sync() {

@@ -3132,6 +3132,10 @@ struct Game<'a> {
     /// `remote_handle_input`): picked once, so a creative break does not
     /// move the use that follows it past the broken block.
     tick_hit: Option<Option<Hit>>,
+    /// The Blueprint hologram's anchor: the block the player stood on when
+    /// the blueprint was switched on (`volt_qol.blueprint_enabled`); None
+    /// while it is off, so nothing projects.
+    blueprint_anchor: Option<[i32; 3]>,
     /// The mob of that `hitResult`, picked with the item held at the pick
     /// (`LocalPlayer.raycastHitResult`: a spear's `attack_range`), before the
     /// tick's number keys change it.
@@ -14483,6 +14487,20 @@ impl Game<'_> {
         // LocalPlayer.refreshChatAbilities: the chat shows what the Chat option allows.
         let abilities = self.chat_abilities();
         self.ui.chat.set_abilities(&self.gui.atlas.font, abilities);
+        // The Blueprint hologram's anchor: where the player stood when it was
+        // switched on; switching it off forgets it, and switching it on
+        // again re-anchors it where they stand.
+        if !self.settings.extras.volt_qol.blueprint_enabled {
+            self.blueprint_anchor = None;
+        } else if self.blueprint_anchor.is_none()
+            && let Some(p) = self.player.as_ref()
+        {
+            self.blueprint_anchor = Some([
+                p.position.x.floor() as i32,
+                p.position.y.floor() as i32,
+                p.position.z.floor() as i32,
+            ]);
+        }
         // Rezyth Settings' per-sound mufflers (Sound Physics Lite).
         let q = &self.settings.extras.volt_qol;
         self.audio.set_mufflers(
@@ -19728,6 +19746,7 @@ impl<'a> Game<'a> {
             world_icon: None,
             forced_hit: None,
             tick_hit: None,
+            blueprint_anchor: None,
             tick_mob: None,
             hotbar_presses: Vec::new(),
             entity_reach: 3.0,
