@@ -726,6 +726,15 @@ impl Game<'_> {
             }
             _ => limit,
         };
+        // The Boost tab's Smart Frame Pacer: the delivered rate snaps to an
+        // even divisor of the display's rate, so frames land on whole refresh
+        // intervals (a 144 Hz screen caps 120 at 72, while 60 on a 60 Hz one
+        // stays 60) — steadier delivery, so the GPU throttles less.
+        let limit = if self.settings.extras.volt_boost_plus.smart_frame_pacer {
+            paced_limit(limit, u32::from(self.settings.extras.display_hz))
+        } else {
+            limit
+        };
         // A native mod may only lower it (`native_framerate_limit`).
         let mut hooked = limit;
         self.native_framerate_limit(
@@ -798,5 +807,38 @@ fn windowed_again(w: &winit::window::Window) {
             at.x + (screen.width.saturating_sub(small.width) / 2) as i32,
             at.y + (screen.height.saturating_sub(small.height) / 2) as i32,
         ));
+    }
+}
+
+/// The Boost tab's Smart Frame Pacer: the largest divisor of the display's
+/// rate no larger than the cap (never under 30 fps), so frame intervals land
+/// on whole refresh intervals. A cap that already divides the rate, an
+/// unknown or low rate and the unlimited setting are left alone.
+fn paced_limit(limit: i32, hz: u32) -> i32 {
+    let hz = hz.min(240) as i32;
+    if hz < 60 || !(1..260).contains(&limit) || hz % limit == 0 {
+        return limit;
+    }
+    (30..limit).rev().find(|d| hz % d == 0).unwrap_or(limit)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::paced_limit;
+
+    #[test]
+    fn the_smart_frame_pacer_snaps_to_even_refresh_divisors() {
+        // A cap that already divides the display's rate keeps its value.
+        assert_eq!(paced_limit(60, 60), 60);
+        assert_eq!(paced_limit(120, 120), 120);
+        // An uneven cap falls to the largest divisor under it.
+        assert_eq!(paced_limit(120, 144), 72);
+        assert_eq!(paced_limit(120, 90), 90);
+        assert_eq!(paced_limit(120, 60), 60);
+        // Nothing to pace against: an unknown or low rate, the unlimited
+        // setting, and a cap at or under the floor.
+        assert_eq!(paced_limit(120, 30), 120);
+        assert_eq!(paced_limit(260, 144), 260);
+        assert_eq!(paced_limit(30, 144), 30);
     }
 }
