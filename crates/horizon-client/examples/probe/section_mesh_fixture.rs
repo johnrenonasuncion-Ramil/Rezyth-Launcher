@@ -141,6 +141,7 @@ fn scene(
         cutout_leaves,
         connected_glass: false,
         better_grass_sides: false,
+        greedy_quad_merge: false,
         translucent_layers: &[],
         leaf_culling: LeafCullingMode::Off,
     };

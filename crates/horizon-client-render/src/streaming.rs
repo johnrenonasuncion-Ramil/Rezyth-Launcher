@@ -281,6 +281,7 @@ struct MeshSettings {
     cutout_leaves: bool,
     connected_glass: bool,
     better_grass_sides: bool,
+    greedy_quad_merge: bool,
     translucent_layers: Arc<[bool]>,
     leaf_culling: LeafCullingMode,
 }
@@ -554,6 +555,9 @@ pub struct Streaming {
     /// The Visuals tab's Better Grass Sides
     /// (`volt_visuals.better_grass_sides`).
     pub better_grass_sides: bool,
+    /// The Boost tab's Coplanar Quad Merge
+    /// (`volt_boost_plus.greedy_quad_merge`).
+    pub greedy_quad_merge: bool,
     /// Sprite layers a shader pack draws in the translucent pass (`[[materials]]
     /// translucent`), by layer; empty without one.
     pub translucent_layers: Arc<[bool]>,
@@ -978,6 +982,7 @@ impl<G: ChunkGenerator> Jobs<G> {
                     cutout_leaves: settings.cutout_leaves,
                     connected_glass: settings.connected_glass,
                     better_grass_sides: settings.better_grass_sides,
+                    greedy_quad_merge: settings.greedy_quad_merge,
                     translucent_layers: &settings.translucent_layers,
                     leaf_culling: settings.leaf_culling,
                     assets: &context.assets,
@@ -1092,6 +1097,7 @@ impl Streaming {
             cutout_leaves: true,
             connected_glass: false,
             better_grass_sides: false,
+            greedy_quad_merge: false,
             translucent_layers: Arc::from([]),
             leaf_culling: LeafCullingMode::Off,
             light_tables,
@@ -2077,6 +2083,7 @@ impl Streaming {
                             cutout_leaves: self.cutout_leaves,
                             connected_glass: self.connected_glass,
                             better_grass_sides: self.better_grass_sides,
+                            greedy_quad_merge: self.greedy_quad_merge,
                             translucent_layers: self.translucent_layers.clone(),
                             leaf_culling: self.leaf_culling,
                         },

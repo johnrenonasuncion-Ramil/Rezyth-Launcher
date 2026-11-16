@@ -183,6 +183,18 @@ impl FaceVisibility {
         let id = self.states.get(state.0 as usize)?.faces[direction as usize];
         Some((id, &self.faces[id as usize]))
     }
+    /// `SkipRendering::SameBlock` between two states, without the general
+    /// lookup's direction or error path: the Boost tab's Coplanar Quad Merge
+    /// hides a same-block interior pair of coplanar faces with it.
+    pub fn skips_same_block(&self, state: u32, neighbor: u32) -> bool {
+        let (Some(a), Some(b)) = (
+            self.states.get(state as usize),
+            self.states.get(neighbor as usize),
+        ) else {
+            return false;
+        };
+        a.definition.skip == SkipRendering::SameBlock && a.block == b.block
+    }
     pub fn skip_rendering(
         &self,
         state: BlockStateId,

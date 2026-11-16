@@ -65,6 +65,7 @@ fn face_layers(f: &Fixture, chunk: &Chunk, better: bool) -> (Vec<u16>, Vec<u16>)
         cutout_leaves: true,
         connected_glass: false,
         better_grass_sides: better,
+        greedy_quad_merge: false,
         translucent_layers: &[],
         leaf_culling: LeafCullingMode::Off,
     };

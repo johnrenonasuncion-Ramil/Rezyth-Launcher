@@ -65,6 +65,7 @@ fn quads(f: &Fixture, chunk: &Chunk, connected: bool) -> Vec<([u16; 2], [f32; 3]
         cutout_leaves: true,
         connected_glass: connected,
         better_grass_sides: false,
+        greedy_quad_merge: false,
         translucent_layers: &[],
         leaf_culling: LeafCullingMode::Off,
     };

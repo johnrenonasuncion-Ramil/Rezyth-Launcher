@@ -144,6 +144,7 @@ fn a_shader_pack_lights_the_faces_itself() {
             cutout_leaves: true,
             connected_glass: false,
             better_grass_sides: false,
+            greedy_quad_merge: false,
             translucent_layers: &[],
             leaf_culling: LeafCullingMode::Off,
         };
@@ -198,6 +199,7 @@ fn separate_ao_passes_ao_in_alpha_without_darkening_rgb() {
         cutout_leaves: true,
         connected_glass: false,
         better_grass_sides: false,
+        greedy_quad_merge: false,
         translucent_layers: &[],
         leaf_culling: LeafCullingMode::Off,
     };
@@ -274,6 +276,7 @@ fn reused_mesh_matches_fresh_geometry_across_sections_and_resource_reload() {
             cutout_leaves: reload == 0,
             connected_glass: false,
             better_grass_sides: false,
+            greedy_quad_merge: false,
             translucent_layers: &[],
             leaf_culling: LeafCullingMode::Off,
         };

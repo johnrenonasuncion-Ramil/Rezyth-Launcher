@@ -14510,6 +14510,7 @@ impl Game<'_> {
             leaf_culling,
             s.extras.volt_visuals.connected_glass,
             s.extras.volt_visuals.better_grass_sides,
+            s.extras.volt_boost_plus.greedy_quad_merge,
         ) != (
             st.biome_blend,
             st.smooth_lighting,
@@ -14517,6 +14518,7 @@ impl Game<'_> {
             st.leaf_culling,
             st.connected_glass,
             st.better_grass_sides,
+            st.greedy_quad_merge,
         );
         self.streaming.biome_blend = self.settings.biome_blend;
         self.streaming.smooth_lighting = self.settings.smooth_lighting;
@@ -14524,6 +14526,7 @@ impl Game<'_> {
         self.streaming.leaf_culling = leaf_culling;
         self.streaming.connected_glass = self.settings.extras.volt_visuals.connected_glass;
         self.streaming.better_grass_sides = self.settings.extras.volt_visuals.better_grass_sides;
+        self.streaming.greedy_quad_merge = self.settings.extras.volt_boost_plus.greedy_quad_merge;
         if remesh {
             self.all_sections_changed();
         }

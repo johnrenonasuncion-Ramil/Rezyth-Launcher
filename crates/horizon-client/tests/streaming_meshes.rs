@@ -224,6 +224,7 @@ fn relit_columns_keep_every_mesh_current() {
             cutout_leaves: true,
             connected_glass: false,
             better_grass_sides: false,
+            greedy_quad_merge: false,
             translucent_layers: &[],
             leaf_culling: LeafCullingMode::Off,
             assets: &context.assets,

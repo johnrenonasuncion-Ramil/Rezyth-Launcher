@@ -1055,6 +1055,8 @@ mod better_grass_tests;
 #[cfg(test)]
 mod connected_glass_tests;
 #[cfg(test)]
+mod coplanar_merge_tests;
+#[cfg(test)]
 mod leaf_culling_tests;
 #[cfg(test)]
 mod reuse_tests;
@@ -1389,6 +1391,9 @@ pub struct Mesher<'a> {
     /// The Visuals tab's Better Grass Sides: a grass block's exposed sides
     /// draw the tinted top texture.
     pub better_grass_sides: bool,
+    /// The Boost tab's Coplanar Quad Merge: a same-block interior pair of
+    /// coplanar faces (`SkipRendering::SameBlock`, glass to glass) hides one.
+    pub greedy_quad_merge: bool,
     /// Sprite layers a shader pack moves into the translucent pass, by layer.
     pub translucent_layers: &'a [bool],
     /// What the worker does with leaf faces inside a canopy.
@@ -1504,6 +1509,14 @@ impl Mesher<'_> {
                         // `should_render_face`'s first test, without its lookups: a
                         // full occlusion face toward this block hides the face.
                         if full_faces[neighbor as usize] >> d.opposite() as u8 & 1 != 0 {
+                            continue;
+                        }
+                        // The Boost tab's Coplanar Quad Merge: vanilla's
+                        // `SkipRendering::SameBlock` (glass to glass and other
+                        // translucent pairs) hides two coplanar interior faces
+                        // that would draw at the same plane.
+                        if self.greedy_quad_merge && self.visibility.skips_same_block(id, neighbor)
+                        {
                             continue;
                         }
                         let other = &info[neighbor as usize];
