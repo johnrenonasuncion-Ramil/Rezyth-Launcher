@@ -458,6 +458,69 @@ impl Game<'_> {
                 }
             }
         }
+        // The Coordinates HUD mod: the block coordinates, the cardinal
+        // facing and the biome, stacked under the armour in the top left.
+        if self
+            .settings
+            .extras
+            .mod_catalog
+            .is_on(horizon_client::volt_mods::VoltModId::CoordinatesHud)
+            && let Some(p) = self.player.as_ref()
+        {
+            let at = [p.position.x, p.position.y, p.position.z];
+            let (bx, by, bz) = (
+                at[0].floor() as i32,
+                at[1].floor() as i32,
+                at[2].floor() as i32,
+            );
+            // `LevelAccess::biome_name`'s lookup, as the other child modules
+            // read biomes (`world_biomes!`).
+            let biome = self.world.chunks.get(&(bx >> 4, bz >> 4)).map(|chunk| {
+                let at = &world_biomes!(self).list[chunk.biome(bx, by, bz) as usize];
+                at.name.as_str()
+            });
+            let rows = [
+                (horizon_client::volt_features::format_coords(at), u32::MAX),
+                (
+                    horizon_client::volt_features::format_heading_and_biome(self.yaw, biome),
+                    u32::MAX,
+                ),
+            ];
+            extras_hud::draw_panel(batch, atlas, corners, Corner::TopLeft, &rows);
+        }
+        // The Durability Display mod: the held tool's and the offhand's exact
+        // remaining uses, green/amber/red as they run out.
+        if self
+            .settings
+            .extras
+            .mod_catalog
+            .is_on(horizon_client::volt_mods::VoltModId::DurabilityDisplay)
+        {
+            let mut rows = Vec::new();
+            for stack in [self.held(), self.offhand.as_ref()] {
+                let Some(stack) = stack else {
+                    continue;
+                };
+                let max = self
+                    .res
+                    .items()
+                    .get(&stack.item)
+                    .map_or(0, |info| info.max_damage);
+                if max == 0 {
+                    continue;
+                }
+                let left = max.saturating_sub(stack.damage);
+                let color = if left * 3 < max {
+                    rgba(255, 85, 85, 255)
+                } else if left * 2 < max {
+                    rgba(255, 255, 85, 255)
+                } else {
+                    rgba(85, 255, 85, 255)
+                };
+                rows.push((format!("{left} / {max}"), color));
+            }
+            extras_hud::draw_panel(batch, atlas, corners, Corner::TopLeft, &rows);
+        }
         // The FPS & Ping Pill (its mod): the frame counter and, on a server,
         // the player's own ping (`PlayerInfo.getLatency`).
         if fps_ping {

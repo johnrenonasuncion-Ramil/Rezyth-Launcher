@@ -4593,6 +4593,15 @@ impl OptionsUi {
                             .append(" ]")
                             .with_color(text::YELLOW);
                     }
+                    // The Controlling mod: a conflicting key stands out in red
+                    // over the brackets every screen shows.
+                    if !conflicts.is_empty()
+                        && s.extras
+                            .mod_catalog
+                            .is_on(crate::volt_mods::VoltModId::Controlling)
+                    {
+                        message = message.with_color(rgba(255, 85, 85, 255));
+                    }
                     if self.selected_key == Some(name) {
                         message = Text::literal("> ")
                             .append(message.with_style(&Style {
