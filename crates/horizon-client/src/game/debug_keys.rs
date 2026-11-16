@@ -313,9 +313,20 @@ impl Game<'_> {
         } else {
             Vec::new()
         };
-        let (left, right) = d.columns(&footer);
         let atlas = &self.gui.atlas;
-        let mut draws = debug_overlay::draw(&atlas.font, [&left, &right], scale, width);
+        // The BetterF3 mod: the overlay as titled cards instead of the two
+        // vanilla columns.
+        let mut draws = if self
+            .settings
+            .extras
+            .mod_catalog
+            .is_on(horizon_client::volt_mods::VoltModId::BetterF3)
+        {
+            debug_overlay::draw_cards(&atlas.font, &d.cards(&footer), scale, width)
+        } else {
+            let (left, right) = d.columns(&footer);
+            debug_overlay::draw(&atlas.font, [&left, &right], scale, width)
+        };
         if self.debug {
             let charts = self.debug_charts.draw(
                 &atlas.font,

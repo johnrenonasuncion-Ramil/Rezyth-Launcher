@@ -81,6 +81,26 @@ impl Displayer {
         }
         (left, right)
     }
+    /// `extractRenderState` as titled cards (the BetterF3 mod): the priority
+    /// lines, then the split lines, then `footer` (the chart keys), as one
+    /// "Overview" card, and each group as its own after it; empty groups are
+    /// left out.
+    pub fn cards(mut self, footer: &[String]) -> Vec<(&'static str, Vec<String>)> {
+        let mut core = std::mem::take(&mut self.left);
+        core.append(&mut self.right);
+        core.append(&mut self.lines);
+        core.extend_from_slice(footer);
+        let mut out = Vec::new();
+        if !core.is_empty() {
+            out.push(("Overview", core));
+        }
+        for (group, lines) in self.groups {
+            if !lines.is_empty() {
+                out.push((group, lines));
+            }
+        }
+        out
+    }
 }
 
 /// Horizon's own lines: the shader pack's GPU time, then its costliest passes (`passes`: each
@@ -245,22 +265,71 @@ pub fn draw(font: &Font, columns: [&[String]; 2], scale: f32, width: i32) -> Vec
             ));
         }
         for (line, left, top, _) in placed {
-            out.push(GuiDraw::Text {
-                // Entries colour their text with legacy codes.
-                text: if line.contains('§') {
-                    Text::legacy(line)
-                } else {
-                    Text::literal(line.clone())
-                },
-                x: left,
-                y: top,
-                color: TEXT,
-                shadow: false,
-            });
+            out.push(card_text(line, left, top));
         }
     }
     out.push(GuiDraw::Pop);
     out
+}
+
+/// A line of the overlay as a draw: entries colour their text with legacy
+/// codes.
+fn card_text(line: &str, x: i32, y: i32) -> GuiDraw {
+    GuiDraw::Text {
+        text: if line.contains('§') {
+            Text::legacy(line)
+        } else {
+            Text::literal(line.to_owned())
+        },
+        x,
+        y,
+        color: TEXT,
+        shadow: false,
+    }
+}
+
+/// The overlay as titled cards (the BetterF3 mod): one background box per
+/// card, the title bold on top and its lines under it, left aligned down the
+/// screen.
+pub fn draw_cards(
+    font: &Font,
+    cards: &[(&'static str, Vec<String>)],
+    scale: f32,
+    width: i32,
+) -> Vec<GuiDraw> {
+    let _ = width;
+    let mut out = vec![GuiDraw::Push(vec![PoseOp::Scale(scale, scale)])];
+    let mut y = 2;
+    for (title, lines) in cards {
+        let title = title_label(title);
+        let widest = lines
+            .iter()
+            .map(|line| font.width(line) as i32)
+            .chain(std::iter::once(font.width(&title) as i32))
+            .max()
+            .unwrap_or(0);
+        let top = y;
+        let height = LINE_HEIGHT * (lines.len() as i32 + 1) + 2;
+        out.push(fill(1, top - 1, 3 + widest, top + height - 1, BACKGROUND));
+        out.push(card_text(&title, 3, top));
+        for (i, line) in lines.iter().enumerate() {
+            out.push(card_text(line, 3, top + LINE_HEIGHT * (i as i32 + 1)));
+        }
+        y = top + height + 2;
+    }
+    out.push(GuiDraw::Pop);
+    out
+}
+
+/// A card's title: its key with the first letter uppered ("system" ->
+/// "System"), bold through the legacy code.
+fn title_label(title: &str) -> String {
+    let mut chars = title.chars();
+    let upper = match chars.next() {
+        Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
+        None => String::new(),
+    };
+    format!("§l{upper}")
 }
 
 /// `ChatFormatting.UNDERLINE`, `GREEN` and `RED` as legacy codes.
@@ -528,6 +597,29 @@ mod tests {
             tag_lines(&tags, "minecraft:oak_log"),
             lines(&["#minecraft:burnable", "#minecraft:logs"])
         );
+    }
+
+    /// The BetterF3 cards: the priority and split lines as Overview, then
+    /// each non-empty group.
+    #[test]
+    fn cards_group_the_overlay_with_titles() {
+        let mut d = Displayer::default();
+        d.priority("fps: 60");
+        d.line("biome: plains");
+        d.group("system", ["CPU: arm".to_owned()]);
+        d.group("empty", std::iter::empty());
+        let cards = d.cards(&["chart keys".to_owned()]);
+        assert_eq!(cards.len(), 2, "the empty group is left out: {cards:?}");
+        assert_eq!(cards[0].0, "Overview");
+        assert_eq!(
+            cards[0].1,
+            lines(&["fps: 60", "biome: plains", "chart keys"])
+        );
+        assert_eq!(cards[1].0, "system");
+        assert_eq!(cards[1].1, lines(&["CPU: arm"]));
+        // A title is its key with the first letter uppered and bold.
+        assert_eq!(title_label("system"), "§lSystem");
+        assert_eq!(title_label("Overview"), "§lOverview");
     }
 
     #[test]
