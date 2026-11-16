@@ -213,6 +213,14 @@ impl View {
         // The direction (0, -1) in the map's (right, -forward) basis.
         (-r[1] as f32, f[1] as f32)
     }
+    /// A world offset from the view's centre as map-pixel offsets (x right,
+    /// y down): where a marker at centre + (dx, dz) falls on the image.
+    pub fn map_offset(&self, dx: f64, dz: f64) -> (f32, f32) {
+        let (right, up) = self.axes();
+        let px = (dx * right[0] + dz * right[1]) as f32;
+        let py = -(dx * up[0] + dz * up[1]) as f32;
+        (px / self.blocks_per_pixel, py / self.blocks_per_pixel)
+    }
 }
 
 /// `MapColor.getColorFromPackedId` as RGBA.

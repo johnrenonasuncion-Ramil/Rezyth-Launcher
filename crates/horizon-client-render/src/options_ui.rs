@@ -1775,6 +1775,10 @@ pub enum Page {
     VoltBoost,
     /// The Volt Mod Menu (the hub's Extras tab opens it).
     VoltModMenu,
+    /// The Maps tab's fullscreen world map (drawn by `draw_world_map`).
+    WorldMap,
+    /// The Maps tab's saved-waypoint manager.
+    Waypoints,
     /// CreditsAndAttributionScreen.
     Credits,
     /// Horizon Settings: every page Horizon adds, as a mod's settings
@@ -1890,6 +1894,14 @@ enum Act {
     GalleryUpdate(String),
     GalleryMore,
     GalleryRetry,
+    /// The Maps tab's waypoint actions: file one where the player stands,
+    /// show or hide one, cycle its colour, take it away, clear the death
+    /// markers (`s.volt_waypoints`).
+    WaypointAdd,
+    WaypointToggle(usize),
+    WaypointColor(usize),
+    WaypointDelete(usize),
+    WaypointClearDeaths,
 }
 enum WKind {
     Button {
@@ -2109,6 +2121,25 @@ fn slider_unsnapped(opt: Opt, held: bool, moved: Instant) -> bool {
         held
     }
 }
+/// The live world the Maps tab's screens draw: the game fills one each
+/// frame the options are open, so the World Map shows where the player is.
+#[derive(Clone, Debug, PartialEq)]
+pub struct WorldView {
+    /// The player's eyes' position.
+    pub pos: [f64; 3],
+    /// The look, for the map's own arrow.
+    pub yaw: f32,
+    /// The minimap's blocks per pixel and whether it turns with the player:
+    /// the World Map draws the same view the minimap does.
+    pub blocks_per_pixel: f32,
+    pub rotate: bool,
+    /// The dimension id (`minecraft:overworld`), for the waypoint sync.
+    pub dimension: &'static str,
+    pub day_time: i64,
+    /// The singleplayer world or server the waypoints are filed under.
+    pub scope: String,
+}
+
 pub struct OptionsUi {
     pub stack: Vec<Page>,
     scroll: f32,
@@ -2157,6 +2188,8 @@ pub struct OptionsUi {
     pub volt_glass: crate::volt_settings_ui::VoltSettingsUi,
     /// The pure-Rust Mod Menu the hub's Extras tab opens.
     pub mod_menu: crate::volt_mods::ModMenuUi,
+    /// The live world the Maps tab's screens draw (filled by the game).
+    pub world_view: Option<WorldView>,
     /// The Packs page is Create World's Data Packs screen on this folder.
     data_pack_dir: Option<std::path::PathBuf>,
     /// The game's resources, for the built-in data pack's icon.
@@ -2284,6 +2317,7 @@ impl Default for OptionsUi {
             gallery: Default::default(),
             volt_glass: Default::default(),
             mod_menu: Default::default(),
+            world_view: None,
             pack_infos: Vec::new(),
             pack_selection: Vec::new(),
             pack_screen: None,
@@ -3069,6 +3103,8 @@ impl OptionsUi {
             Page::VoltSettings => "horizon.pages.volt",
             Page::VoltBoost => "horizon.volt.boost",
             Page::VoltModMenu => "volt.mods.title",
+            Page::WorldMap => "horizon.pages.world_map",
+            Page::Waypoints => "horizon.pages.waypoints",
             Page::Credits => "credits_and_attribution.screen.title",
             Page::Horizon => "horizon.pages.settings",
             Page::Agent => "horizon.pages.agent",
@@ -3707,6 +3743,62 @@ impl OptionsUi {
                 }
                 rows
             }
+            Page::Waypoints => {
+                // The saved waypoints of this world or server: show or hide
+                // one, cycle its colour, take it away, and the two actions
+                // that are not per-waypoint.
+                let scope = self.world_view.as_ref().map_or("", |v| v.scope.as_str());
+                let indices = s.volt_waypoints.scoped_indices(scope);
+                let mut rows = vec![Row::Buttons(
+                    button(
+                        0.0,
+                        0.0,
+                        150.0,
+                        tr("horizon.waypoints.add"),
+                        Act::WaypointAdd,
+                    ),
+                    Some(button(
+                        0.0,
+                        0.0,
+                        150.0,
+                        tr("horizon.waypoints.clear_deaths"),
+                        Act::WaypointClearDeaths,
+                    )),
+                )];
+                if indices.is_empty() {
+                    rows.push(Row::Note(tr("horizon.waypoints.empty").plain()));
+                    return rows;
+                }
+                for i in indices {
+                    let wp = &s.volt_waypoints.entries[i];
+                    rows.push(Row::Note(format!(
+                        "{}  ({}, {}, {})",
+                        clipped(&wp.name, 18),
+                        wp.x,
+                        wp.y,
+                        wp.z
+                    )));
+                    rows.push(Row::Icons(vec![
+                        button(0.0, 0.0, 40.0, on_off(wp.enabled), Act::WaypointToggle(i)),
+                        button(
+                            0.0,
+                            0.0,
+                            40.0,
+                            Text::literal(clipped(wp.color.label(), 6)),
+                            Act::WaypointColor(i),
+                        ),
+                        button(
+                            0.0,
+                            0.0,
+                            40.0,
+                            tr("horizon.waypoints.remove"),
+                            Act::WaypointDelete(i),
+                        ),
+                    ]));
+                }
+                rows
+            }
+            Page::WorldMap => Vec::new(),
             Page::Online => {
                 // OnlineOptionsScreen without the Xbox and friends-list parts.
                 let mut rows = vec![Row::Header("options.online.friends.header")];
@@ -5147,6 +5239,10 @@ impl OptionsUi {
             self.mod_menu.draw(s, batch, atlas, cursor, self.in_world);
             return;
         }
+        if self.page() == Page::WorldMap {
+            self.draw_world_map(s, batch, atlas, cursor);
+            return;
+        }
         let (widgets, top, bottom, content) = self.layout(s, w, h);
         self.size = (w, h);
         let in_world = self.in_world;
@@ -5526,6 +5622,207 @@ impl OptionsUi {
             }
         }
     }
+    /// The Maps tab's fullscreen world map: the minimap's image enlarged,
+    /// the saved waypoints over it and the player's arrow at the centre.
+    fn draw_world_map(
+        &self,
+        s: &Settings,
+        batch: &mut HudBatch,
+        atlas: &HudAtlas,
+        cursor: (f32, f32),
+    ) {
+        let (w, h) = (batch.width, batch.height);
+        ui::menu_background(batch, atlas, 0.0, 0.0, w, h, self.in_world);
+        let title = tr("horizon.pages.world_map");
+        batch.text_styled(
+            atlas,
+            &title,
+            ((w - atlas.font.width_text(&title)) / 2.0).floor(),
+            8.0,
+            u32::MAX,
+            true,
+        );
+        let side = (h - 92.0).min(w - 40.0).clamp(64.0, 512.0);
+        let (x, y) = ((w - side) / 2.0, 22.0);
+        // The frame and a map backdrop (the image is empty until the minimap
+        // composes one).
+        batch.fill(
+            atlas,
+            x - 2.0,
+            y - 2.0,
+            side + 4.0,
+            side + 4.0,
+            rgba(0, 0, 0, 255),
+        );
+        batch.fill(atlas, x, y, side, side, rgba(24, 32, 24, 255));
+        if let Some(rect) = atlas.sprites.get(crate::hud::MINIMAP_SPRITE).copied() {
+            batch.rect_uv(x, y, side, side, rect, u32::MAX);
+        }
+        let view = self.world_view.as_ref().map(|v| crate::minimap::View {
+            x: v.pos[0],
+            z: v.pos[2],
+            yaw: v.yaw,
+            rotate: v.rotate,
+            blocks_per_pixel: v.blocks_per_pixel.max(0.5),
+            round: false,
+        });
+        if let (Some(v), Some(view)) = (&self.world_view, &view) {
+            let scale = side / crate::minimap::SIZE as f32;
+            let (mwx, mwy) = (x + side / 2.0, y + side / 2.0);
+            for wp in &s.volt_waypoints.entries {
+                if wp.scope != v.scope || !wp.enabled {
+                    continue;
+                }
+                let Some((target, tag)) = crate::volt_features::effective_waypoint_coords(
+                    wp,
+                    v.dimension,
+                    s.extras.waypoint_dimension_sync,
+                ) else {
+                    continue;
+                };
+                let (dx, dy, dz) = (
+                    target[0] - v.pos[0],
+                    target[1] - v.pos[1],
+                    target[2] - v.pos[2],
+                );
+                let distance = (dx * dx + dy * dy + dz * dz).sqrt();
+                if s.extras.waypoint_max_distance > 0
+                    && distance > f64::from(s.extras.waypoint_max_distance)
+                {
+                    continue;
+                }
+                let (ox, oy) = view.map_offset(target[0] - v.pos[0], target[2] - v.pos[2]);
+                let (px, py) = (mwx + ox * scale, mwy + oy * scale);
+                let (min, max) = (x + 2.0, x + side - 2.0);
+                if px < min || px > max || py < y + 2.0 || py > y + side - 2.0 {
+                    continue;
+                }
+                let [r, g, bl] = wp.color.rgb();
+                let m = (f32::from(s.extras.waypoint_scale) / 100.0 * 4.0).max(2.0);
+                let half = m / 2.0;
+                batch.fill(atlas, px - half, py - half, m, m, rgba(r, g, bl, 255));
+                if s.extras.waypoint_labels {
+                    let mut label = wp.name.clone();
+                    if s.extras.waypoint_distance {
+                        label.push_str(&format!(" {}m", distance.round() as i64));
+                    }
+                    if s.extras.waypoint_coords {
+                        label.push_str(&format!(" ({}, {}, {})", wp.x, wp.y, wp.z));
+                    }
+                    if let Some(tag) = tag {
+                        label.push_str(&format!(" [{tag}]"));
+                    }
+                    batch.text(
+                        atlas,
+                        &label,
+                        px + 4.0,
+                        py - 4.0,
+                        rgba(255, 255, 255, 255),
+                        true,
+                    );
+                }
+            }
+            // The player's own arrow, drawn as the minimap draws it.
+            if let Some(r) = atlas.sprites.get("map/decorations/player").copied() {
+                let arrow = if view.rotate { 0.0 } else { 180.0 + view.yaw };
+                let (sin, cos) = (arrow + 180.0).to_radians().sin_cos();
+                let corner =
+                    |dx: f32, dy: f32| [mwx + dx * cos - dy * sin, mwy + dx * sin + dy * cos];
+                let hh = 5.0;
+                batch.quad(
+                    [
+                        corner(-hh, hh),
+                        corner(hh, hh),
+                        corner(hh, -hh),
+                        corner(-hh, -hh),
+                    ],
+                    [[r.u0, r.v0], [r.u1, r.v0], [r.u1, r.v1], [r.u0, r.v1]],
+                    u32::MAX,
+                );
+            }
+            // The dimension, the coordinates and the clock, under the map.
+            let text = format!(
+                "{}  |  {}  |  {}",
+                crate::volt_features::short_dimension_label(v.dimension),
+                crate::volt_features::format_coords(v.pos),
+                crate::volt_features::format_world_clock(v.day_time)
+            );
+            let line = Text::literal(text);
+            batch.text_styled(
+                atlas,
+                &line,
+                ((w - atlas.font.width_text(&line)) / 2.0).floor(),
+                y + side + 6.0,
+                u32::MAX,
+                true,
+            );
+        }
+        // Add Waypoint Here, Manage Waypoints..., Done.
+        let cx = (w / 2.0).floor();
+        for (bx, key) in [
+            (cx - 154.0, "horizon.waypoints.add"),
+            (cx - 50.0, "horizon.waypoints.manage"),
+            (cx + 54.0, "gui.done"),
+        ] {
+            let label = tr(key);
+            ui::button(
+                batch,
+                atlas,
+                bx,
+                h - 28.0,
+                100.0,
+                20.0,
+                &label,
+                true,
+                ui::hovered(cursor, bx, h - 28.0, 100.0, 20.0),
+            );
+        }
+    }
+    /// The World Map's own buttons (the page is drawn whole).
+    fn world_map_click(
+        &mut self,
+        s: &mut Settings,
+        cursor: (f32, f32),
+        size: (f32, f32),
+        drag: bool,
+    ) -> Vec<Event> {
+        let mut events = Vec::new();
+        // A button answers the press, not the drags that follow it.
+        if drag {
+            return events;
+        }
+        let cx = (size.0 / 2.0).floor();
+        if ui::hovered(cursor, cx - 154.0, size.1 - 28.0, 100.0, 20.0) {
+            events.push(Event::ButtonClick);
+            if self.add_waypoint(s) {
+                events.push(Event::Changed);
+            }
+        }
+        if ui::hovered(cursor, cx - 50.0, size.1 - 28.0, 100.0, 20.0) {
+            events.push(Event::ButtonClick);
+            self.push(Page::Waypoints);
+        }
+        if ui::hovered(cursor, cx + 54.0, size.1 - 28.0, 100.0, 20.0) {
+            events.extend(self.back(s));
+        }
+        events
+    }
+    /// Files a waypoint where the player stands ([`Act::WaypointAdd`]): the
+    /// Maps tab's own button and, through the game, its in-game key.
+    fn add_waypoint(&mut self, s: &mut Settings) -> bool {
+        let Some(view) = &self.world_view else {
+            return false;
+        };
+        let pos = [
+            view.pos[0].floor() as i32,
+            view.pos[1].floor() as i32,
+            view.pos[2].floor() as i32,
+        ];
+        let (scope, dimension) = (view.scope.clone(), view.dimension);
+        s.volt_waypoints
+            .add(&scope, "", dimension, pos, s.extras.waypoint_new_color);
+        true
+    }
     /// Mouse press/drag. Returns events for the game.
     pub fn click(
         &mut self,
@@ -5667,9 +5964,8 @@ impl OptionsUi {
                         events.push(Event::ListShaderPacks);
                     }
                     VoltUiAction::OpenAgent => self.push(Page::Agent),
-                    // The world map and waypoint manager are gameplay screens
-                    // this port does not carry yet.
-                    VoltUiAction::OpenWorldMap | VoltUiAction::OpenWaypointsManager => {}
+                    VoltUiAction::OpenWorldMap => self.push(Page::WorldMap),
+                    VoltUiAction::OpenWaypointsManager => self.push(Page::Waypoints),
                     VoltUiAction::Done => events.extend(self.back(s)),
                 }
             }
@@ -5684,11 +5980,18 @@ impl OptionsUi {
                     ModMenuAction::Changed => events.push(Event::Changed),
                     ModMenuAction::OpenFolder => events.push(Event::OpenModFolder),
                     ModMenuAction::OpenKeyBinds => self.push(Page::KeyBinds),
-                    ModMenuAction::OpenWorldMap => {}
+                    ModMenuAction::OpenWorldMap => self.push(Page::WorldMap),
                     ModMenuAction::Done => events.extend(self.back(s)),
                 }
             }
             return events;
+        }
+        if self.page() == Page::WorldMap {
+            // The map's buttons are primary-button only.
+            if right {
+                return Vec::new();
+            }
+            return self.world_map_click(s, (x, y), size, drag);
         }
         let (widgets, top, bottom, content) = self.layout(s, size.0, size.1);
         self.size = size;
@@ -6179,6 +6482,36 @@ impl OptionsUi {
                         Act::OpenSkinFolder => self.skin.actions.push(SkinAction::OpenFolder),
                         Act::ToggleRecording => events.push(Event::ToggleRecording),
                         Act::ExportRepro => events.push(Event::ExportRepro),
+                        Act::WaypointAdd => {
+                            if self.add_waypoint(s) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointToggle(i) => {
+                            if s.volt_waypoints.toggle(i) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointColor(i) => {
+                            if s.volt_waypoints.cycle_color(i, self.shift) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointDelete(i) => {
+                            if s.volt_waypoints.remove(i) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointClearDeaths => {
+                            let scope = self
+                                .world_view
+                                .as_ref()
+                                .map(|v| v.scope.clone())
+                                .unwrap_or_default();
+                            if s.volt_waypoints.clear_deaths(&scope) > 0 {
+                                events.push(Event::Changed);
+                            }
+                        }
                         Act::None => {}
                     }
                 }
@@ -6863,7 +7196,8 @@ impl OptionsUi {
                         events.push(Event::ListShaderPacks);
                     }
                     VoltUiAction::OpenAgent => self.push(Page::Agent),
-                    VoltUiAction::OpenWorldMap | VoltUiAction::OpenWaypointsManager => {}
+                    VoltUiAction::OpenWorldMap => self.push(Page::WorldMap),
+                    VoltUiAction::OpenWaypointsManager => self.push(Page::Waypoints),
                     VoltUiAction::Done => events.extend(self.back(s)),
                 }
             }
@@ -6882,7 +7216,7 @@ impl OptionsUi {
                     ModMenuAction::Changed => events.push(Event::Changed),
                     ModMenuAction::OpenFolder => events.push(Event::OpenModFolder),
                     ModMenuAction::OpenKeyBinds => self.push(Page::KeyBinds),
-                    ModMenuAction::OpenWorldMap => {}
+                    ModMenuAction::OpenWorldMap => self.push(Page::WorldMap),
                     ModMenuAction::Done => events.extend(self.back(s)),
                 }
             }
@@ -7335,6 +7669,36 @@ impl OptionsUi {
                         Act::CopyAgentDetails => events.push(Event::CopyAgentDetails),
                         Act::ToggleRecording => events.push(Event::ToggleRecording),
                         Act::ExportRepro => events.push(Event::ExportRepro),
+                        Act::WaypointAdd => {
+                            if self.add_waypoint(s) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointToggle(i) => {
+                            if s.volt_waypoints.toggle(i) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointColor(i) => {
+                            if s.volt_waypoints.cycle_color(i, shift) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointDelete(i) => {
+                            if s.volt_waypoints.remove(i) {
+                                events.push(Event::Changed);
+                            }
+                        }
+                        Act::WaypointClearDeaths => {
+                            let scope = self
+                                .world_view
+                                .as_ref()
+                                .map(|v| v.scope.clone())
+                                .unwrap_or_default();
+                            if s.volt_waypoints.clear_deaths(&scope) > 0 {
+                                events.push(Event::Changed);
+                            }
+                        }
                         // Starling's pages answer taps only.
                         Act::PackProfile
                         | Act::ShaderResolution

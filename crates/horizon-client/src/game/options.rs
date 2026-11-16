@@ -243,6 +243,9 @@ impl Game<'_> {
         if self.poll_pack_gallery() {
             self.settings.save(&Self::options_path());
         }
+        // The Maps tab's World Map draws the live world: a snapshot each
+        // frame, so the map and its waypoints follow the player.
+        self.ui.options.world_view = self.world_map_snapshot();
         let mut ui = std::mem::take(&mut self.ui.options);
         ui.draw(&self.settings, batch, &self.gui.atlas, self.cursor);
         self.ui.options = ui;

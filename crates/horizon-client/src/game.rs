@@ -18732,6 +18732,16 @@ impl Game<'_> {
                     {
                         self.smooth_camera = !self.smooth_camera;
                     }
+                    // The Maps tab's Create Waypoint key (default `B`, Escape
+                    // unbinds): files one where the player stands.
+                    if self.screen == Screen::Playing
+                        && event.state == ElementState::Pressed
+                        && !event.repeat
+                        && horizon_client::keybinds::key_name(key)
+                            .is_some_and(|n| n == self.settings.extras.waypoint_key)
+                    {
+                        self.waypoint_key_press();
+                    }
                     self.mapped_key_event(key, event.state == ElementState::Pressed, event.repeat)?;
                 }
                 WindowEvent::RedrawRequested => {

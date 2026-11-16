@@ -229,9 +229,66 @@ impl Game<'_> {
         };
         Some((m.corner, m.size, view))
     }
-    /// The minimap shown: a native mod's (`native_minimap`).
+    /// The minimap shown: a native mod's (`native_minimap`), else the Rezyth
+    /// Settings Maps tab's own (its Master switch, corner, size, zoom,
+    /// rotation and shape then draw it).
     fn minimap_wanted(&self) -> Option<NativeMinimap> {
-        self.native_minimap_now()
+        if let Some(m) = self.native_minimap_now() {
+            return Some(m);
+        }
+        let e = &self.settings.extras;
+        if !e.minimap {
+            return None;
+        }
+        Some(NativeMinimap {
+            corner: e.minimap_corner,
+            size: f32::from(e.minimap_size),
+            blocks_per_pixel: e.minimap_zoom,
+            rotate: e.minimap_rotate,
+            round: e.minimap_round,
+        })
+    }
+    /// The live world the Maps tab's World Map draws, taken each frame the
+    /// options are open: the player, the look, the clock and the waypoint
+    /// scope.
+    pub(super) fn world_map_snapshot(&self) -> Option<horizon_client::options_ui::WorldView> {
+        let p = self.player.as_ref()?;
+        let e = &self.settings.extras;
+        Some(horizon_client::options_ui::WorldView {
+            pos: [p.position.x, p.position.y, p.position.z],
+            yaw: self.yaw,
+            blocks_per_pixel: e.minimap_zoom.max(0.5),
+            rotate: e.minimap_rotate,
+            dimension: self.dim.id(),
+            day_time: self.world.day_time,
+            scope: self.waypoint_scope(),
+        })
+    }
+    /// The world or server the Maps tab's waypoints are filed under: the
+    /// server's address, else this world as singleplayer.
+    pub(super) fn waypoint_scope(&self) -> String {
+        self.server_address()
+            .map(str::to_owned)
+            .unwrap_or_else(|| "singleplayer".to_owned())
+    }
+    /// The Maps tab's Create Waypoint key (default `B`): files one where
+    /// the player stands and saves (nothing without a player).
+    pub(super) fn waypoint_key_press(&mut self) -> bool {
+        let Some(p) = self.player.as_ref() else {
+            return false;
+        };
+        let pos = [
+            p.position.x.floor() as i32,
+            p.position.y.floor() as i32,
+            p.position.z.floor() as i32,
+        ];
+        let (scope, dimension) = (self.waypoint_scope(), self.dim.id());
+        let color = self.settings.extras.waypoint_new_color;
+        self.settings
+            .volt_waypoints
+            .add(&scope, "", dimension, pos, color);
+        self.settings.save(&Self::options_path());
+        true
     }
     /// Refresh the minimap's tiles within the frame budget, recompose its
     /// image when the view or a tile changed, and queue the upload.

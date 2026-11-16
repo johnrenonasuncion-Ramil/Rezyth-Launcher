@@ -245,6 +245,9 @@ pub struct Settings {
     pub extras: crate::extras::Extras,
     /// The Horizon mods turned on (`horizon-mods.txt`), all off by default.
     pub mods: crate::mod_list::ModList,
+    /// The saved Volt Waypoints (`volt-waypoints.json`): the Maps tab's
+    /// World Map markers and its Waypoint Manager.
+    pub volt_waypoints: crate::volt_features::WaypointStore,
     /// The packs in `shaderpacks/`, listed when the Shader Packs page opens; the pick is
     /// `horizon.shader_pack`.
     pub shader_packs: Vec<crate::shader_pack_list::Entry>,
@@ -337,6 +340,7 @@ impl Default for Settings {
             controller: Default::default(),
             extras: Default::default(),
             mods: Default::default(),
+            volt_waypoints: Default::default(),
             shader_packs: Vec::new(),
             shader_options: None,
             custom_buttons: Vec::new(),
@@ -398,12 +402,18 @@ impl Settings {
             .parent()
             .map(|dir| crate::mod_list::ModList::load(&crate::logging::shared_dir(dir)))
             .unwrap_or_default();
+        // The saved waypoints are the player's own file beside options.txt.
+        let volt_waypoints = path
+            .parent()
+            .map(crate::volt_features::WaypointStore::load)
+            .unwrap_or_default();
         let settings = match fs::read(path) {
             Ok(bytes) => Self {
                 horizon,
                 controller,
                 extras,
                 mods,
+                volt_waypoints,
                 ..Self::parse(&String::from_utf8_lossy(&bytes))
             },
             Err(_) => Self {
@@ -411,6 +421,7 @@ impl Settings {
                 controller,
                 extras,
                 mods,
+                volt_waypoints,
                 ..Self::default()
             },
         };
@@ -527,6 +538,7 @@ impl Settings {
             controller: Default::default(),
             extras: Default::default(),
             mods: Default::default(),
+            volt_waypoints: Default::default(),
             shader_packs: Vec::new(),
             shader_options: None,
             custom_buttons: Vec::new(),
@@ -695,6 +707,7 @@ impl Settings {
             controller: self.controller.clone(),
             extras: self.extras.clone(),
             mods: self.mods.clone(),
+            volt_waypoints: self.volt_waypoints.clone(),
             video_modes: self.video_modes.clone(),
             ..Self::from_file(file)
         })
@@ -711,6 +724,7 @@ impl Settings {
             self.controller.save(dir);
             self.extras.save(dir);
             self.mods.save(&crate::logging::shared_dir(dir));
+            self.volt_waypoints.save(dir);
         }
     }
     /// Volume of a sound source (master excluded).
