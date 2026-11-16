@@ -521,6 +521,25 @@ impl Game<'_> {
             }
             extras_hud::draw_panel(batch, atlas, corners, Corner::TopLeft, &rows);
         }
+        // The Blueprint material checklist (its rows): the selected template
+        // and the blocks it needs, sliced by the Y-slice row.
+        let q = &self.settings.extras.volt_qol;
+        if q.blueprint_enabled && q.blueprint_checklist {
+            let mut rows = vec![(q.blueprint_preset.label().to_owned(), u32::MAX)];
+            for (block, count) in horizon_client::volt_features::blueprint_materials(
+                q.blueprint_preset,
+                q.blueprint_layer,
+            ) {
+                let path = block.strip_prefix("minecraft:").unwrap_or(block);
+                let name = self
+                    .pack
+                    .names
+                    .display_get(&format!("block.minecraft.{path}"))
+                    .unwrap_or_else(|| path.to_owned());
+                rows.push((format!("{name} x{count}"), u32::MAX));
+            }
+            extras_hud::draw_panel(batch, atlas, corners, Corner::BottomRight, &rows);
+        }
         // The FPS & Ping Pill (its mod): the frame counter and, on a server,
         // the player's own ping (`PlayerInfo.getLatency`).
         if fps_ping {

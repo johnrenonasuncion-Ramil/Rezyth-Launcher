@@ -729,10 +729,140 @@ pub fn format_world_clock(day_time: i64) -> String {
     format!("D{day} {hour:02}:{minute:02} ({phase})")
 }
 
+/// The blocks of a blueprint template, as (offset from the anchor, block).
+/// The anchor is where the player stands; the offsets grow up and outward.
+pub fn blueprint_layout(preset: crate::volt_qol::BlueprintPreset) -> Vec<([i16; 3], &'static str)> {
+    use crate::volt_qol::BlueprintPreset as P;
+    let mut out = Vec::new();
+    match preset {
+        P::StarterCabin => {
+            blueprint_ring(&mut out, 7, 4, 7, "minecraft:oak_planks");
+            for x in 0..7 {
+                for z in 0..7 {
+                    if x == 0 || x == 6 || z == 0 || z == 6 {
+                        out.push(([x, 4, z], "minecraft:oak_slab"));
+                    }
+                }
+            }
+        }
+        P::Watchtower => blueprint_ring(&mut out, 5, 8, 5, "minecraft:stone_bricks"),
+        // The classic 9x9: a water channel down the middle, farmland around.
+        P::CropFarm9x9 => {
+            for x in 0..9 {
+                for z in 0..9 {
+                    let block = if x == 4 {
+                        "minecraft:water"
+                    } else {
+                        "minecraft:farmland"
+                    };
+                    out.push(([x, 0, z], block));
+                }
+            }
+        }
+        // The 4x5 obsidian frame with its 2x3 opening.
+        P::PortalShrine => {
+            for x in 0..4 {
+                for y in 0..5 {
+                    if x == 0 || x == 3 || y == 0 || y == 4 {
+                        out.push(([x, y, 0], "minecraft:obsidian"));
+                    }
+                }
+            }
+        }
+        // A 9x9 spawning deck with a three high glass rim.
+        P::MobFarmDeck => {
+            for x in 0..9 {
+                for z in 0..9 {
+                    out.push(([x, 0, z], "minecraft:stone"));
+                }
+            }
+            for y in 1..4 {
+                for x in 0..9 {
+                    for z in 0..9 {
+                        if x == 0 || x == 8 || z == 0 || z == 8 {
+                            out.push(([x, y, z], "minecraft:glass"));
+                        }
+                    }
+                }
+            }
+        }
+        // What the player copied: nothing to project.
+        P::WorldClipboard => {}
+    }
+    out
+}
+
+/// Hollow walls for a template: the perimeter of every layer, and a floor.
+fn blueprint_ring(
+    out: &mut Vec<([i16; 3], &'static str)>,
+    w: i16,
+    h: i16,
+    d: i16,
+    block: &'static str,
+) {
+    for y in 0..h {
+        for x in 0..w {
+            for z in 0..d {
+                if x == 0 || x == w - 1 || z == 0 || z == d - 1 || y == 0 {
+                    out.push(([x, y, z], block));
+                }
+            }
+        }
+    }
+}
+
+/// The template's materials for the checklist: a `layer` of -1 counts every
+/// layer, else only blocks whose Y offset equals it. Sorted by count
+/// (largest first), then by name.
+pub fn blueprint_materials(
+    preset: crate::volt_qol::BlueprintPreset,
+    layer: i16,
+) -> Vec<(&'static str, usize)> {
+    let mut counts: Vec<(&'static str, usize)> = Vec::new();
+    for (at, block) in blueprint_layout(preset) {
+        if layer >= 0 && at[1] != layer {
+            continue;
+        }
+        match counts.iter_mut().find(|(name, _)| *name == block) {
+            Some((_, count)) => *count += 1,
+            None => counts.push((block, 1)),
+        }
+    }
+    counts.sort_unstable_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
+    counts
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// The blueprint templates list their materials, sliced by the Y layer.
+    #[test]
+    fn blueprint_templates_list_their_materials() {
+        use crate::volt_qol::BlueprintPreset as P;
+        assert_eq!(
+            blueprint_materials(P::PortalShrine, -1),
+            [("minecraft:obsidian", 14)]
+        );
+        assert_eq!(
+            blueprint_materials(P::PortalShrine, 0),
+            [("minecraft:obsidian", 4)]
+        );
+        assert_eq!(
+            blueprint_materials(P::PortalShrine, 2),
+            [("minecraft:obsidian", 2)]
+        );
+        // The classic 9x9 farm counts every cell: 9 water, 72 farmland.
+        let farm = blueprint_materials(P::CropFarm9x9, -1);
+        assert_eq!(farm, [("minecraft:farmland", 72), ("minecraft:water", 9)]);
+        let total: usize = farm.iter().map(|(_, count)| count).sum();
+        assert_eq!(total, 81);
+        // Every template but the clipboard (nothing copied) has blocks.
+        for preset in P::ALL {
+            let empty = blueprint_layout(preset).is_empty();
+            assert_eq!(empty, preset == P::WorldClipboard, "{preset:?}");
+        }
+    }
     #[test]
     fn waypoint_store_handles_death_limit_and_nether_sync() {
         let mut store = WaypointStore::default();
