@@ -5479,6 +5479,14 @@ impl Game<'_> {
         Some((players, r.online_mode, upside_down))
     }
 
+    /// The local player's ping in ms (`PlayerInfo.getLatency`), or -1 with
+    /// no server to measure it (and for a -1 the server itself sent).
+    pub(super) fn local_ping(&self) -> i32 {
+        let Some(r) = self.remote.as_ref() else {
+            return -1;
+        };
+        r.tab_players.get(&r.profile).map_or(-1, |p| p.latency)
+    }
     /// Resolve inline `object:player` profiles through the same skin cache as
     /// player heads on items. The next frame uses the uploaded atlas texture.
     pub(super) fn resolve_inline_profiles(&mut self, profiles: &[serde_json::Value]) {

@@ -8780,6 +8780,26 @@ impl Game<'_> {
                 );
             });
         }
+        // OLED Anti-Burn-In Dim (Horizon's switch): a minute untouched and a
+        // veil fades in over the still HUD, up to 60% after another minute.
+        if self.screen == Screen::Playing && self.settings.extras.volt_mods.oled_afk_saver {
+            let idle = self.last_input.elapsed().as_secs_f32();
+            let dim = ((idle - 60.0) / 60.0).clamp(0.0, 0.6);
+            if dim > 0.01 {
+                self.gui_layer("horizon.oled_dim", &mut batch, |g, batch| {
+                    let atlas = &g.gui.atlas;
+                    let alpha = (dim * 255.0) as u8;
+                    batch.fill(
+                        atlas,
+                        0.0,
+                        0.0,
+                        batch.width,
+                        batch.height,
+                        rgba(0, 0, 0, alpha),
+                    );
+                });
+            }
+        }
         batch
     }
     /// `native_screen_render_post` (`ScreenEvent.Render.Post`) for the open

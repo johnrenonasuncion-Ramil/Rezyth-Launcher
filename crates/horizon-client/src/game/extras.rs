@@ -407,8 +407,13 @@ impl Game<'_> {
             return;
         }
         let v = &self.settings.extras.volt_mods;
-        let (armor_hud, cps_hud, reach_hud, potion_hud) =
-            (v.armor_hud, v.cps_hud, v.reach_hud, v.potion_hud);
+        let (armor_hud, cps_hud, reach_hud, potion_hud, fps_ping) = (
+            v.armor_hud,
+            v.cps_hud,
+            v.reach_hud,
+            v.potion_hud,
+            v.fps_ping_pill,
+        );
         // The counts are the extras' own click records (the mod API's
         // `input.clicks-per-second`), so the panel and a mod read one state.
         let cps = if cps_hud {
@@ -452,6 +457,18 @@ impl Game<'_> {
                     }
                 }
             }
+        }
+        // The FPS & Ping Pill (its mod): the frame counter and, on a server,
+        // the player's own ping (`PlayerInfo.getLatency`).
+        if fps_ping {
+            let (fps, _, _) = self.frame_reading();
+            let ping = self.local_ping();
+            let text = if ping < 0 {
+                format!("{fps} fps")
+            } else {
+                format!("{fps} fps | {ping} ms")
+            };
+            extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &[(text, u32::MAX)]);
         }
         if let Some((left, right)) = cps {
             extras_hud::draw_panel(

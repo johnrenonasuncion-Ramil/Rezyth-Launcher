@@ -4,8 +4,10 @@
 //! marker, over the data in `Settings::volt_waypoints`.
 use super::{Game, Screen};
 use horizon_client::{
+    chat::ChatSource,
     hud::{HudBatch, rgba},
     minimap::{self, View},
+    text::Text,
     volt_features::{effective_waypoint_coords, project_waypoint},
 };
 
@@ -186,13 +188,11 @@ impl Game<'_> {
             rgba(r, g, b, 255),
         );
     }
-    /// The Maps tab's Automatic Death Waypoints: marks where the player
-    /// fell; the store keeps the newest three deaths of a world or server.
+    /// The Maps tab's Automatic Death Waypoints (marks where the player
+    /// fell; the store keeps the newest three deaths of a world or server)
+    /// and the Death & Chest Coords Log (the coords to the chat). Both death
+    /// paths (`remote.rs`) call this once per death.
     pub(super) fn record_death_waypoint(&mut self) {
-        let e = &self.settings.extras;
-        if !e.waypoints || !e.waypoint_auto_death {
-            return;
-        }
         let Some(p) = self.player.as_ref() else {
             return;
         };
@@ -201,6 +201,20 @@ impl Game<'_> {
             p.position.y.floor() as i32,
             p.position.z.floor() as i32,
         ];
+        // The Death & Chest Coords Log: the coords go to the player's own
+        // chat, wherever the waypoint switches stand.
+        if self.settings.extras.volt_mods.death_tracker {
+            let at = |v: i32| Text::literal(v.to_string());
+            let line = Text::translate(
+                "horizon.death_tracker.line",
+                &[at(pos[0]), at(pos[1]), at(pos[2])],
+            );
+            self.local_chat_line(line, None, ChatSource::Client);
+        }
+        let e = &self.settings.extras;
+        if !e.waypoints || !e.waypoint_auto_death {
+            return;
+        }
         let (scope, dimension) = (self.waypoint_scope(), self.dim.id());
         self.settings
             .volt_waypoints

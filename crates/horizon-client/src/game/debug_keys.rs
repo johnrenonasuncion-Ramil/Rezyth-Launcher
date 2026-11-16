@@ -948,7 +948,9 @@ impl Game<'_> {
             let min_y = self.world.bottom_y();
             g.chunk_borders(block, min_y, min_y + self.world.layout().height() - 1);
         }
-        if !self.debug_entry("entity_hitboxes") {
+        // The Tactical Hitbox Vectors mod (`volt_mods.hitbox_plus`) draws them
+        // too, with no F3+B.
+        if !self.debug_entry("entity_hitboxes") && !self.settings.extras.volt_mods.hitbox_plus {
             return g;
         }
         let lerp = |a: f64, b: f64| a + f64::from(alpha) * (b - a);

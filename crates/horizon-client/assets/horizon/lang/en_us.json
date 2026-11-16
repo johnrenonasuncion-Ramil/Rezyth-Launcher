@@ -55,6 +55,7 @@
   "horizon.waypoints.remove": "Remove",
   "horizon.waypoints.clear_deaths": "Clear Death Markers",
   "horizon.waypoints.empty": "No waypoints yet — add one where you stand.",
+  "horizon.death_tracker.line": "Death waypoint: %s, %s, %s",
   "horizon.quick_chat.gg": "GG",
   "horizon.quick_chat.coords": "Coords",
   "horizon.quick_chat.coords_message": "I'm at {x}, {y}, {z}",
