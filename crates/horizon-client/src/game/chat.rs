@@ -794,6 +794,40 @@ impl Game<'_> {
     fn leave_bed_button(width: f32, height: f32) -> (i32, i32, i32, i32) {
         (width as i32 / 2 - 100, height as i32 - 40, 200, 20)
     }
+    /// A Quick-Chat Macro Bar button's bounds: a row just above the chat
+    /// input box (which spans the bottom 14 px).
+    fn quick_chat_button(width: f32, height: f32, index: usize) -> (i32, i32, i32, i32) {
+        let w = (width / 4.0 - 8.0).clamp(44.0, 96.0) as i32;
+        (4 + index as i32 * (w + 4), height as i32 - 34, w, 16)
+    }
+    /// The Rezyth Settings Quick-Chat Macro Bar: sends `index`'s macro and
+    /// closes the screen, as pressing Enter does. Share Coords builds its
+    /// line from where the player stands.
+    fn quick_chat(&mut self, index: usize) {
+        let message = match index {
+            1 => {
+                let Some(p) = self.player.as_ref() else {
+                    return;
+                };
+                let template = horizon_client::lang::get_or(
+                    "horizon.quick_chat.coords_message",
+                    "I'm at {x}, {y}, {z}",
+                );
+                let at = |v: f64| (v.floor() as i32).to_string();
+                template
+                    .replacen("{x}", &at(p.position.x), 1)
+                    .replacen("{y}", &at(p.position.y), 1)
+                    .replacen("{z}", &at(p.position.z), 1)
+            }
+            0 => horizon_client::lang::get_or("horizon.quick_chat.gg", "GG"),
+            2 => horizon_client::lang::get_or("horizon.quick_chat.omw", "OMW"),
+            _ => horizon_client::lang::get_or("horizon.quick_chat.help", "help"),
+        };
+        // As a submit: the screen goes first, so the draft is discarded.
+        self.ui.chat_screen = None;
+        self.close_chat(ChatExit::Done);
+        self.handle_chat_input(&message);
+    }
     /// `Minecraft.computeChatAbilities` from the Chat option.
     pub(super) fn chat_abilities(&self) -> ChatAbilities {
         ChatAbilities::new(ChatVisibility::from_option(self.settings.chat_visibility))
@@ -985,6 +1019,14 @@ impl Game<'_> {
     /// a chat line. The Chat option's restrictions stop the message here too,
     /// so a control-socket `chat` cannot send what the player's setting hides.
     pub(super) fn handle_chat_input(&mut self, message: &str) {
+        // The Inline Chat Calculator (Rezyth Settings): a line that starts
+        // with `=` is worked out here and shown locally, never sent.
+        if self.settings.extras.volt_mods.chat_calculator
+            && let Some(line) = calc_line(message)
+        {
+            self.local_chat_line(line, None, ChatSource::Player);
+            return;
+        }
         let message = normalize_chat_message(message);
         if message.is_empty() || !self.chat_abilities().allows(&message) {
             return;
@@ -1044,19 +1086,37 @@ impl Game<'_> {
         let height = self.renderer.as_ref().map_or(720.0, |r| {
             HudBatch::new([r.config.width, r.config.height]).height
         });
+        let width = self.renderer.as_ref().map_or(1280.0, |r| {
+            HudBatch::new([r.config.width, r.config.height]).width
+        });
         let m = Measure(&self.gui.atlas.font);
         let c = Commands {
             dispatcher: chat_tree(&self.remote),
             registries: &self.ui.registries,
         };
-        if self.ui.in_bed_chat && self.sleeping.is_some() {
-            let width = self.renderer.as_ref().map_or(1280.0, |r| {
-                HudBatch::new([r.config.width, r.config.height]).width
-            });
+        let in_bed = self.ui.in_bed_chat && self.sleeping.is_some();
+        if in_bed {
             let (x, y, w, h) = Self::leave_bed_button(width, height);
             if horizon_client::screen_draw::inside((cursor.0 as i32, cursor.1 as i32), x, y, w, h) {
                 self.wake_up();
                 return;
+            }
+        }
+        // The Quick-Chat Macro Bar (Rezyth Settings): a tap sends its macro
+        // (the row is hidden while completions show there).
+        let suggestions = self
+            .ui
+            .chat_screen
+            .as_ref()
+            .is_some_and(|s| s.suggestions_visible());
+        if self.settings.extras.volt_chat.chat_quick_bar && !in_bed && !suggestions {
+            for i in 0..QUICK_CHAT.len() {
+                let (x, y, w, h) = Self::quick_chat_button(width, height, i);
+                let at = (cursor.0 as i32, cursor.1 as i32);
+                if horizon_client::screen_draw::inside(at, x, y, w, h) {
+                    self.quick_chat(i);
+                    return;
+                }
             }
         }
         if let Some(screen) = self.ui.chat_screen.as_mut() {
@@ -1314,6 +1374,34 @@ impl Game<'_> {
                 horizon_client::hud_overlays::now_ms(),
             );
             horizon_client::screen_draw::paint(batch, &self.gui.atlas, &button);
+        }
+        // The Quick-Chat Macro Bar (Rezyth Settings): 1-tap macros over the
+        // input box while the chat screen is open (and no completions show
+        // in that row).
+        let suggestions = self
+            .ui
+            .chat_screen
+            .as_ref()
+            .is_some_and(|s| s.suggestions_visible());
+        if self.settings.extras.volt_chat.chat_quick_bar && !in_bed && !suggestions {
+            let mut row = Vec::new();
+            for (i, (key, fallback)) in QUICK_CHAT.into_iter().enumerate() {
+                let (bx, by, bw, bh) = Self::quick_chat_button(batch.width, batch.height, i);
+                let label = Text::literal(horizon_client::lang::get_or(key, fallback));
+                horizon_client::screen_draw::button(
+                    &mut row,
+                    &m,
+                    &label,
+                    bx,
+                    by,
+                    bw,
+                    bh,
+                    true,
+                    horizon_client::screen_draw::inside(mouse, bx, by, bw, bh),
+                    horizon_client::hud_overlays::now_ms(),
+                );
+            }
+            horizon_client::screen_draw::paint(batch, &self.gui.atlas, &row);
         }
         // The hovered message part's tooltip (`renderComponentHoverEffect`),
         // or the text of the message tag under the cursor.
@@ -1639,10 +1727,173 @@ fn owner_permission(allow_commands: bool) -> u8 {
 const LINK_YES: usize = 0;
 const LINK_COPY: usize = 1;
 
+/// The Quick-Chat Macro Bar's buttons: their language key and the English
+/// text of `horizon.quick_chat.*` (Share Coords builds its message from
+/// where the player stands).
+const QUICK_CHAT: [(&str, &str); 4] = [
+    ("horizon.quick_chat.gg", "GG"),
+    ("horizon.quick_chat.coords", "Coords"),
+    ("horizon.quick_chat.omw", "OMW"),
+    ("horizon.quick_chat.help", "Help"),
+];
+
+/// The Inline Chat Calculator (Rezyth Settings): `=1+2*3` becomes the local
+/// line `1+2*3 = 7`. None for anything that does not work out, which sends
+/// as usual.
+fn calc_line(line: &str) -> Option<Text> {
+    let expr = line.trim().strip_prefix('=')?.trim();
+    if expr.is_empty() {
+        return None;
+    }
+    let value = Calc::new(expr).parse()?;
+    if !value.is_finite() {
+        return None;
+    }
+    // Whole numbers without a trailing `.0`; others to three decimals.
+    let shown = if (value - value.round()).abs() < 1e-9 && value.abs() < 1e15 {
+        format!("{}", value.round() as i64)
+    } else {
+        format!("{value:.3}")
+    };
+    Some(Text::literal(format!("{expr} = {shown}")))
+}
+
+/// The calculator's recursive-descent evaluator: decimal numbers, `+ - * / %
+/// ^`, parentheses and unary signs.
+struct Calc<'a> {
+    bytes: &'a [u8],
+    at: usize,
+}
+
+impl<'a> Calc<'a> {
+    fn new(text: &'a str) -> Self {
+        Self {
+            bytes: text.as_bytes(),
+            at: 0,
+        }
+    }
+    /// The whole text must be one expression.
+    fn parse(&mut self) -> Option<f64> {
+        let value = self.sum()?;
+        self.skip_space();
+        (self.at == self.bytes.len()).then_some(value)
+    }
+    fn peek(&self) -> Option<u8> {
+        self.bytes.get(self.at).copied()
+    }
+    fn skip_space(&mut self) {
+        while self.peek().is_some_and(|b| b.is_ascii_whitespace()) {
+            self.at += 1;
+        }
+    }
+    fn sum(&mut self) -> Option<f64> {
+        let mut value = self.product()?;
+        loop {
+            self.skip_space();
+            match self.peek() {
+                Some(b'+') => {
+                    self.at += 1;
+                    value += self.product()?;
+                }
+                Some(b'-') => {
+                    self.at += 1;
+                    value -= self.product()?;
+                }
+                _ => return Some(value),
+            }
+        }
+    }
+    fn product(&mut self) -> Option<f64> {
+        let mut value = self.power()?;
+        loop {
+            self.skip_space();
+            match self.peek() {
+                Some(b'*') => {
+                    self.at += 1;
+                    value *= self.power()?;
+                }
+                Some(b'/') => {
+                    self.at += 1;
+                    value /= self.power()?;
+                }
+                Some(b'%') => {
+                    self.at += 1;
+                    value %= self.power()?;
+                }
+                _ => return Some(value),
+            }
+        }
+    }
+    /// `^` binds tighter than the signs and groups to the right.
+    fn power(&mut self) -> Option<f64> {
+        let base = self.unary()?;
+        self.skip_space();
+        if self.peek() == Some(b'^') {
+            self.at += 1;
+            return Some(base.powf(self.power()?));
+        }
+        Some(base)
+    }
+    fn unary(&mut self) -> Option<f64> {
+        self.skip_space();
+        match self.peek() {
+            Some(b'-') => {
+                self.at += 1;
+                Some(-self.unary()?)
+            }
+            Some(b'+') => {
+                self.at += 1;
+                self.unary()
+            }
+            _ => self.primary(),
+        }
+    }
+    fn primary(&mut self) -> Option<f64> {
+        self.skip_space();
+        if self.peek() == Some(b'(') {
+            self.at += 1;
+            let value = self.sum()?;
+            self.skip_space();
+            if self.peek() != Some(b')') {
+                return None;
+            }
+            self.at += 1;
+            return Some(value);
+        }
+        let start = self.at;
+        while self.peek().is_some_and(|b| b.is_ascii_digit() || b == b'.') {
+            self.at += 1;
+        }
+        if self.at == start {
+            return None;
+        }
+        let text = std::str::from_utf8(&self.bytes[start..self.at]).ok()?;
+        text.parse().ok()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// The Inline Chat Calculator: `=EXPR` works out locally; anything else
+    /// is left to send.
+    #[test]
+    fn the_inline_chat_calculator_works_out_prefixed_lines() {
+        let line = |s: &str| calc_line(s).map(|t| t.plain());
+        assert_eq!(line("=2+2"), Some("2+2 = 4".to_owned()));
+        assert_eq!(line("  = 2 * (3+4) "), Some("2 * (3+4) = 14".to_owned()));
+        assert_eq!(line("=2^10"), Some("2^10 = 1024".to_owned()));
+        assert_eq!(line("=1/4"), Some("1/4 = 0.250".to_owned()));
+        assert_eq!(line("=-3+1"), Some("-3+1 = -2".to_owned()));
+        assert_eq!(line("=5%3"), Some("5%3 = 2".to_owned()));
+        // Not a working expression (it sends as usual), not a prefixed line,
+        // and no division by zero.
+        assert_eq!(line("=2+"), None);
+        assert_eq!(line("=hello"), None);
+        assert_eq!(line("hi =2+2"), None);
+        assert_eq!(line("=1/0"), None);
+    }
     /// `ChatScreen.shouldDiscardDraft`.
     #[test]
     fn draft_discard_follows_the_exit_reason() {
