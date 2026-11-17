@@ -916,7 +916,7 @@ fn build_voice_input<T: cpal::SizedSample + Copy>(
     config: &cpal::SupportedStreamConfig,
     mixer: Arc<Mutex<Mixer>>,
 ) -> Result<cpal::Stream> {
-    use cpal::Sample;
+    use cpal::FromSample;
     let rate = config.sample_rate().0;
     let stream = device.build_input_stream(
         &config.config(),
