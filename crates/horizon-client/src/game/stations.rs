@@ -1636,8 +1636,8 @@ impl Game<'_> {
                         let text_width = 86.0 - HudBatch::text_width(atlas, &cost_text);
                         // The Enchant Guide mod names the real enchantments on
                         // the button instead of the galactic gibberish.
-                        let guide = self.settings.extras.volt_mods.enchant_guide
-                            && s.inputs[0].is_some();
+                        let guide =
+                            self.settings.extras.volt_mods.enchant_guide && s.inputs[0].is_some();
                         let message = if guide {
                             let stack = s.inputs[0].as_ref().unwrap();
                             let ench = &self.stations().enchantments;
@@ -1657,9 +1657,8 @@ impl Game<'_> {
                             let count = names.next_int_bound(2).unwrap_or(0) + 3;
                             let words: Vec<&str> = (0..count)
                                 .map(|_| {
-                                    WORDS[names
-                                        .next_int_bound(WORDS.len() as i32)
-                                        .unwrap_or(0) as usize]
+                                    WORDS[names.next_int_bound(WORDS.len() as i32).unwrap_or(0)
+                                        as usize]
                                 })
                                 .collect();
                             words.join(" ")
