@@ -919,6 +919,7 @@ fn build_voice_input<T: cpal::SizedSample + Copy>(
 where
     f32: cpal::FromSample<T>,
 {
+    use cpal::FromSample;
     let rate = config.sample_rate().0;
     let stream = device.build_input_stream(
         &config.config(),
@@ -1354,6 +1355,7 @@ impl Audio {
         engine.loaded = self.backend.live;
         Self {
             _stream: None,
+            _voice_stream: None,
             device_name: self.device_name.clone(),
             engine,
             backend: MixerBackend {
