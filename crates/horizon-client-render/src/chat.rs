@@ -451,7 +451,7 @@ impl Chat {
         let mut names: Vec<String> = Vec::new();
         for m in &self.messages {
             if let Some(s) = &m.sender
-                && !names.iter().any(|n| n == s)
+                && !names.iter().any(|n| n.as_str() == s.as_ref())
             {
                 names.push(s.to_string());
             }
