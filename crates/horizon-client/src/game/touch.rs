@@ -713,9 +713,7 @@ impl Game<'_> {
         }
         // The replay button: a tap acts (start, pause, end), a drag moves it,
         // a held drag resizes it (up-down) and fades it (left-right).
-        if t.phase == TouchPhase::Started
-            && self.replay_touch.is_none()
-            && self.replay_button_at(p)
+        if t.phase == TouchPhase::Started && self.replay_touch.is_none() && self.replay_button_at(p)
         {
             self.replay_touch = Some(super::replay::ReplayTouch {
                 finger: t.id,

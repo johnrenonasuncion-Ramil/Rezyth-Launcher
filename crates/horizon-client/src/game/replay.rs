@@ -8,7 +8,7 @@
 
 use super::Game;
 use horizon_client::volt_features::{ReplayState, ReplayTrack};
-use horizon_client::{logging, text::Text, hud::HudBatch};
+use horizon_client::{hud::HudBatch, logging, text::Text};
 use std::time::Duration;
 use winit::keyboard::KeyCode;
 
