@@ -2749,7 +2749,9 @@ impl Game<'_> {
         let peek_rows = peek
             .iter()
             .filter_map(|(slot, _)| horizon_client::volt_features::shulker_cell(*slot))
-            .map_or(0, |(_, row)| row + 1)
+            .map(|(_, row)| row + 1)
+            .max()
+            .unwrap_or(0)
             .min(3);
         let peek_extra = if peek_rows > 0 {
             peek_rows as f32 * 18.0 + 2.0

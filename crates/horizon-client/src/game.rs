@@ -14390,7 +14390,7 @@ impl Game<'_> {
             // Rezyth Settings' Low Shield: a blocking shield sits lower.
             let low_shield = self.settings.extras.volt_mods.low_shield_fire
                 && using
-                && stack.item == "minecraft:shield";
+                && stack.item.as_ref() == "minecraft:shield";
             let m = to_world
                 * vm
                 * if low_shield {
@@ -14584,7 +14584,7 @@ impl Game<'_> {
                             + (h.point[1] - eye[1]).powi(2)
                             + (h.point[2] - eye[2]).powi(2)
                     })
-                    .sqrt();
+                    .sqrt() as f32;
                 table[i] = (1.0 - dist / 8.0 * 0.65).clamp(0.35, 1.0);
             }
             self.audio.set_wall_occlusion(Some(table));

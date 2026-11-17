@@ -433,6 +433,9 @@ impl Game<'_> {
             v.potion_hud,
             v.fps_ping_pill,
         );
+        // Copied now: `self` is borrowed mutably below (the click records),
+        // while these two are read again at the end of the HUD.
+        let (toggle_sprint, keystrokes_hud) = (v.toggle_sprint, v.keystrokes_hud);
         // The counts are the extras' own click records (the mod API's
         // `input.clicks-per-second`), so the panel and a mod read one state.
         let cps = if cps_hud {
@@ -636,7 +639,7 @@ impl Game<'_> {
             extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &rows);
         }
         // Toggle Sprint/Sneak HUD: a latched toggle reads out.
-        if v.toggle_sprint {
+        if toggle_sprint {
             let mut rows: Vec<(String, u32)> = Vec::new();
             if self.toggles.is_down(1) {
                 rows.push((
@@ -653,7 +656,7 @@ impl Game<'_> {
             extras_hud::draw_panel(batch, atlas, corners, Corner::BottomLeft, &rows);
         }
         // Keystrokes Overlay: the movement keys as a grid, lit while held.
-        if v.keystrokes_hud {
+        if keystrokes_hud {
             let keys = [
                 ("key.forward", 1, 0),
                 ("key.left", 0, 1),
