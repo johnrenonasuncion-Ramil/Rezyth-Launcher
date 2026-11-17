@@ -1939,13 +1939,15 @@ mod tests {
     /// mix plays the buffered voice at the output gain.
     #[test]
     fn voice_capture_gates_and_the_loopback_drains() {
-        let mut m = Mixer::default();
-        m.voice_enabled = true;
-        m.voice_ptt_mode = false;
-        m.voice_vad_pct = 22;
-        m.voice_mic_pct = 100;
-        m.voice_out_pct = 100;
-        m.voice_loopback = true;
+        let mut m = Mixer {
+            voice_enabled: true,
+            voice_ptt_mode: false,
+            voice_vad_pct: 22,
+            voice_mic_pct: 100,
+            voice_out_pct: 100,
+            voice_loopback: true,
+            ..Default::default()
+        };
         // A loud chunk passes the gate into the ring, mic-gained.
         let loud = [0.5_f32; 240];
         capture_voice(&mut m, &loud, 48_000);
@@ -1970,10 +1972,12 @@ mod tests {
     /// Push-to-talk captures only while the key is held, whatever the level.
     #[test]
     fn voice_ptt_gates_by_the_key() {
-        let mut m = Mixer::default();
-        m.voice_enabled = true;
-        m.voice_ptt_mode = true;
-        m.voice_ptt_down = false;
+        let mut m = Mixer {
+            voice_enabled: true,
+            voice_ptt_mode: true,
+            voice_ptt_down: false,
+            ..Default::default()
+        };
         capture_voice(&mut m, &[0.5_f32; 240], 48_000);
         assert!(!m.voice_speaking);
         assert!(m.voice_in.is_empty());
