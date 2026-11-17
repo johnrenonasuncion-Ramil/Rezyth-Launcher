@@ -247,7 +247,7 @@ fn tint(
         AtlasViewMode::HeightRelief => {
             // Stronger slope shading: darken by the column's own height
             // relative to the world's mid-height.
-            let shade = (1.0 - (f32::from(height) / 320.0).clamp(-0.45, 0.45)) ;
+            let shade = 1.0 - (f32::from(height) / 320.0).clamp(-0.45, 0.45);
             for c in &mut rgba[..3] {
                 *c = (*c as f32 * shade) as u8;
             }
@@ -255,9 +255,9 @@ fn tint(
         }
         AtlasViewMode::BiomeTint => {
             let (r, g, b) = biome_tint(biome);
-            rgba[0] = (rgba[0] as u16 * 40 + r as u16 * 60) as u8 / 100;
-            rgba[1] = (rgba[1] as u16 * 40 + g as u16 * 60) as u8 / 100;
-            rgba[2] = (rgba[2] as u16 * 40 + b as u16 * 60) as u8 / 100;
+            rgba[0] = ((u32::from(rgba[0]) * 40 + u32::from(r) * 60) / 100) as u8;
+            rgba[1] = ((u32::from(rgba[1]) * 40 + u32::from(g) * 60) / 100) as u8;
+            rgba[2] = ((u32::from(rgba[2]) * 40 + u32::from(b) * 60) / 100) as u8;
             rgba
         }
         AtlasViewMode::SlimeChunks => {
@@ -444,7 +444,15 @@ impl Minimap {
                     Some((color, height, depth, biome)) if color & !WALL != 0 => {
                         let north = column(x, z - 1).filter(|c| c.0 & !WALL != 0).map(|c| c.1);
                         let b = brightness(color, height, north, depth, x + z);
-                        tint(packed_rgba(color & !WALL, b), mode, height, biome, x, z, self.seed)
+                        tint(
+                            packed_rgba(color & !WALL, b),
+                            mode,
+                            height,
+                            biome,
+                            x,
+                            z,
+                            self.seed,
+                        )
                     }
                     _ => UNKNOWN,
                 };

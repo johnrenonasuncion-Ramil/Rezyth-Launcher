@@ -5667,9 +5667,7 @@ impl OptionsUi {
         // The Volt Atlas switch (Rezyth Settings): off, the page keeps its
         // waypoints over the plain backdrop, without the map image.
         let atlas_on = s.extras.volt_qol.atlas_enabled;
-        if atlas_on
-            && let Some(rect) = atlas.sprites.get(crate::hud::MINIMAP_SPRITE).copied()
-        {
+        if atlas_on && let Some(rect) = atlas.sprites.get(crate::hud::MINIMAP_SPRITE).copied() {
             batch.rect_uv(x, y, side, side, rect, u32::MAX);
         }
         let view = self.world_view.as_ref().map(|v| crate::minimap::View {
@@ -5743,7 +5741,7 @@ impl OptionsUi {
                     crate::volt_features::atlas_grid_spacing(view.blocks_per_pixel) as f64;
                 let half_world =
                     crate::minimap::SIZE as f64 / 2.0 * f64::from(view.blocks_per_pixel);
-                let px_per_block = scale / f64::from(view.blocks_per_pixel);
+                let px_per_block = f64::from(scale) / f64::from(view.blocks_per_pixel);
                 let grid_c = rgba(255, 255, 255, 60);
                 let label_c = rgba(255, 255, 255, 160);
                 let labels = spacing * px_per_block >= 44.0;
@@ -5783,9 +5781,7 @@ impl OptionsUi {
                 }
             }
             // The player's own arrow, drawn as the minimap draws it.
-            if atlas_on
-                && let Some(r) = atlas.sprites.get("map/decorations/player").copied()
-            {
+            if atlas_on && let Some(r) = atlas.sprites.get("map/decorations/player").copied() {
                 let arrow = if view.rotate { 0.0 } else { 180.0 + view.yaw };
                 let (sin, cos) = (arrow + 180.0).to_radians().sin_cos();
                 let corner =

@@ -41,7 +41,7 @@ impl Game<'_> {
         // Damage Direction: an arrow around the crosshair pointing at the
         // last mob that hurt the player, fading over two seconds.
         if v.damage_direction_hud
-            && let Some((Who::Mob(id), at)) = self.combat.player_hurt_by()
+            && let Some((Who::Mob(id), at)) = self.player_hurt_by()
             && now - at <= 40
             && let Some(m) = self.mobs.iter().find(|m| m.id == id)
         {
@@ -89,7 +89,8 @@ impl Game<'_> {
             && let Some(Some(hit)) = self.tick_hit
         {
             let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
-            let name = self.res.facts().get(self.block_state(pos)).name.clone();
+            let state = self.world.block(pos.x, pos.y, pos.z);
+            let name = self.res.facts().get(state).name.clone();
             let biome = self
                 .world
                 .chunks
@@ -104,8 +105,8 @@ impl Game<'_> {
                 (
                     format!(
                         "light {} sky {}",
-                        self.block_light(pos),
-                        self.sky_light(pos)
+                        i32::from(self.world.light(pos.x, pos.y, pos.z) & 15),
+                        i32::from(self.world.light(pos.x, pos.y, pos.z) >> 4)
                     ),
                     u32::MAX,
                 ),

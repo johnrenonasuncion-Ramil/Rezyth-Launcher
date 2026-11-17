@@ -13,8 +13,6 @@ use horizon_client::{
         tool_break_warning, trajectory_points,
     },
 };
-use horizon_core::position::BlockPos;
-
 impl Game<'_> {
     /// The Trajectory mod: the predicted arc of the held throwable, as line
     /// segments from the eye along the throw (speed 1.5, gravity 0.03, as
@@ -52,8 +50,8 @@ impl Game<'_> {
         let start = [eye[0], eye[1] - 0.1, eye[2]];
         let facts = self.res.facts();
         let points = trajectory_points(start, v, 0.03, |b| {
-            let f = facts.get(self.block_state(BlockPos::new(b[0], b[1], b[2])));
-            !f.is_air && f.fluid == Fluid::None
+            let s = self.world.block(b[0], b[1], b[2]);
+            !facts.is_air(s) && facts.get(s).fluid == Fluid::None
         });
         for w in points.windows(2) {
             g.line(w[0], w[1], 0xFF66_FF66, 2.0);
@@ -76,13 +74,16 @@ impl Game<'_> {
             p.position.z.floor() as i32,
         );
         let facts = self.res.facts();
-        let at = |x: i32, y: i32, z: i32| facts.get(self.block_state(BlockPos::new(x, y, z)));
+        let at = |x: i32, y: i32, z: i32| {
+            let s = self.world.block(x, y, z);
+            (s, facts.get(s))
+        };
         for dx in -8..=8 {
             for dz in -8..=8 {
                 for dy in -4..=4 {
                     let (x, y, z) = (px + dx, py + dy, pz + dz);
-                    let below = at(x, y - 1, z);
-                    if below.is_air || below.fluid != Fluid::None {
+                    let (below_s, below) = at(x, y - 1, z);
+                    if facts.is_air(below_s) || below.fluid != Fluid::None {
                         continue;
                     }
                     let here = at(x, y, z);
@@ -94,8 +95,8 @@ impl Game<'_> {
                     {
                         continue;
                     }
-                    let Some(color) = spawn_light_color(self.block_light(BlockPos::new(x, y, z)))
-                    else {
+                    let light = i32::from(self.world.light(x, y, z) & 15);
+                    let Some(color) = spawn_light_color(light) else {
                         continue;
                     };
                     g.cuboid(
@@ -123,7 +124,7 @@ impl Game<'_> {
             (p.position.z.floor() as i32) >> 4,
         );
         let y = p.position.y.floor() as i32;
-        let slime = slime_spawns_in_chunk(cx, cz, y, self.world_seed());
+        let slime = slime_spawns_in_chunk(cx, cz, y, self.level.seed);
         let rows = [
             (
                 format!("Slime chunk: {}", if slime { "YES" } else { "no" }),
@@ -148,10 +149,8 @@ impl Game<'_> {
         if v.auto_tool_hint
             && let Some(Some(hit)) = self.tick_hit
         {
-            let facts = self
-                .res
-                .facts()
-                .get(self.block_state(BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2])));
+            let state = self.world.block(hit.pos[0], hit.pos[1], hit.pos[2]);
+            let facts = self.res.facts().get(state);
             let block = &*facts.name;
             let items = self.res.items();
             let speeds: Vec<f32> = (0..9)
