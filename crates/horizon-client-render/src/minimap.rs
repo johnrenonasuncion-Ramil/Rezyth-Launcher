@@ -262,9 +262,9 @@ fn tint(
         }
         AtlasViewMode::SlimeChunks => {
             if height < 40 && slime_spawns_in_chunk(x >> 4, z >> 4, i32::from(height), seed) {
-                rgba[0] = rgba[0] / 3;
+                rgba[0] /= 3;
                 rgba[1] = 200u8.max(rgba[1]);
-                rgba[2] = rgba[2] / 3;
+                rgba[2] /= 3;
             }
             rgba
         }
