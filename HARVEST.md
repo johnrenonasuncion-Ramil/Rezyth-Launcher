@@ -652,3 +652,16 @@ Still unwired by design (need subsystems that do not exist yet, not faked): the 
 Shaders WGSL rows (`horizon-shader-api/src/volt_shaders.rs` is config-only), the 9 voice rows
 (no capture pipeline), the 2 replay rows (no recorder), wall occlusion (needs a per-tick
 occlusion probe into the audio mixer), and the ChatHeads catalog mod.
+
+- **Wave 27** (`65e142174`): Optic Zoom (QolZoom/QolZoomFov/QolZoomSmooth — hold
+  `key.volt.zoom`, FOV target divides by 100/pct, eased when smooth, turning scales
+  down; native mod zoom still wins) and 360° Freelook Orbit (QolFreelook — hold
+  `key.volt.freelook`: the view is captured as the body's facing, movement uses
+  `body_yaw_pitch()`, the camera orbits freely, release snaps back).
+- **Wave 28** (`4f7022af4`): Toggle Sprint/Sneak HUD (latched toggles read out bottom-left),
+  Keystrokes Overlay (movement keys grid, lit while held, labels from the bindings),
+  Low Shield & Low Fire (blocking shield viewmodel drops 0.15; the first-person fire
+  overlay drops a quarter screen via `ScreenInputs.fire_drop`).
+- **Wave 29** (`b06e76804`): Shulker & Bundle Peek (ModShulkerPreview / catalog
+  ShulkerBoxTooltip) — the box's `minecraft:container` contents as a 9x3 grid under
+  the tooltip name lines, via the pure `shulker_cell` helper.
