@@ -924,7 +924,14 @@ where
         &config.config(),
         move |data: &[T], _| {
             if let Ok(mut m) = mixer.lock() {
-                capture_voice(&mut m, &data.iter().map(|x| f32::from_sample(*x)).collect::<Vec<f32>>(), rate);
+                capture_voice(
+                    &mut m,
+                    &data
+                        .iter()
+                        .map(|x| f32::from_sample(*x))
+                        .collect::<Vec<f32>>(),
+                    rate,
+                );
             }
         },
         |err| log::warn!("Horizon: voice input error: {err}"),
@@ -936,7 +943,8 @@ where
 fn open_device(
     device: &cpal::Device,
     mixer: Arc<Mutex<Mixer>>,
-) -> Result<(cpal::Stream, cpal::SupportedStreamConfig)> {    use cpal::SampleFormat as F;
+) -> Result<(cpal::Stream, cpal::SupportedStreamConfig)> {
+    use cpal::SampleFormat as F;
     let config = device.default_output_config()?;
     let stream = match config.sample_format() {
         F::F32 => build_stream::<f32>(device, &config, mixer.clone()),

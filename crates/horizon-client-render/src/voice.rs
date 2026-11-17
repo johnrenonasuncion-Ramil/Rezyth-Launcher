@@ -90,6 +90,10 @@ mod tests {
         assert_eq!(voice_distance_gain(48, 0.0), 1.0);
         assert_eq!(voice_distance_gain(48, 24.0), 0.5);
         assert_eq!(voice_distance_gain(48, 96.0), 0.0);
-        assert_eq!(voice_distance_gain(0, 0.0), 1.0, "a zero reach stays audible");
+        assert_eq!(
+            voice_distance_gain(0, 0.0),
+            1.0,
+            "a zero reach stays audible"
+        );
     }
 }
