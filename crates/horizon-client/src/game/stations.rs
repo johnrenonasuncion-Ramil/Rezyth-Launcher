@@ -1634,14 +1634,36 @@ impl Game<'_> {
                         }
                         let cost_text = cost.to_string();
                         let text_width = 86.0 - HudBatch::text_width(atlas, &cost_text);
-                        let count = names.next_int_bound(2).unwrap_or(0) + 3;
-                        let words: Vec<&str> = (0..count)
-                            .map(|_| {
-                                WORDS
-                                    [names.next_int_bound(WORDS.len() as i32).unwrap_or(0) as usize]
-                            })
-                            .collect();
-                        let message = words.join(" ");
+                        // The Enchant Guide mod names the real enchantments on
+                        // the button instead of the galactic gibberish.
+                        let guide = self.settings.extras.volt_mods.enchant_guide
+                            && s.inputs[0].is_some();
+                        let message = if guide {
+                            let stack = s.inputs[0].as_ref().unwrap();
+                            let ench = &self.stations().enchantments;
+                            let list = stations::enchantment_list(
+                                ench,
+                                self.res.items(),
+                                self.level.xp_seed,
+                                i,
+                                cost,
+                                &stack.item,
+                            );
+                            list.iter()
+                                .map(|(id, l)| ench.full_name(id, *l).0)
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        } else {
+                            let count = names.next_int_bound(2).unwrap_or(0) + 3;
+                            let words: Vec<&str> = (0..count)
+                                .map(|_| {
+                                    WORDS[names
+                                        .next_int_bound(WORDS.len() as i32)
+                                        .unwrap_or(0) as usize]
+                                })
+                                .collect();
+                            words.join(" ")
+                        };
                         let disabled = (gold < i as i32 + 1 || level < cost) && !self.creative;
                         let col: i32 = if disabled {
                             batch.sprite_scaled(
@@ -1664,14 +1686,25 @@ impl Game<'_> {
                             );
                             let c = ((-9937334i32) & 16711422) >> 1;
                             let msg_color = argb(c | 0xFF00_0000u32 as i32);
-                            self.galactic_deferred(
-                                batch,
-                                &message,
-                                ox + bx + 20.0,
-                                oy + by + 2.0,
-                                text_width,
-                                msg_color,
-                            );
+                            if guide {
+                                batch.text(
+                                    atlas,
+                                    &message,
+                                    ox + bx + 20.0,
+                                    oy + by + 2.0,
+                                    msg_color,
+                                    true,
+                                );
+                            } else {
+                                self.galactic_deferred(
+                                    batch,
+                                    &message,
+                                    ox + bx + 20.0,
+                                    oy + by + 2.0,
+                                    text_width,
+                                    msg_color,
+                                );
+                            }
                             -12550384
                         } else {
                             let hover = inside(local, bx, by, bw, bh);
@@ -1696,14 +1729,25 @@ impl Game<'_> {
                                 oy + by + 1.0,
                             );
                             let msg_color = if hover { -128 } else { -9937334 };
-                            self.galactic_deferred(
-                                batch,
-                                &message,
-                                ox + bx + 20.0,
-                                oy + by + 2.0,
-                                text_width,
-                                argb(msg_color),
-                            );
+                            if guide {
+                                batch.text(
+                                    atlas,
+                                    &message,
+                                    ox + bx + 20.0,
+                                    oy + by + 2.0,
+                                    argb(msg_color),
+                                    true,
+                                );
+                            } else {
+                                self.galactic_deferred(
+                                    batch,
+                                    &message,
+                                    ox + bx + 20.0,
+                                    oy + by + 2.0,
+                                    text_width,
+                                    argb(msg_color),
+                                );
+                            }
                             -8323296
                         };
                         let atlas = &self.gui.atlas;

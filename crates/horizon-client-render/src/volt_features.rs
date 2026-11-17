@@ -390,6 +390,28 @@ pub fn slime_spawns_in_chunk(chunk_x: i32, chunk_z: i32, y: i32, seed: i64) -> b
         == 0
 }
 
+/// The Auto Tool hint's pick: the hotbar slot with the highest mining
+/// speed on the targeted block, when any held item actually speeds it up
+/// (above `ItemStack.getDestroySpeed`'s 1.0 floor).
+pub fn best_tool_slot(speeds: &[f32]) -> Option<usize> {
+    let mut best: Option<(usize, f32)> = None;
+    for (i, &s) in speeds.iter().enumerate() {
+        if s > 1.0 && best.is_none_or(|(_, b)| s > b) {
+            best = Some((i, s));
+        }
+    }
+    best.map(|(i, _)| i)
+}
+
+/// The Tool Break Shield's warning: the uses left once the held tool is
+/// at or under a tenth of its durability (or at five uses), else None.
+pub fn tool_break_warning(left: u32, max: u32) -> Option<u32> {
+    if max == 0 || (left * 10 > max && left > 5) {
+        return None;
+    }
+    Some(left)
+}
+
 /// Screen-space projection of a 3D world waypoint for HUD rendering.
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectedWaypoint {
@@ -996,6 +1018,26 @@ mod tests {
         assert_eq!(spawn_light_color(7), Some(0xFFFF_A500));
         assert_eq!(spawn_light_color(8), None);
         assert_eq!(spawn_light_color(15), None);
+    }
+
+    /// The Auto Tool hint picks the fastest slot, only when one speeds up.
+    #[test]
+    fn best_tool_slot_picks_the_fastest_real_tool() {
+        assert_eq!(best_tool_slot(&[1.0, 8.0, 4.0]), Some(1));
+        assert_eq!(best_tool_slot(&[2.0, 8.0, 8.0]), Some(1));
+        assert_eq!(best_tool_slot(&[1.0, 1.0]), None);
+        assert_eq!(best_tool_slot(&[]), None);
+    }
+
+    /// The break warning fires at a tenth of the durability or five left.
+    #[test]
+    fn tool_break_warning_fires_at_a_tenth_or_five_left() {
+        assert_eq!(tool_break_warning(10, 100), Some(10));
+        assert_eq!(tool_break_warning(11, 100), None);
+        assert_eq!(tool_break_warning(3, 20), Some(3));
+        assert_eq!(tool_break_warning(6, 20), None);
+        assert_eq!(tool_break_warning(0, 100), Some(0));
+        assert_eq!(tool_break_warning(50, 0), None);
     }
 
     /// A slime chunk's roll decides, and slimes only spawn below y 40.

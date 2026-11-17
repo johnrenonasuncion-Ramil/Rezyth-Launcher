@@ -7,8 +7,11 @@ use horizon_client::{
     extras::Corner,
     extras_hud::{self, Corners},
     gizmos::Gizmos,
-    hud::HudBatch,
-    volt_features::{slime_spawns_in_chunk, spawn_light_color, throw_direction, trajectory_points},
+    hud::{HudBatch, rgba},
+    volt_features::{
+        best_tool_slot, slime_spawns_in_chunk, spawn_light_color, throw_direction,
+        tool_break_warning, trajectory_points,
+    },
 };
 use horizon_core::position::BlockPos;
 
@@ -133,5 +136,58 @@ impl Game<'_> {
             (format!("chunk {} {} y {}", cx, cz, y), u32::MAX),
         ];
         extras_hud::draw_panel(batch, &self.gui.atlas, corners, Corner::TopRight, &rows);
+    }
+
+    /// The Auto Tool hint (an outline around the hotbar slot whose item
+    /// mines the targeted block fastest) and the Tool Break Shield's
+    /// warning panel while the held tool nears its end.
+    pub(super) fn draw_tool_hud(&self, batch: &mut HudBatch, corners: &mut Corners) {
+        if self.screen != Screen::Playing {
+            return;
+        }
+        let v = &self.settings.extras.volt_mods;
+        let atlas = &self.gui.atlas;
+        let (w, h) = (batch.width, batch.height);
+
+        if v.auto_tool_hint
+            && let Some(Some(hit)) = self.tick_hit
+        {
+            let facts = self
+                .res
+                .facts()
+                .get(self.block_state(BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2])));
+            let block = &*facts.name;
+            let items = self.res.items();
+            let speeds: Vec<f32> = (0..9)
+                .map(|i| items.mining_speed(self.inventory[i].as_ref(), block))
+                .collect();
+            if let Some(slot) = best_tool_slot(&speeds) {
+                let x = w * 0.5 - 92.0 + slot as f32 * 20.0;
+                let y = h - 23.0;
+                let c = rgba(102, 255, 102, 220);
+                batch.fill(atlas, x, y, 24.0, 1.5, c);
+                batch.fill(atlas, x, y + 21.5, 24.0, 1.5, c);
+                batch.fill(atlas, x, y, 1.5, 23.0, c);
+                batch.fill(atlas, x + 22.5, y, 1.5, 23.0, c);
+            }
+        }
+
+        if v.tool_break_shield
+            && let Some(stack) = self.held()
+        {
+            let max = self
+                .res
+                .items()
+                .get(&stack.item)
+                .map_or(0, |info| info.max_damage);
+            let left = max.saturating_sub(stack.damage);
+            if let Some(left) = tool_break_warning(left, max) {
+                let rows = [(
+                    format!("Tool about to break: {left} left"),
+                    rgba(255, 85, 85, 255),
+                )];
+                extras_hud::draw_panel(batch, atlas, corners, Corner::BottomLeft, &rows);
+            }
+        }
     }
 }
