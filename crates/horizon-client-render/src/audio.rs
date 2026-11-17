@@ -941,6 +941,7 @@ where
     Ok(stream)
 }
 
+#[cfg(feature = "audio")]
 fn open_device(
     device: &cpal::Device,
     mixer: Arc<Mutex<Mixer>>,
