@@ -14588,9 +14588,6 @@ impl Game<'_> {
         );
         self.audio
             .set_voice_ptt_down(self.mapped_key_down("key.volt.voice_ptt"));
-        // Rezyth Settings' replay recorder: one camera sample per world tick
-        // while recording (the button or key started it).
-        self.tick_replay();
         // Rezyth Settings' wall occlusion: probe the 26 directions around the
         // eye out to 8 blocks; a wall closer than 8 blocks muffles the sounds
         // coming from that direction (the closer, the more).
@@ -14614,6 +14611,9 @@ impl Game<'_> {
         } else {
             self.audio.set_wall_occlusion(None);
         }
+        // Rezyth Settings' replay recorder: one camera sample per world tick
+        // while recording (the button or key started it).
+        self.tick_replay();
         // The Boost tab's Zero-Stutter Mesh Pool: workers keep recycled
         // section buffers within its larger budget.
         horizon_client::streaming::set_expanded_mesh_pool(
