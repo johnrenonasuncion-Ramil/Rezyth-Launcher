@@ -14577,12 +14577,14 @@ impl Game<'_> {
             let mut table = [1.0_f32; 26];
             for (i, d) in horizon_client::audio::OCCLUSION_DIRS.iter().enumerate() {
                 let dir = [f64::from(d[0]), f64::from(d[1]), f64::from(d[2])];
-                let dist = self.clip_ray(eye, dir, 8.0).map_or(8.0, |h| {
-                    (h.point[0] - eye[0]).powi(2)
-                        + (h.point[1] - eye[1]).powi(2)
-                        + (h.point[2] - eye[2]).powi(2)
-                })
-                .sqrt();
+                let dist = self
+                    .clip_ray(eye, dir, 8.0)
+                    .map_or(8.0, |h| {
+                        (h.point[0] - eye[0]).powi(2)
+                            + (h.point[1] - eye[1]).powi(2)
+                            + (h.point[2] - eye[2]).powi(2)
+                    })
+                    .sqrt();
                 table[i] = (1.0 - dist / 8.0 * 0.65).clamp(0.35, 1.0);
             }
             self.audio.set_wall_occlusion(Some(table));
