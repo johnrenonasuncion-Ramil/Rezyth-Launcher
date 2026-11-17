@@ -344,12 +344,25 @@ impl Game<'_> {
             rgba: self.extras.minimap.image.clone(),
         });
     }
-    /// A mod's zoom in effect (`native_zoom`): (factor, smooth, turning
-    /// scale); none is 1.
+    /// A zoom in effect: a mod's (`native_zoom`), else Rezyth Settings' Optic
+    /// Zoom while its key is held: (factor, smooth, turning scale); none is 1.
     fn zoom_now(&self) -> (f32, bool, f64) {
-        self.native_zoom_now().map_or((1.0, true, 1.0), |z| {
-            (z.factor, z.smooth, f64::from(z.turn))
-        })
+        if let Some(z) = self.native_zoom_now() {
+            return (z.factor, z.smooth, f64::from(z.turn));
+        }
+        let v = &self.settings.extras.volt_qol;
+        if v.zoom_enabled
+            && self.screen == Screen::Playing
+            && self.player.is_some()
+            && self.mapped_key_down("key.volt.zoom")
+        {
+            let pct = f32::from(v.zoom_fov_pct.clamp(10, 60));
+            // The zoomed FOV as a percentage of vanilla (30% is a 3.3x zoom),
+            // and turning slows with it.
+            (100.0 / pct, v.zoom_smooth, f64::from(pct) / 100.0)
+        } else {
+            (1.0, true, 1.0)
+        }
     }
     /// The field-of-view modifier target, divided by a smooth zoom.
     pub(super) fn zoomed_fov_target(&self, vanilla: f32) -> f32 {

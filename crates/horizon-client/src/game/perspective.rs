@@ -555,6 +555,32 @@ impl Game<'_> {
     /// agent's `turn`.
     /// The model's old pitch is the player's `xRotO`, which the turn moves
     /// with `xRot` (`turn_rotation`).
+    /// Rezyth Settings' 360° Freelook Orbit: the freelook key held while
+    /// playing captures the view as the body's facing, so the camera orbits
+    /// freely while movement keeps the captured direction; letting the key
+    /// go snaps the view back to it.
+    pub(super) fn tick_freelook(&mut self) {
+        let active = self.settings.extras.volt_qol.freelook_enabled
+            && self.screen == Screen::Playing
+            && self.player.is_some()
+            && self.mapped_key_down("key.volt.freelook");
+        match (self.freelook, active) {
+            (Some(_), true) => {}
+            (None, true) => self.freelook = Some((self.yaw, self.pitch)),
+            (Some((yaw, pitch)), false) => {
+                self.yaw = yaw;
+                self.pitch = pitch;
+                self.freelook = None;
+            }
+            (None, false) => {}
+        }
+    }
+    /// The player's body facing: the freelook orbit's captured direction
+    /// while freelooking, else the view's. Movement and the synced player
+    /// rotation use this, not the freely orbiting camera.
+    pub(super) fn body_yaw_pitch(&self) -> (f32, f32) {
+        self.freelook.unwrap_or((self.yaw, self.pitch))
+    }
     pub(super) fn turn_player(&mut self, xo: f64, yo: f64) {
         let pitch_o = self.player_model.as_ref().map(|m| m.previous_head_pitch);
         let rotation = turn_rotation(self.yaw, self.pitch, pitch_o, xo, yo);

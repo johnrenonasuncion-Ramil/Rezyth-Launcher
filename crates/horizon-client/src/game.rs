@@ -2486,6 +2486,10 @@ struct Game<'a> {
     keys: HashSet<KeyCode>,
     // Physical input is separate from remapped and toggled movement keys.
     physical_keys: HashSet<KeyCode>,
+    /// Rezyth Settings' 360° Freelook Orbit: while the freelook key is held,
+    /// the (yaw, pitch) the player's body keeps facing while the camera
+    /// orbits freely; None when not freelooking.
+    freelook: Option<(f32, f32)>,
     physical_buttons: HashSet<MouseButton>,
     drag_button: Option<MouseButton>,
     /// Control + left click as a right click (macOS).
@@ -3745,13 +3749,16 @@ impl Game<'_> {
         let burn_immune = self.wears_burn_from_stepping_immunity();
         let nudge = self.closest_space_nudge();
         let blind = self.potions.effects.get("blindness").is_some();
+        // While freelooking, the body keeps the captured facing, not the
+        // freely orbiting camera's.
+        let (body_yaw, body_pitch) = self.body_yaw_pitch();
         let Some(player) = self.player.as_mut() else {
             return;
         };
         player.nudge = nudge;
         player.mobility_restricted = blind;
-        player.yaw = self.yaw;
-        player.pitch = self.pitch;
+        player.yaw = body_yaw;
+        player.pitch = body_pitch;
         player.auto_jump_enabled = self.settings.auto_jump;
         player.item_use_speed = item_use_speed;
         player.item_use_slows_sprint = item_use_slows_sprint;
@@ -7393,7 +7400,7 @@ impl Game<'_> {
             }
         };
         let mut player = PlayerMotion::new(self.motion, feet)?;
-        player.yaw = self.yaw;
+        player.yaw = self.body_yaw_pitch().0;
         let entering = self.restore_player_state;
         player.load_saved_state_once(&mut self.restore_player_state, &self.level)?;
         let spectator = self.mode == horizon_client::command::args::GameMode::Spectator;
@@ -7468,6 +7475,7 @@ impl Game<'_> {
         if self.agent.hold_server {
             return Ok(());
         }
+        self.tick_freelook();
         // `Player.entityInteractionRange`/`blockInteractionRange` for the tick's
         // picks: the attribute carries creative's and a server's modifiers.
         self.entity_reach = self.interaction_range("minecraft:entity_interaction_range", 3.0, 5.0);
@@ -19416,6 +19424,7 @@ impl<'a> Game<'a> {
             },
             keys: HashSet::new(),
             physical_keys: HashSet::new(),
+            freelook: None,
             physical_buttons: HashSet::new(),
             drag_button: None,
             right_click_emulation: Default::default(),
