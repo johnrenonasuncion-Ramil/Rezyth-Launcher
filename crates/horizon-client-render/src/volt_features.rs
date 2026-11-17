@@ -427,6 +427,12 @@ pub fn framing_grid(w: f32, h: f32) -> [(f32, f32, f32, f32); 4] {
     ]
 }
 
+/// The Shulker & Bundle Peek grid's cell for a container slot: `(col, row)`
+/// of the 9-wide, 3-tall grid, or None past the 27 slots a shulker box holds.
+pub fn shulker_cell(slot: u8) -> Option<(u8, u8)> {
+    (slot < 27).then(|| (slot % 9, slot / 9))
+}
+
 /// The Volt Atlas grid's line spacing in blocks for a map of
 /// `blocks_per_pixel`: the smallest power-of-two multiple of 16 that stays
 /// at least 24 image pixels apart.
@@ -1068,6 +1074,17 @@ mod tests {
         assert_eq!(best_tool_slot(&[2.0, 8.0, 8.0]), Some(1));
         assert_eq!(best_tool_slot(&[1.0, 1.0]), None);
         assert_eq!(best_tool_slot(&[]), None);
+    }
+
+    /// The peek grid maps the 27 container slots onto 9 columns and 3 rows.
+    #[test]
+    fn shulker_cell_maps_slots_onto_a_9_by_3_grid() {
+        assert_eq!(shulker_cell(0), Some((0, 0)));
+        assert_eq!(shulker_cell(8), Some((8, 0)));
+        assert_eq!(shulker_cell(9), Some((0, 1)));
+        assert_eq!(shulker_cell(26), Some((8, 2)));
+        assert_eq!(shulker_cell(27), None);
+        assert_eq!(shulker_cell(200), None);
     }
 
     /// The atlas grid's spacing grows with the map's zoom, in 16-block steps.

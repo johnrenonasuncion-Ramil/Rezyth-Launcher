@@ -2739,9 +2739,28 @@ impl Game<'_> {
         let mut component = None;
         self.native_tooltip_component(stack, &mut component);
         let component = tooltip_component_size(component);
-        let extra = bundle_extra + component.map_or(0.0, |size| size[1] + 2.0);
+        // Shulker & Bundle Peek (Rezyth Settings): the box's contents as a
+        // 9x3 grid under the name lines.
+        let peek = if self.settings.extras.volt_mods.shulker_preview {
+            stack.data().map_or_else(Vec::new, |d| d.container.clone())
+        } else {
+            Vec::new()
+        };
+        let peek_rows = peek
+            .iter()
+            .filter_map(|(slot, _)| horizon_client::volt_features::shulker_cell(*slot))
+            .map_or(0, |(_, row)| row + 1)
+            .min(3);
+        let peek_extra = if peek_rows > 0 {
+            peek_rows as f32 * 18.0 + 2.0
+        } else {
+            0.0
+        };
+        let extra =
+            bundle_extra + component.map_or(0.0, |size| size[1] + 2.0) + peek_extra;
         let min_width = (if probe.is_some() { 96.0_f32 } else { 0.0 })
-            .max(component.map_or(0.0, |size| size[0]));
+            .max(component.map_or(0.0, |size| size[0]))
+            .max(if peek_rows > 0 { 9.0 * 18.0 + 4.0 } else { 0.0 });
         let atlas = &self.gui.atlas;
         let (x, y, w, h) = Self::tooltip_geometry(
             atlas,
@@ -2766,6 +2785,27 @@ impl Game<'_> {
                 [x, y + text_h + bundle_extra + 2.0],
                 size,
             );
+        }
+        if peek_rows > 0 {
+            let ox = x + 2.0;
+            let oy = y + text_h + bundle_extra + 2.0;
+            batch.fill(
+                atlas,
+                ox - 1.0,
+                oy - 1.0,
+                9.0 * 18.0 + 2.0,
+                peek_rows as f32 * 18.0 + 2.0,
+                rgba(16, 16, 16, 160),
+            );
+            for (slot, item) in &peek {
+                let Some((col, row)) = horizon_client::volt_features::shulker_cell(*slot) else {
+                    continue;
+                };
+                let (cx, cy) = (ox + f32::from(col) * 18.0, oy + f32::from(row) * 18.0);
+                batch.fill(atlas, cx, cy, 18.0, 18.0, rgba(139, 139, 139, 255));
+                batch.fill(atlas, cx + 1.0, cy + 1.0, 16.0, 16.0, rgba(55, 55, 55, 255));
+                self.draw_item(batch, item, cx + 1.0, cy + 1.0);
+            }
         }
     }
     /// `ClientBundleTooltip.extractSelectedItemTooltip`: the selected item's
