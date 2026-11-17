@@ -2788,6 +2788,8 @@ impl Game<'_> {
             );
         }
         if peek_rows > 0 {
+            // Borrowed here, after the `&mut self` tooltip draws above.
+            let atlas = &self.gui.atlas;
             let ox = x + 2.0;
             let oy = y + text_h + bundle_extra + 2.0;
             batch.fill(
