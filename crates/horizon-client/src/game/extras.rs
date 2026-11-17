@@ -688,7 +688,11 @@ impl Game<'_> {
                     &name,
                     kx + (k - tw) / 2.0,
                     ky + 4.0,
-                    if held { u32::MAX } else { rgba(255, 255, 255, 160) },
+                    if held {
+                        u32::MAX
+                    } else {
+                        rgba(255, 255, 255, 160)
+                    },
                     true,
                 );
             }
