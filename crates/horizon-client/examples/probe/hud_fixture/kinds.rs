@@ -311,6 +311,7 @@ fn chat(c: &Value, h: i32, atlas: &HudAtlas) -> Vec<GuiDraw> {
         timestamps: false,
         compact_spam: false,
         mention_ping: false,
+        heads: false,
     };
     for m in c["messages"].as_array().into_iter().flatten() {
         // GuiMessageTag indicator colours: systemSinglePlayer and chatError.

@@ -1765,7 +1765,7 @@ impl Game<'_> {
         content: horizon_client::text::Text,
         source: horizon_client::chat::ChatSource,
     ) -> bool {
-        self.signed_chat_line(content, source, None, ChatTrust::Secure)
+        self.signed_chat_line(content, source, None, ChatTrust::Secure, None)
     }
     /// `chat_line` of a player message, keeping its signature for a
     /// deletion (`GuiMessage.signature`).
@@ -5072,6 +5072,9 @@ impl Game<'_> {
                     return Ok(());
                 };
                 let signature = signature.filter(|_| validated == secure_chat::Validated::Signed);
+                // The sender's tab-list name, for Chat Heads (r's borrow ends
+                // here; the game's own methods run below).
+                let sender = r.tab_players.get(&p.sender).map(|t| t.name.clone());
                 // ChatListener.handlePlayerChatMessage: Only Show Secure Chat
                 // shows the signed content, never the server's replacement.
                 // The narrator says the message's own decorated content
@@ -5106,7 +5109,6 @@ impl Game<'_> {
                     }
                     return Ok(());
                 }
-                let sender = r.tab_players.get(&p.sender).map(|t| t.name.clone());
                 self.handle_player_chat(line, signature, trust, narration, sender);
             }
             C::DisguisedChat(p) => {
