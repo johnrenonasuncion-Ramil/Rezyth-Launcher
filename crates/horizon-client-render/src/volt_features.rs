@@ -430,7 +430,7 @@ pub fn framing_grid(w: f32, h: f32) -> [(f32, f32, f32, f32); 4] {
 /// The Shulker & Bundle Peek grid's cell for a container slot: `(col, row)`
 /// of the 9-wide, 3-tall grid, or None past the 27 slots a shulker box holds.
 pub fn shulker_cell(slot: u8) -> Option<(u8, u8)> {
-    (slot < 27).then(|| (slot % 9, slot / 9))
+    (slot < 27).then_some((slot % 9, slot / 9))
 }
 
 /// The Volt Atlas grid's line spacing in blocks for a map of
