@@ -14555,7 +14555,7 @@ impl Game<'_> {
         let underwater = self
             .player
             .as_ref()
-            .map_or(false, |p| p.fluids.was_eye_in_water);
+            .is_some_and(|p| p.fluids.was_eye_in_water);
         let cave = q.sound_cave_reverb
             && self.eye_position().is_some_and(|e| {
                 self.world.light(

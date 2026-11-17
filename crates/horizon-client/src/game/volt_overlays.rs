@@ -41,7 +41,7 @@ impl Game<'_> {
         };
         let dir = throw_direction(self.yaw, self.pitch);
         let mv = self.known_player_movement();
-        let on_ground = self.player.as_ref().map_or(true, |p| p.ground.on_ground);
+        let on_ground = self.player.as_ref().is_none_or(|p| p.ground.on_ground);
         let v = [
             dir[0] * 1.5 + mv.x,
             dir[1] * 1.5 + if on_ground { 0.0 } else { mv.y },
