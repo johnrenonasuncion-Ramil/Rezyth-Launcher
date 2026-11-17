@@ -14568,6 +14568,27 @@ impl Game<'_> {
         self.audio
             .set_underwater_lpf(q.sound_underwater_lpf && underwater);
         self.audio.set_cave_echo(if cave { 0.35 } else { 0.0 });
+        // Rezyth Settings' wall occlusion: probe the 26 directions around the
+        // eye out to 8 blocks; a wall closer than 8 blocks muffles the sounds
+        // coming from that direction (the closer, the more).
+        if q.sound_wall_occlusion
+            && let Some(eye) = self.eye_position()
+        {
+            let mut table = [1.0_f32; 26];
+            for (i, d) in horizon_client::audio::OCCLUSION_DIRS.iter().enumerate() {
+                let dir = [f64::from(d[0]), f64::from(d[1]), f64::from(d[2])];
+                let dist = self.clip_ray(eye, dir, 8.0).map_or(8.0, |h| {
+                    (h.point[0] - eye[0]).powi(2)
+                        + (h.point[1] - eye[1]).powi(2)
+                        + (h.point[2] - eye[2]).powi(2)
+                })
+                .sqrt();
+                table[i] = (1.0 - dist / 8.0 * 0.65).clamp(0.35, 1.0);
+            }
+            self.audio.set_wall_occlusion(Some(table));
+        } else {
+            self.audio.set_wall_occlusion(None);
+        }
         // The Boost tab's Zero-Stutter Mesh Pool: workers keep recycled
         // section buffers within its larger budget.
         horizon_client::streaming::set_expanded_mesh_pool(

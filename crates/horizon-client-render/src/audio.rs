@@ -234,6 +234,10 @@ pub struct Audio {
     /// each: portal, piston/redstone, minecart, explosion, rain. 1.0 is the
     /// untouched volume; the captured volume for guests stays unscaled.
     mufflers: [f32; 5],
+    /// Rezyth Settings' wall occlusion (`volt_qol.sound_wall_occlusion`): the
+    /// muffle factor per `OCCLUSION_DIRS` direction around the listener,
+    /// probed from the world each tick; None while the switch is off.
+    wall_occlusion: Option<[f32; 26]>,
     /// How many times each positional sound played (the control socket's `status`),
     /// with or without an audio device.
     pub heard: std::collections::BTreeMap<String, u32>,
@@ -536,6 +540,52 @@ pub fn one_pole_lpf(state: &mut f32, x: f32, alpha: f32) -> f32 {
 
 /// A feedback comb echo (one delay line with feedback): the cave reverb's
 /// early reflection Rezyth Settings mixes into the output underground.
+/// The 26 probe directions of the wall-occlusion table: the unit cube's
+/// corners, edges and face centres minus the zero vector, normalized.
+pub const OCCLUSION_DIRS: [[f32; 3]; 26] = {
+    let mut out = [[0.0_f32; 3]; 26];
+    let mut i = 0;
+    let mut x = -1.0_f32;
+    while x <= 1.0 {
+        let mut y = -1.0_f32;
+        while y <= 1.0 {
+            let mut z = -1.0_f32;
+            while z <= 1.0 {
+                if x != 0.0 || y != 0.0 || z != 0.0 {
+                    let edge = (x != 0.0) as u8 + (y != 0.0) as u8 + (z != 0.0) as u8;
+                    let len = if edge == 3 {
+                        0.577_350_3
+                    } else if edge == 2 {
+                        0.707_106_8
+                    } else {
+                        1.0
+                    };
+                    out[i] = [x / len, y / len, z / len];
+                    i += 1;
+                }
+                z += 1.0;
+            }
+            y += 1.0;
+        }
+        x += 1.0;
+    }
+    out
+};
+
+/// The wall-occlusion table index nearest to `dir` (the largest dot product).
+pub fn occlusion_index(dir: [f32; 3]) -> usize {
+    let mut best = 0;
+    let mut best_dot = f32::NEG_INFINITY;
+    for (i, d) in OCCLUSION_DIRS.iter().enumerate() {
+        let dot = dir[0] * d[0] + dir[1] * d[1] + dir[2] * d[2];
+        if dot > best_dot {
+            best_dot = dot;
+            best = i;
+        }
+    }
+    best
+}
+
 pub fn comb_echo(buf: &mut [f32], i: &mut usize, x: f32, gain: f32) -> f32 {
     if buf.is_empty() {
         return x;
@@ -999,6 +1049,7 @@ impl Audio {
             source_override: None,
             capture: None,
             mufflers: [1.0; 5],
+            wall_occlusion: None,
             heard: Default::default(),
             stopped: Default::default(),
             preview: Default::default(),
@@ -1155,6 +1206,7 @@ impl Audio {
             source_override: None,
             capture: None,
             mufflers: [1.0; 5],
+            wall_occlusion: None,
             heard: Default::default(),
             stopped: Default::default(),
             preview: Default::default(),
@@ -1358,6 +1410,29 @@ impl Audio {
             m.fx_echo_gain = gain.clamp(0.0, 0.8);
         }
     }
+    /// Rezyth Settings' wall occlusion (`volt_qol.sound_wall_occlusion`): the
+    /// muffle factor per `OCCLUSION_DIRS` direction around the listener,
+    /// probed from the world each tick; None while the switch is off.
+    pub fn set_wall_occlusion(&mut self, table: Option<[f32; 26]>) {
+        self.wall_occlusion = table;
+    }
+    /// The wall-occlusion factor for a positional sound: the table's entry in
+    /// the direction from the listener to it; 1.0 while off or relative.
+    fn wall_factor(&self, at: Option<[f64; 3]>) -> f32 {
+        let (Some(at), Some(table)) = (at, &self.wall_occlusion) else {
+            return 1.0;
+        };
+        let dir = [
+            (at[0] - self.listener[0]) as f32,
+            (at[1] - self.listener[1]) as f32,
+            (at[2] - self.listener[2]) as f32,
+        ];
+        let len = (dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]).sqrt();
+        if len < 0.5 {
+            return 1.0;
+        }
+        table[occlusion_index([dir[0] / len, dir[1] / len, dir[2] / len])]
+    }
     /// The muffler a sound event belongs to, or 1.0 for the sounds that keep
     /// their volume.
     fn muffler(&self, event: &str) -> f32 {
@@ -1509,9 +1584,9 @@ impl Audio {
         }
         self.sync_volumes();
         let event = crate::sound_events::normalize(event);
-        // Rezyth Settings' mufflers scale this client's playback only; the
-        // captured volume above is what the guests hear.
-        let volume = volume * self.muffler(&event);
+        // Rezyth Settings' mufflers and wall occlusion scale this client's
+        // playback only; the captured volume above is what the guests hear.
+        let volume = volume * self.muffler(&event) * self.wall_factor(at);
         let source = self
             .source_override
             .unwrap_or_else(|| crate::settings::sound_source(&event));
@@ -1644,6 +1719,24 @@ impl Sounds for Audio {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The wall-occlusion table covers all 26 cube directions, normalized,
+    /// and each direction picks its own entry as nearest.
+    #[test]
+    fn occlusion_dirs_are_26_normalized_and_self_nearest() {
+        assert_eq!(OCCLUSION_DIRS.len(), 26);
+        for d in OCCLUSION_DIRS {
+            let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
+            assert!((len - 1.0).abs() < 1e-5, "not unit: {d:?}");
+        }
+        for (i, d) in OCCLUSION_DIRS.iter().enumerate() {
+            assert_eq!(occlusion_index(*d), i);
+        }
+        // A diagonal direction picks the matching corner, not a face.
+        let corner = occlusion_index([1.0, 1.0, 1.0]);
+        let d = OCCLUSION_DIRS[corner];
+        assert!((d[0] - 0.577).abs() < 0.01 && (d[1] - 0.577).abs() < 0.01);
+    }
 
     /// The underwater low-pass smooths toward the input instead of jumping.
     #[test]
