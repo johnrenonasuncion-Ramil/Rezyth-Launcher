@@ -665,3 +665,8 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
 - **Wave 29** (`b06e76804`): Shulker & Bundle Peek (ModShulkerPreview / catalog
   ShulkerBoxTooltip) — the box's `minecraft:container` contents as a 9x3 grid under
   the tooltip name lines, via the pure `shulker_cell` helper.
+- **Wave 30** (`8eed1ccd9`): Wall occlusion (QolWallOcclusion /
+  `volt_qol.sound_wall_occlusion`) — per-tick 26-direction occlusion probe
+  from the eye via `clip_ray` (8 blocks) into `Audio::set_wall_occlusion`;
+  `play_seeded` multiplies positional volume by `wall_factor(at)` (nearest
+  dir to `at - listener`); pure test pins the normalized dir table.
