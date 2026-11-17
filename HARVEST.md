@@ -683,3 +683,14 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
   options.txt key still parses for compatibility.
 - The Shaders tab's remaining rows stay as they were before the wiring work
   (config-only). All other tabs' wired rows (waves 1–30) are untouched.
+- **Wave 36** (`c4a884e88`, CI-green run 44160353557, 5607 passed / 0 failed):
+  3D Proximity Voice — `voice.rs` (pure: RMS, the activity gate, mic/output
+  gains, proximity falloff) + the Mixer's voice state shared by a new cpal
+  input stream (`capture_voice`: PTT while `key.volt.voice_ptt` (V) is held,
+  else the VAD threshold; mic-gained samples into a rate-bounded ring) and the
+  output mix, which drains it while the loopback test path is on (resampled,
+  cave-muffled, at the output gain). The voice HUD button (VoiceHudBtn) shows
+  the mode and a live Speaking/Muted line. Wires VoiceEnable, VoiceModePtt,
+  VoiceVad, VoiceMicGain, VoiceOutGain, VoiceDistance, VoiceCaveMuffle,
+  VoiceHudBtn, VoiceLoopback. The network transport (voice_port UDP) is not
+  built; the loopback makes every setting audible on your own voice.
