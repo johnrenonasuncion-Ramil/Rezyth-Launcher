@@ -368,6 +368,7 @@ mod ui_control;
 mod update_offer;
 mod vault;
 mod villagers;
+mod volt_overlays;
 mod wandering_trader;
 mod waypoints;
 mod win;

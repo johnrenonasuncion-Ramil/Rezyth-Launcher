@@ -330,6 +330,66 @@ pub fn damage_popup_style(age_ticks: i64) -> Option<(f32, u8)> {
     Some(((t * 0.045).min(0.9), (255.0 - t * 13.0) as u8))
 }
 
+/// The direction a player throw starts in (`Projectile.shootFromRotation`
+/// with offset 0): yaw 0 looks along +Z, positive pitch looks down.
+pub fn throw_direction(yaw: f32, pitch: f32) -> [f64; 3] {
+    let (p, y) = (pitch.to_radians(), yaw.to_radians());
+    [
+        f64::from(-y.sin() * p.cos()),
+        f64::from(-p.sin()),
+        f64::from(y.cos() * p.cos()),
+    ]
+}
+
+/// The predicted flight of a thrown item (`ThrowableProjectile.tick` from
+/// `origin` at `velocity`): drag 0.99 and `gravity` off the Y each tick,
+/// until the point enters a solid block or three seconds (60 ticks) pass.
+pub fn trajectory_points(
+    origin: [f64; 3],
+    velocity: [f64; 3],
+    gravity: f64,
+    solid: impl Fn([i32; 3]) -> bool,
+) -> Vec<[f64; 3]> {
+    let mut points = Vec::with_capacity(60);
+    let (mut p, mut v) = (origin, velocity);
+    for _ in 0..60 {
+        v = [v[0] * 0.99, v[1] * 0.99 - gravity, v[2] * 0.99];
+        p = [p[0] + v[0], p[1] + v[1], p[2] + v[2]];
+        let hit = solid([p[0].floor() as i32, p[1].floor() as i32, p[2].floor() as i32]);
+        points.push(p);
+        if hit {
+            break;
+        }
+    }
+    points
+}
+
+/// The Spawn Light overlay's box colour for a position's block light: red
+/// where monsters spawn (the overworld's limit, 0), amber up to 7, nothing
+/// above that.
+pub fn spawn_light_color(block_light: i32) -> Option<u32> {
+    if block_light <= 0 {
+        Some(0xFFFF_3030)
+    } else if block_light <= 7 {
+        Some(0xFFFF_A500)
+    } else {
+        None
+    }
+}
+
+/// Whether slimes spawn in the chunk at (`chunk_x`, `chunk_z`, `y`): the
+/// slime-chunk 1-in-10 roll, and only below y 40 (`Slime` spawn rules).
+pub fn slime_spawns_in_chunk(chunk_x: i32, chunk_z: i32, y: i32, seed: i64) -> bool {
+    use horizon_core::random::{RandomSource, slime_chunk_random};
+    if y >= 40 {
+        return false;
+    }
+    slime_chunk_random(chunk_x, chunk_z, seed, 987_234_911)
+        .next_int_bound(10)
+        .unwrap_or(1)
+        == 0
+}
+
 /// Screen-space projection of a 3D world waypoint for HUD rendering.
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectedWaypoint {
@@ -904,6 +964,55 @@ mod tests {
         assert!(damage_popup_style(19).is_some());
         assert_eq!(damage_popup_style(20), None);
         assert_eq!(damage_popup_style(-1), None);
+    }
+
+    /// A throw starts along the look: yaw 0 is +Z, pitch 90 straight down.
+    #[test]
+    fn throw_direction_matches_the_look() {
+        let d = throw_direction(0.0, 0.0);
+        assert!(d[0].abs() < 1e-9 && d[1].abs() < 1e-9 && (d[2] - 1.0).abs() < 1e-9);
+        let down = throw_direction(0.0, std::f32::consts::FRAC_PI_2);
+        assert!((down[1] + 1.0).abs() < 1e-6 && down[2].abs() < 1e-6);
+    }
+
+    /// The predicted arc rises, then falls, and stops when it lands.
+    #[test]
+    fn trajectory_arc_rises_then_falls_and_stops_at_solid() {
+        let pts = trajectory_points([0.0, 64.0, 0.0], [0.0, 0.75, 0.0], 0.03, |_| false);
+        assert_eq!(pts.len(), 60);
+        let apex = pts.iter().map(|p| p[1]).fold(f64::NEG_INFINITY, f64::max);
+        assert!(apex > 64.5);
+        assert!(pts.last().unwrap()[1] < apex);
+        let landed = trajectory_points([0.0, 64.0, 0.0], [0.0, 0.75, 0.0], 0.03, |b| b[1] < 63);
+        assert!(landed.len() < 60);
+        let last = landed.last().unwrap();
+        assert!(last[1] < 63.0 && last[1] > 62.0);
+    }
+
+    /// The spawn-light overlay paints 0 red, 1..=7 amber, nothing above.
+    #[test]
+    fn spawn_light_color_marks_the_dark_spots() {
+        assert_eq!(spawn_light_color(0), Some(0xFFFF_3030));
+        assert_eq!(spawn_light_color(7), Some(0xFFFF_A500));
+        assert_eq!(spawn_light_color(8), None);
+        assert_eq!(spawn_light_color(15), None);
+    }
+
+    /// A slime chunk's roll decides, and slimes only spawn below y 40.
+    #[test]
+    fn slime_chunks_roll_and_only_spawn_below_40() {
+        let seed = 42;
+        let mut found = None;
+        for cx in 0..64 {
+            for cz in 0..64 {
+                if slime_spawns_in_chunk(cx, cz, 0, seed) {
+                    found = Some((cx, cz));
+                }
+            }
+        }
+        let (cx, cz) = found.expect("some chunk in 0..64 x 0..64 is a slime chunk");
+        assert!(slime_spawns_in_chunk(cx, cz, 39, seed));
+        assert!(!slime_spawns_in_chunk(cx, cz, 40, seed));
     }
 
     /// The blueprint templates list their materials, sliced by the Y layer.

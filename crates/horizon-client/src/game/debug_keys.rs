@@ -959,6 +959,10 @@ impl Game<'_> {
             let min_y = self.world.bottom_y();
             g.chunk_borders(block, min_y, min_y + self.world.layout().height() - 1);
         }
+        // The Trajectory mod's predicted arc and the Spawn Light overlay
+        // draw with no F3 key, like the hitbox vectors below.
+        self.trajectory_gizmo(&mut g);
+        self.spawn_light_gizmo(&mut g);
         // The Tactical Hitbox Vectors mod (`volt_mods.hitbox_plus`) draws them
         // too, with no F3+B.
         if !self.debug_entry("entity_hitboxes") && !self.settings.extras.volt_mods.hitbox_plus {
