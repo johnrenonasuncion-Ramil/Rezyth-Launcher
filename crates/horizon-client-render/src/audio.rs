@@ -1666,7 +1666,7 @@ mod tests {
         assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.5);
         assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.25);
         assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.125);
-        assert!(comb_echo(&mut vec![], &mut 0, 1.0, 0.5) == 1.0);
+        assert!(comb_echo(&mut [], &mut 0, 1.0, 0.5) == 1.0);
     }
 
     #[test]
