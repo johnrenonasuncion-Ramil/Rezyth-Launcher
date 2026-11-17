@@ -9,7 +9,7 @@ use horizon_client::{
     gizmos::Gizmos,
     hud::{HudBatch, rgba},
     volt_features::{
-        best_tool_slot, slime_spawns_in_chunk, spawn_light_color, throw_direction,
+        best_tool_slot, framing_grid, slime_spawns_in_chunk, spawn_light_color, throw_direction,
         tool_break_warning, trajectory_points,
     },
 };
@@ -184,6 +184,19 @@ impl Game<'_> {
                 )];
                 extras_hud::draw_panel(batch, atlas, corners, Corner::BottomLeft, &rows);
             }
+        }
+    }
+
+    /// The Volt Cam Framing Grid: translucent thirds over the screen while
+    /// the switch is on.
+    pub(super) fn draw_photo_grid(&self, batch: &mut HudBatch) {
+        if self.screen != Screen::Playing || !self.settings.extras.volt_qol.photo_mode_overlays {
+            return;
+        }
+        let atlas = &self.gui.atlas;
+        let c = rgba(255, 255, 255, 70);
+        for (x0, y0, x1, y1) in framing_grid(batch.width, batch.height) {
+            batch.fill(atlas, x0, y0, x1 - x0, y1 - y0, c);
         }
     }
 }

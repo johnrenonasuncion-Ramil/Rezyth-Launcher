@@ -416,6 +416,17 @@ pub fn tool_break_warning(left: u32, max: u32) -> Option<u32> {
     Some(left)
 }
 
+/// The Volt Cam Framing Grid's four lines as fill rects (x0, y0, x1, y1):
+/// thirds of the screen both ways, one pixel wide.
+pub fn framing_grid(w: f32, h: f32) -> [(f32, f32, f32, f32); 4] {
+    [
+        (w / 3.0, 0.0, w / 3.0 + 1.0, h),
+        (2.0 * w / 3.0, 0.0, 2.0 * w / 3.0 + 1.0, h),
+        (0.0, h / 3.0, w, h / 3.0 + 1.0),
+        (0.0, 2.0 * h / 3.0, w, 2.0 * h / 3.0 + 1.0),
+    ]
+}
+
 /// Screen-space projection of a 3D world waypoint for HUD rendering.
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectedWaypoint {
@@ -1031,6 +1042,16 @@ mod tests {
         assert_eq!(best_tool_slot(&[2.0, 8.0, 8.0]), Some(1));
         assert_eq!(best_tool_slot(&[1.0, 1.0]), None);
         assert_eq!(best_tool_slot(&[]), None);
+    }
+
+    /// The framing grid cuts the screen in thirds both ways.
+    #[test]
+    fn framing_grid_cuts_the_screen_in_thirds() {
+        let g = framing_grid(900.0, 600.0);
+        assert_eq!(g[0], (300.0, 0.0, 301.0, 600.0));
+        assert_eq!(g[1], (600.0, 0.0, 601.0, 600.0));
+        assert_eq!(g[2], (0.0, 200.0, 900.0, 201.0));
+        assert_eq!(g[3], (0.0, 400.0, 900.0, 401.0));
     }
 
     /// The break warning fires at a tenth of the durability or five left.

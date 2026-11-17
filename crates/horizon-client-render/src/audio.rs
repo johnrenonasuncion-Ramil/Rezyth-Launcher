@@ -62,6 +62,14 @@ struct Mixer {
     /// The callback's cameras (position, basis, world), kept to be refilled without allocating.
     cameras: Vec<([f64; 3], Basis, u32)>,
     limiter_peak: f32,
+    /// Rezyth Settings' output effects, applied to the mixed buffer before
+    /// the limiter: the underwater low-pass (`fx_lpf_alpha`, 0 = off) and
+    /// the cave echo (a feedback comb, `fx_echo_gain`).
+    fx_lpf_alpha: f32,
+    fx_echo_gain: f32,
+    lpf_state: [f32; 2],
+    echo_buf: Vec<f32>,
+    echo_i: usize,
     /// The output device the stream was opened on (`Library.currentDeviceName`).
     #[cfg(feature = "audio")]
     device_name: String,
@@ -518,6 +526,26 @@ fn distance_gain(linear: Option<f32>, distance: f32) -> f32 {
 }
 // Only the output stream mixes; a build without one (no `audio` feature) never does.
 #[cfg_attr(not(feature = "audio"), allow(dead_code))]
+/// A one-pole low-pass (`y += alpha * (x - y)`): the underwater muffle
+/// Rezyth Settings low-passes the mixed output with while the listener's
+/// eyes are in water.
+pub fn one_pole_lpf(state: &mut f32, x: f32, alpha: f32) -> f32 {
+    *state += alpha * (x - *state);
+    *state
+}
+
+/// A feedback comb echo (one delay line with feedback): the cave reverb's
+/// early reflection Rezyth Settings mixes into the output underground.
+pub fn comb_echo(buf: &mut [f32], i: &mut usize, x: f32, gain: f32) -> f32 {
+    if buf.is_empty() {
+        return x;
+    }
+    let y = x + gain * buf[*i];
+    buf[*i] = y;
+    *i = (*i + 1) % buf.len();
+    y
+}
+
 fn mix(mixer: &mut Mixer, data: &mut [f32], channels: usize, rate: u32) {
     data.fill(0.0);
     // The camera's forward and up vectors (`Camera.forwardVector`/`upVector`)
@@ -644,6 +672,28 @@ fn mix(mixer: &mut Mixer, data: &mut [f32], channels: usize, rate: u32) {
                 frame[0] += s * gain;
             }
             c.position += step;
+        }
+    }
+    // Rezyth Settings' output effects (the underwater low-pass and the cave
+    // echo) ride the mixed buffer before the limiter.
+    let (lpf_alpha, echo_gain) = (mixer.fx_lpf_alpha, mixer.fx_echo_gain);
+    if lpf_alpha > 0.0 || echo_gain > 0.0 {
+        let delay = (rate / 20).max(1) as usize;
+        if mixer.echo_buf.len() != delay {
+            mixer.echo_buf.resize(delay, 0.0);
+            mixer.echo_i = 0;
+        }
+        for frame in data.chunks_mut(channels) {
+            for (ch, s) in frame.iter_mut().enumerate() {
+                let mut v = *s;
+                if lpf_alpha > 0.0 {
+                    v = one_pole_lpf(&mut mixer.lpf_state[ch.min(1)], v, lpf_alpha);
+                }
+                if echo_gain > 0.0 {
+                    v = comb_echo(&mut mixer.echo_buf, &mut mixer.echo_i, v, echo_gain);
+                }
+                *s = v;
+            }
         }
     }
     // Limit the whole buffer together, preserving waveform and stereo balance
@@ -1291,6 +1341,23 @@ impl Audio {
     ) {
         self.mufflers = [portal, piston, minecart, explosion, rain];
     }
+    /// Rezyth Settings' underwater low-pass on the mixed output
+    /// (`volt_qol.sound_underwater_lpf`, while the eyes are in water).
+    pub fn set_underwater_lpf(&mut self, on: bool) {
+        if let Ok(mut m) = self.backend.mixer.lock() {
+            m.fx_lpf_alpha = if on { 0.3 } else { 0.0 };
+            if on {
+                m.lpf_state = [0.0; 2];
+            }
+        }
+    }
+    /// Rezyth Settings' cave echo (a 50 ms feedback comb) on the output
+    /// (`volt_qol.sound_cave_reverb`, while underground); gain 0..=0.8.
+    pub fn set_cave_echo(&mut self, gain: f32) {
+        if let Ok(mut m) = self.backend.mixer.lock() {
+            m.fx_echo_gain = gain.clamp(0.0, 0.8);
+        }
+    }
     /// The muffler a sound event belongs to, or 1.0 for the sounds that keep
     /// their volume.
     fn muffler(&self, event: &str) -> f32 {
@@ -1577,6 +1644,30 @@ impl Sounds for Audio {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The underwater low-pass smooths toward the input instead of jumping.
+    #[test]
+    fn one_pole_lpf_smooths_toward_the_input() {
+        let mut s = 0.0;
+        assert_eq!(one_pole_lpf(&mut s, 1.0, 0.5), 0.5);
+        assert_eq!(one_pole_lpf(&mut s, 1.0, 0.5), 0.75);
+        for _ in 0..50 {
+            one_pole_lpf(&mut s, 1.0, 0.5);
+        }
+        assert!((s - 1.0).abs() < 1e-4);
+    }
+
+    /// The cave echo repeats the input, decaying by the feedback gain.
+    #[test]
+    fn comb_echo_decays_by_the_gain() {
+        let mut buf = vec![0.0; 4];
+        let mut i = 0;
+        assert_eq!(comb_echo(&mut buf, &mut i, 1.0, 0.5), 1.0);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.5);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.25);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.125);
+        assert!(comb_echo(&mut vec![], &mut 0, 1.0, 0.5) == 1.0);
+    }
 
     #[test]
     fn button_click_uses_vanilla_ui_parameters_without_advancing_world_random() {

@@ -14514,6 +14514,23 @@ impl Game<'_> {
             f32::from(q.muffle_explosion_pct) / 100.0,
             f32::from(q.muffle_rain_pct) / 100.0,
         );
+        // Rezyth Settings' underwater low-pass and cave echo on the output:
+        // the low-pass while the eyes are in water, the echo while under a
+        // roof (no sky light at the eyes).
+        let underwater = self
+            .player
+            .as_ref()
+            .map_or(false, |p| p.fluids.was_eye_in_water);
+        let cave = q.sound_cave_reverb
+            && self.eye_position().is_some_and(|e| {
+                self.sky_light(BlockPos::new(
+                    e[0].floor() as i32,
+                    e[1].floor() as i32,
+                    e[2].floor() as i32,
+                )) < 15
+            });
+        self.audio.set_underwater_lpf(q.sound_underwater_lpf && underwater);
+        self.audio.set_cave_echo(if cave { 0.35 } else { 0.0 });
         // The Boost tab's Zero-Stutter Mesh Pool: workers keep recycled
         // section buffers within its larger budget.
         horizon_client::streaming::set_expanded_mesh_pool(

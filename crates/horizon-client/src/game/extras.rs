@@ -400,6 +400,7 @@ impl Game<'_> {
         self.draw_damage_hud(batch, &mut corners);
         self.draw_slime_hud(batch, &mut corners);
         self.draw_tool_hud(batch, &mut corners);
+        self.draw_photo_grid(batch);
         self.native_hud(batch, &mut corners);
     }
     /// The Rezyth Settings HUD switches: armour & durability, the live CPS
