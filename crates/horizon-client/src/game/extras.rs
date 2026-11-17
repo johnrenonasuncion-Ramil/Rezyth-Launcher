@@ -690,6 +690,30 @@ impl Game<'_> {
             ];
             extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &rows);
         }
+        // Rezyth Settings' replay button: a state dot at its configured spot,
+        // size and opacity (R or a bound touch button starts, pauses, ends).
+        let rq = &self.settings.extras.volt_qol;
+        if rq.replay_button {
+            let s = f32::from(rq.replay_btn_size);
+            let x = (batch.width - s) * f32::from(rq.replay_btn_x_pct) / 100.0;
+            let y = (batch.height - s) * f32::from(rq.replay_btn_y_pct) / 100.0;
+            let a = (f32::from(rq.replay_btn_opacity_pct) / 100.0 * 255.0) as u8;
+            batch.fill(atlas, x, y, s, s, rgba(0, 0, 0, a));
+            let dot = s * 0.4;
+            let blink = self.world.game_time / 10 % 2 == 0;
+            let color = match self.replay_state {
+                horizon_client::volt_features::ReplayState::Idle => rgba(170, 170, 170, a),
+                horizon_client::volt_features::ReplayState::Recording => {
+                    if blink {
+                        rgba(255, 60, 60, a)
+                    } else {
+                        rgba(120, 0, 0, a)
+                    }
+                }
+                horizon_client::volt_features::ReplayState::Paused => rgba(255, 200, 60, a),
+            };
+            batch.fill(atlas, x + (s - dot) / 2.0, y + (s - dot) / 2.0, dot, dot, color);
+        }
         // Keystrokes Overlay: the movement keys as a grid, lit while held.
         if keystrokes_hud {
             let keys = [

@@ -116,6 +116,7 @@ mod debug_options;
 mod debug_renderers;
 mod debug_stick;
 mod decorated_pot;
+mod replay;
 mod dedicated;
 mod deflect;
 mod dialogs;
@@ -2490,6 +2491,10 @@ struct Game<'a> {
     /// the (yaw, pitch) the player's body keeps facing while the camera
     /// orbits freely; None when not freelooking.
     freelook: Option<(f32, f32)>,
+    /// Rezyth Settings' replay recorder (`volt_qol.replay_buffer`): the
+    /// floating button's state and the take it is building.
+    replay_state: horizon_client::volt_features::ReplayState,
+    replay_track: Option<horizon_client::volt_features::ReplayTrack>,
     physical_buttons: HashSet<MouseButton>,
     drag_button: Option<MouseButton>,
     /// Control + left click as a right click (macOS).
@@ -14583,6 +14588,9 @@ impl Game<'_> {
         );
         self.audio
             .set_voice_ptt_down(self.mapped_key_down("key.volt.voice_ptt"));
+        // Rezyth Settings' replay recorder: one camera sample per world tick
+        // while recording (the button or key started it).
+        self.tick_replay();
         // Rezyth Settings' wall occlusion: probe the 26 directions around the
         // eye out to 8 blocks; a wall closer than 8 blocks muffles the sounds
         // coming from that direction (the closer, the more).
@@ -17824,6 +17832,9 @@ impl Game<'_> {
             if self.screenshot_shortcut(key, event.repeat) {
                 return;
             }
+            if self.replay_shortcut(key, event.repeat) {
+                return;
+            }
         }
         // KeyboardHandler.keyPress: the debug keys come before the game's.
         if let WindowEvent::KeyboardInput {
@@ -19473,6 +19484,8 @@ impl<'a> Game<'a> {
             keys: HashSet::new(),
             physical_keys: HashSet::new(),
             freelook: None,
+            replay_state: Default::default(),
+            replay_track: None,
             physical_buttons: HashSet::new(),
             drag_button: None,
             right_click_emulation: Default::default(),

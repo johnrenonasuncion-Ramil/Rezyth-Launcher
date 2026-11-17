@@ -1008,9 +1008,104 @@ pub fn blueprint_materials(
     counts
 }
 
+/// Rezyth Settings' replay recorder (`volt_qol.replay_buffer`): a session's
+/// camera track, one sample per world tick while recording. Written as JSON
+/// to the player's `replays/` folder when the button ends the take.
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct ReplayTrack {
+    /// The dimension id at the start (`minecraft:overworld`).
+    pub dimension: String,
+    /// The world's game time at the first sample.
+    pub start_game_time: i64,
+    /// The camera track: the eye's position and view per world tick.
+    pub samples: Vec<ReplaySample>,
+}
+
+/// One world tick's camera pose.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ReplaySample {
+    pub tick: i64,
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+    pub yaw: f32,
+    pub pitch: f32,
+}
+
+/// The recorder's state: the button (or the key) cycles idle → recording ⇄
+/// paused → idle, saving the track on the way out.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum ReplayState {
+    #[default]
+    Idle,
+    Recording,
+    Paused,
+}
+
+impl ReplayTrack {
+    /// One world tick's camera sample.
+    pub fn record(&mut self, tick: i64, at: [f64; 3], yaw: f32, pitch: f32) {
+        self.samples.push(ReplaySample {
+            tick,
+            x: at[0],
+            y: at[1],
+            z: at[2],
+            yaw,
+            pitch,
+        });
+    }
+
+    /// The take's length in world ticks (first to last sample).
+    pub fn length_ticks(&self) -> i64 {
+        match (self.samples.first(), self.samples.last()) {
+            (Some(first), Some(last)) => last.tick - first.tick,
+            _ => 0,
+        }
+    }
+}
+
+/// The replay file's name: `replay-<unix>-<dimension>.voltreplay.json`, the
+/// dimension short of its namespace.
+pub fn replay_file_name(unix: u64, dimension: &str) -> String {
+    let dim = dimension.rsplit(':').next().unwrap_or(dimension);
+    format!("replay-{unix}-{dim}.voltreplay.json")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The replay track: samples land in order, the length is first to last,
+    /// and the JSON round-trips.
+    #[test]
+    fn replay_track_records_and_round_trips() {
+        let mut track = ReplayTrack {
+            dimension: "minecraft:overworld".into(),
+            start_game_time: 100,
+            samples: Vec::new(),
+        };
+        track.record(100, [0.5, 64.0, 0.5], 0.0, 0.0);
+        track.record(101, [1.5, 64.0, 0.5], 90.0, 10.0);
+        assert_eq!(track.samples.len(), 2);
+        assert_eq!(track.length_ticks(), 1);
+        assert_eq!(ReplayTrack::default().length_ticks(), 0);
+        let json = serde_json::to_string(&track).unwrap();
+        let back: ReplayTrack = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, track);
+    }
+
+    /// The replay file's name carries the stamp and the short dimension.
+    #[test]
+    fn replay_file_name_is_stamped_and_short() {
+        assert_eq!(
+            replay_file_name(1_700_000_000, "minecraft:the_nether"),
+            "replay-1700000000-the_nether.voltreplay.json"
+        );
+        assert_eq!(
+            replay_file_name(1, "overworld"),
+            "replay-1-overworld.voltreplay.json"
+        );
+    }
 
     /// The damage-direction arrow's tip sits `radius` out along its angle.
     #[test]
