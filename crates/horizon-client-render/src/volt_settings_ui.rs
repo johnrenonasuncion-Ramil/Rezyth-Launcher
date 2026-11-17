@@ -224,12 +224,11 @@ fn tab_groups(s: &Settings) -> Vec<(VoltTab, Vec<(&'static str, Vec<VoltEntry>)>
         boost_groups.push(("Granular Engine Caps & Culling", tier_rows));
     }
 
-    // 2. VISUALS (includes Volt Shaders master & quick jump)
+    // 2. VISUALS (includes Volt Shaders quick jump)
     let visuals_groups = vec![
         (
             "Shaders & Graphics Pipeline",
             vec![
-                e_ext(ExtraItem::VoltShaderEnable, Medium),
                 VoltEntry {
                     kind: VoltRowKind::OpenShaderPacks,
                     cost: None,

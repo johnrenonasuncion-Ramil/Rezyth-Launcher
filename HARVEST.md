@@ -670,3 +670,16 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
   from the eye via `clip_ray` (8 blocks) into `Audio::set_wall_occlusion`;
   `play_seeded` multiplies positional volume by `wall_factor(at)` (nearest
   dir to `at - listener`); pure test pins the normalized dir table.
+
+## Rezyth Settings — direction change (user decision)
+- The Volt Shaders render wiring (former waves 31–34: the WGSL post grade in
+  the HDR present pass + SDR blit, clouds mode/coverage, glowing ores, night
+  sky, Auto-PBR, Bloom, Torch Light Style, Post-Rain Rainbow) was **reverted**:
+  the branch base is back to the wave-30 state (`16bcbefb6`, CI run
+  44030829847, 5600 passed / 0 failed). The abandoned implementation is kept
+  on the local branch `backup/volt-shaders-wiring` for reference.
+- The **Enable Shaders** toggle (`Item::VoltShaderEnable`) is removed from the
+  Rezyth Settings Visuals tab and the item enum; the `voltShadersEnabled`
+  options.txt key still parses for compatibility.
+- The Shaders tab's remaining rows stay as they were before the wiring work
+  (config-only). All other tabs' wired rows (waves 1–30) are untouched.

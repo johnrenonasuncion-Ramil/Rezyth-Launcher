@@ -2042,8 +2042,7 @@ pub enum Item {
     /// The ported Volt Boost+ telemetry HUD.
     VoltPerfHud,
     VoltPerfHudCorner,
-    /// The ported Volt Shaders page (`Options -> Volt Shaders`).
-    VoltShaderEnable,
+    /// The ported Volt Shaders page's profile controls (`Options -> Volt Shaders`).
     VoltShaderProfile,
     VoltShaderReset,
     VoltShaderWavePlants,
@@ -2069,7 +2068,6 @@ pub enum Item {
 }
 /// Every ported Volt Shaders toggle/choice item (search and tests walk this).
 pub const VOLT_SHADER_ITEMS: &[Item] = &[
-    Item::VoltShaderEnable,
     Item::VoltShaderProfile,
     Item::VoltShaderReset,
     Item::VoltShaderWavePlants,
@@ -2299,7 +2297,6 @@ impl Item {
             Item::VoltMemorySaver => "horizon.volt.memory",
             Item::VoltPerfHud => "horizon.volt.perf_hud",
             Item::VoltPerfHudCorner => "horizon.volt.perf_hud_corner",
-            Item::VoltShaderEnable => "horizon.volt.shader_enable",
             Item::VoltShaderProfile => "horizon.volt.shader_profile",
             Item::VoltShaderReset => "horizon.volt.shader_reset",
             Item::VoltShaderWavePlants => "horizon.volt.shader_wave_plants",
@@ -2405,7 +2402,6 @@ impl Item {
             Item::VoltMemorySaver => "horizon.volt.memory.tooltip",
             Item::VoltPerfHud => "horizon.volt.perf_hud.tooltip",
             Item::VoltPerfHudCorner => "horizon.volt.perf_hud_corner.tooltip",
-            Item::VoltShaderEnable => "horizon.volt.shader_enable.tooltip",
             Item::VoltShaderProfile => "horizon.volt.shader_profile.tooltip",
             Item::VoltShaderReset => "horizon.volt.shader_reset.tooltip",
             Item::VoltShaderWavePlants => "horizon.volt.shader_wave_plants.tooltip",
@@ -2522,7 +2518,6 @@ impl Item {
             Item::VoltMemorySaver => "Memory saver",
             Item::VoltPerfHud => "Live Perf HUD",
             Item::VoltPerfHudCorner => "Perf HUD Corner",
-            Item::VoltShaderEnable => "Enable Shaders",
             Item::VoltShaderProfile => "Shader Profile",
             Item::VoltShaderReset => "Reset Profile",
             Item::VoltShaderWavePlants => "Waving Grass & Plants",
@@ -2607,7 +2602,6 @@ impl Item {
             | VoltMemorySaver
             | VoltPerfHud
             | VoltPerfHudCorner
-            | VoltShaderEnable
             | VoltShaderProfile
             | VoltShaderReset
             | VoltShaderWavePlants
@@ -2857,9 +2851,6 @@ impl Item {
                 "Shows a telemetry overlay with live FPS, 1% lows, frame pacing, active entities, chunks and resident RAM."
             }
             Item::VoltPerfHudCorner => "Screen corner where the live performance HUD docks.",
-            Item::VoltShaderEnable => {
-                "Master switch for the built-in native WGSL Volt Shaders (off by default). When OFF, no shader passes run and the customization controls stay hidden."
-            }
             Item::VoltShaderProfile => {
                 "Switches between the Potato, Low, Medium, High, Ultra and Custom native WGSL shader profiles tuned for mobile TBDR GPUs."
             }
@@ -3007,7 +2998,6 @@ impl Item {
             Item::VoltCaveSkyCull => e.cave_sky_cull,
             Item::VoltFrustumMesh => e.frustum_priority_mesh,
             Item::VoltMemorySaver => e.memory_saver,
-            Item::VoltShaderEnable => e.volt_shaders.enabled,
             Item::VoltShaderWavePlants => e.volt_shaders.waving_plants,
             Item::VoltShaderWaveLeaves => e.volt_shaders.waving_leaves,
             Item::VoltShaderWaveWater => e.volt_shaders.waving_water,
@@ -3132,13 +3122,6 @@ impl Item {
                 }
             },
             Item::VoltPerfHudCorner => e.perf_hud_corner.label().into(),
-            Item::VoltShaderEnable => {
-                if e.volt_shaders.enabled {
-                    crate::lang::get_or("options.on", "ON")
-                } else {
-                    crate::lang::get_or("options.off", "OFF")
-                }
-            }
             Item::VoltShaderProfile => e.volt_shaders.profile.label().into(),
             Item::VoltShaderReset => "Restore".into(),
             Item::VoltShaderTorchStyle => e.volt_shaders.torch_style.label().into(),
@@ -3260,7 +3243,6 @@ impl Item {
             Item::VoltPerfHudCorner => {
                 e.perf_hud_corner = step(&Corner::ALL, e.perf_hud_corner, _back)
             }
-            Item::VoltShaderEnable => e.volt_shaders.enabled = !e.volt_shaders.enabled,
             Item::VoltShaderProfile => {
                 use horizon_shader_api::volt_shaders::VoltShaderProfile;
                 let presets = [
