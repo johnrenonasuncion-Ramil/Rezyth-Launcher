@@ -838,6 +838,12 @@ impl Game<'_> {
                 f64::from(self.settings.text_background_opacity),
             ),
             upside_down: &up,
+            // The BetterPingDisplay mod: exact ms beside the ping bars.
+            ping_ms: self
+                .settings
+                .extras
+                .mod_catalog
+                .is_on(horizon_client::volt_mods::VoltModId::BetterPingDisplay),
         };
         let draws = self.tab_list.layout(&inputs, &self.gui.atlas.font);
         horizon_client::hud_layout::paint(batch, &self.gui.atlas, &draws);

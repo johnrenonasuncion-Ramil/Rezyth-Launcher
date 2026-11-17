@@ -552,6 +552,22 @@ impl Game<'_> {
             };
             extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &[(text, u32::MAX)]);
         }
+        // The Dedicated Ping Display mod: a ping-only pill, colour-coded by
+        // the same thresholds the Tab list's ms labels use (<60 emerald,
+        // <150 amber, else coral).
+        if self
+            .settings
+            .extras
+            .mod_catalog
+            .is_on(horizon_client::volt_mods::VoltModId::PingDisplay)
+        {
+            let ping = self.local_ping();
+            if ping >= 0 {
+                let color = horizon_client::tab_list::ping_color(ping);
+                let rows = [(format!("{ping} ms"), color)];
+                extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &rows);
+            }
+        }
         if let Some((left, right)) = cps {
             extras_hud::draw_panel(
                 batch,

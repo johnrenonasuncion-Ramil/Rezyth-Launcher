@@ -171,6 +171,8 @@ pub fn main() -> Result<()> {
                     gui_ticks: f["tick"].as_i64().unwrap_or(0),
                     background,
                     upside_down: &up,
+                    // The harness's own key (`pingMs`), false for vanilla.
+                    ping_ms: c["pingMs"].as_bool().unwrap_or(false),
                 };
                 for d in list.layout(&inputs, font) {
                     draws.push(match d {

@@ -277,6 +277,16 @@ pub fn ping_sprite(latency: i32) -> &'static str {
         _ => "icon/ping_1",
     }
 }
+/// The BetterPingDisplay mod's colour coding: emerald under 60 ms, amber
+/// under 150, coral above, grey when the latency is unknown.
+pub fn ping_color(latency: i32) -> u32 {
+    match latency {
+        i32::MIN..=-1 => 0xFFA0_A0A0,
+        0..60 => 0xFF55_FF55,
+        60..150 => 0xFFFF_AA00,
+        _ => 0xFFFF_5555,
+    }
+}
 
 /// `PlayerTabOverlay.HealthState`: the hearts of one player.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -328,6 +338,9 @@ pub struct TabInputs<'a> {
     /// The player is in the level with an upside-down name
     /// (`AvatarRenderer.isPlayerUpsideDown`).
     pub upside_down: &'a dyn Fn(u128) -> bool,
+    /// The BetterPingDisplay mod: each player's exact latency in ms beside
+    /// the bars, colour-coded by [`ping_color`].
+    pub ping_ms: bool,
 }
 
 /// `PlayerTabOverlay`: the header, footer, visibility and heart states.
@@ -425,7 +438,11 @@ impl TabList {
         };
         let sw = i.screen_width;
         let head = if show_head { 9 } else { 0 };
-        let slot_width = (cols * (head + max_name + width_for_score + 13)).min(sw - 50) / cols;
+        // The BetterPingDisplay mod's ms label sits before the ping bars:
+        // leave it room in the slot.
+        let ping_extra = if i.ping_ms { 32 } else { 0 };
+        let slot_width =
+            (cols * (head + max_name + width_for_score + 13 + ping_extra)).min(sw - 50) / cols;
         let xxo = sw / 2 - (slot_width * cols + (cols - 1) * 5) / 2;
         let mut yyo = 10;
         let mut max_line = slot_width * cols + (cols - 1) * 5;
@@ -525,13 +542,23 @@ impl TabList {
                     }
                 }
             }
-            out.push(sprite(
-                ping_sprite(p.latency),
-                xo - head + slot_width - 11,
-                yo,
-                10,
-                8,
-            ));
+            let ping_left = xo - head + slot_width - 11;
+            out.push(sprite(ping_sprite(p.latency), ping_left, yo, 10, 8));
+            if i.ping_ms {
+                let label = if p.latency < 0 {
+                    "? ms".to_owned()
+                } else {
+                    format!("{} ms", p.latency)
+                };
+                let w = font.width(&label) as i32;
+                out.push(GuiDraw::Text {
+                    text: Text::literal(label),
+                    x: ping_left - 3 - w,
+                    y: yo,
+                    color: ping_color(p.latency),
+                    shadow: true,
+                });
+            }
         }
         if let Some(lines) = &footer {
             yyo += rows * 9 + 1;
@@ -680,10 +707,72 @@ mod tests {
         assert_eq!(ping_sprite(-1), "icon/ping_unknown");
         assert_eq!(ping_sprite(149), "icon/ping_5");
         assert_eq!(ping_sprite(1000), "icon/ping_1");
+        // The BetterPingDisplay colour coding: emerald, amber, coral, grey.
+        assert_eq!(ping_color(-1), 0xFFA0_A0A0);
+        assert_eq!(ping_color(59), 0xFF55_FF55);
+        assert_eq!(ping_color(60), 0xFFFF_AA00);
+        assert_eq!(ping_color(149), 0xFFFF_AA00);
+        assert_eq!(ping_color(150), 0xFFFF_5555);
         // UUID.hashCode of 0 is 0: the first default skin.
         assert_eq!(default_skin(0), "entity/player/slim/alex");
         assert!(!visible(true, true, 1, false));
         assert!(visible(true, true, 1, true));
         assert!(visible(true, false, 1, false));
+    }
+
+    /// The BetterPingDisplay mod's ms label: drawn beside the bars only with
+    /// the switch on.
+    #[test]
+    fn ping_ms_labels_follow_the_mod() {
+        // The missing-glyph metrics let this run without game assets (the
+        // chat tests' own font).
+        let font = crate::font::Font::load(
+            std::path::Path::new("/nonexistent-horizon-tab-test-resources"),
+            &std::collections::HashMap::new(),
+            &[],
+            (1, 1),
+            (0, 0),
+            crate::hud::Rect {
+                u0: 0.0,
+                v0: 0.0,
+                u1: 1.0,
+                v1: 1.0,
+                w: 1,
+                h: 1,
+            },
+        );
+        let board = Scoreboard::default();
+        let players = [TabPlayer::new(1, "bob")];
+        let up = |_: u128| false;
+        fn inputs<'a>(
+            players: &'a [TabPlayer],
+            board: &'a Scoreboard,
+            up: &'a dyn Fn(u128) -> bool,
+            ping_ms: bool,
+        ) -> TabInputs<'a> {
+            TabInputs {
+                players,
+                board,
+                objective: None,
+                screen_width: 320,
+                online_mode: false,
+                gui_ticks: 0,
+                background: 0,
+                upside_down: up,
+                ping_ms,
+            }
+        }
+        let texts = |ping_ms: bool| {
+            let mut list = TabList::default();
+            list.layout(&inputs(&players, &board, &up, ping_ms), &font)
+                .into_iter()
+                .filter_map(|d| match d {
+                    GuiDraw::Text { text, .. } => Some(text.plain()),
+                    _ => None,
+                })
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(texts(false), ["bob"]);
+        assert_eq!(texts(true), ["bob", "0 ms"]);
     }
 }

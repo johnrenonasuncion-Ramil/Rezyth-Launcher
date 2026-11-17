@@ -1661,6 +1661,17 @@ impl Game<'_> {
         let message = match result {
             Ok(_) => {
                 log::info!("Saved screenshot to {}", path.display());
+                // The Screenshot to Clipboard mod: the saved file's path goes
+                // to the system clipboard alongside the usual chat line.
+                if self
+                    .settings
+                    .extras
+                    .mod_catalog
+                    .is_on(horizon_client::volt_mods::VoltModId::ScreenshotToClipboard)
+                {
+                    use horizon_client::clipboard::Clipboard;
+                    self.clipboard.set(&path.to_string_lossy());
+                }
                 let name = path.file_name().unwrap_or_default().to_string_lossy();
                 let link = Text::styled(
                     name,
