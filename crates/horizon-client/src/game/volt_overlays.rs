@@ -86,8 +86,8 @@ impl Game<'_> {
                     if facts.is_air(below_s) || below.fluid != Fluid::None {
                         continue;
                     }
-                    let here = at(x, y, z);
-                    let above = at(x, y + 1, z);
+                    let (_, here) = at(x, y, z);
+                    let (_, above) = at(x, y + 1, z);
                     if here.full_collision
                         || here.fluid != Fluid::None
                         || above.full_collision

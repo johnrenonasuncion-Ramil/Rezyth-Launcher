@@ -14549,11 +14549,12 @@ impl Game<'_> {
             .map_or(false, |p| p.fluids.was_eye_in_water);
         let cave = q.sound_cave_reverb
             && self.eye_position().is_some_and(|e| {
-                self.sky_light(BlockPos::new(
+                self.world.light(
                     e[0].floor() as i32,
                     e[1].floor() as i32,
                     e[2].floor() as i32,
-                )) < 15
+                ) >> 4
+                    == 0
             });
         self.audio
             .set_underwater_lpf(q.sound_underwater_lpf && underwater);
