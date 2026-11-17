@@ -14529,7 +14529,8 @@ impl Game<'_> {
                     e[2].floor() as i32,
                 )) < 15
             });
-        self.audio.set_underwater_lpf(q.sound_underwater_lpf && underwater);
+        self.audio
+            .set_underwater_lpf(q.sound_underwater_lpf && underwater);
         self.audio.set_cave_echo(if cave { 0.35 } else { 0.0 });
         // The Boost tab's Zero-Stutter Mesh Pool: workers keep recycled
         // section buffers within its larger budget.
