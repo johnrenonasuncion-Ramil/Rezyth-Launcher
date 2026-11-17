@@ -14575,7 +14575,7 @@ impl Game<'_> {
             && let Some(eye) = self.eye_position()
         {
             let mut table = [1.0_f32; 26];
-            for (i, d) in horizon_client::audio::OCCLUSION_DIRS.iter().enumerate() {
+            for (i, d) in horizon_client::audio::occlusion_dirs().iter().enumerate() {
                 let dir = [f64::from(d[0]), f64::from(d[1]), f64::from(d[2])];
                 let dist = self
                     .clip_ray(eye, dir, 8.0)

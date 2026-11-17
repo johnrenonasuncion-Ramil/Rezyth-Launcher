@@ -235,7 +235,7 @@ pub struct Audio {
     /// untouched volume; the captured volume for guests stays unscaled.
     mufflers: [f32; 5],
     /// Rezyth Settings' wall occlusion (`volt_qol.sound_wall_occlusion`): the
-    /// muffle factor per `OCCLUSION_DIRS` direction around the listener,
+    /// muffle factor per `occlusion_dirs()` direction around the listener,
     /// probed from the world each tick; None while the switch is off.
     wall_occlusion: Option<[f32; 26]>,
     /// How many times each positional sound played (the control socket's `status`),
@@ -542,7 +542,7 @@ pub fn one_pole_lpf(state: &mut f32, x: f32, alpha: f32) -> f32 {
 /// early reflection Rezyth Settings mixes into the output underground.
 /// The 26 probe directions of the wall-occlusion table: the unit cube's
 /// corners, edges and face centres minus the zero vector, normalized.
-pub const OCCLUSION_DIRS: [[f32; 3]; 26] = {
+pub fn occlusion_dirs() -> [[f32; 3]; 26] {
     let mut out = [[0.0_f32; 3]; 26];
     let mut i = 0;
     let mut x = -1.0_f32;
@@ -570,13 +570,14 @@ pub const OCCLUSION_DIRS: [[f32; 3]; 26] = {
         x += 1.0;
     }
     out
-};
+}
 
 /// The wall-occlusion table index nearest to `dir` (the largest dot product).
 pub fn occlusion_index(dir: [f32; 3]) -> usize {
+    let dirs = occlusion_dirs();
     let mut best = 0;
     let mut best_dot = f32::NEG_INFINITY;
-    for (i, d) in OCCLUSION_DIRS.iter().enumerate() {
+    for (i, d) in dirs.iter().enumerate() {
         let dot = dir[0] * d[0] + dir[1] * d[1] + dir[2] * d[2];
         if dot > best_dot {
             best_dot = dot;
@@ -1411,7 +1412,7 @@ impl Audio {
         }
     }
     /// Rezyth Settings' wall occlusion (`volt_qol.sound_wall_occlusion`): the
-    /// muffle factor per `OCCLUSION_DIRS` direction around the listener,
+    /// muffle factor per `occlusion_dirs()` direction around the listener,
     /// probed from the world each tick; None while the switch is off.
     pub fn set_wall_occlusion(&mut self, table: Option<[f32; 26]>) {
         self.wall_occlusion = table;
@@ -1724,17 +1725,18 @@ mod tests {
     /// and each direction picks its own entry as nearest.
     #[test]
     fn occlusion_dirs_are_26_normalized_and_self_nearest() {
-        assert_eq!(OCCLUSION_DIRS.len(), 26);
-        for d in OCCLUSION_DIRS {
+        let dirs = occlusion_dirs();
+        assert_eq!(dirs.len(), 26);
+        for d in dirs {
             let len = (d[0] * d[0] + d[1] * d[1] + d[2] * d[2]).sqrt();
             assert!((len - 1.0).abs() < 1e-5, "not unit: {d:?}");
         }
-        for (i, d) in OCCLUSION_DIRS.iter().enumerate() {
+        for (i, d) in dirs.iter().enumerate() {
             assert_eq!(occlusion_index(*d), i);
         }
         // A diagonal direction picks the matching corner, not a face.
         let corner = occlusion_index([1.0, 1.0, 1.0]);
-        let d = OCCLUSION_DIRS[corner];
+        let d = dirs[corner];
         assert!((d[0] - 0.577).abs() < 0.01 && (d[1] - 0.577).abs() < 0.01);
     }
 
