@@ -554,7 +554,7 @@ pub const OCCLUSION_DIRS: [[f32; 3]; 26] = {
                 if x != 0.0 || y != 0.0 || z != 0.0 {
                     let edge = (x != 0.0) as u8 + (y != 0.0) as u8 + (z != 0.0) as u8;
                     let len = if edge == 3 {
-                        std::f32::consts::FRAC_1_SQRT_3
+                        1.0 / 3.0_f32.sqrt()
                     } else if edge == 2 {
                         std::f32::consts::FRAC_1_SQRT_2
                     } else {
