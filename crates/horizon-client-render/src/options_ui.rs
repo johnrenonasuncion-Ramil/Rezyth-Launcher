@@ -5664,7 +5664,12 @@ impl OptionsUi {
             rgba(0, 0, 0, 255),
         );
         batch.fill(atlas, x, y, side, side, rgba(24, 32, 24, 255));
-        if let Some(rect) = atlas.sprites.get(crate::hud::MINIMAP_SPRITE).copied() {
+        // The Volt Atlas switch (Rezyth Settings): off, the page keeps its
+        // waypoints over the plain backdrop, without the map image.
+        let atlas_on = s.extras.volt_qol.atlas_enabled;
+        if atlas_on
+            && let Some(rect) = atlas.sprites.get(crate::hud::MINIMAP_SPRITE).copied()
+        {
             batch.rect_uv(x, y, side, side, rect, u32::MAX);
         }
         let view = self.world_view.as_ref().map(|v| crate::minimap::View {
@@ -5731,8 +5736,56 @@ impl OptionsUi {
                     );
                 }
             }
+            // The Volt Atlas grid (Rezyth Settings): chunk-aligned lines with
+            // coordinate labels, spaced to stay readable at this zoom.
+            if atlas_on && s.extras.volt_qol.atlas_grid {
+                let spacing =
+                    crate::volt_features::atlas_grid_spacing(view.blocks_per_pixel) as f64;
+                let half_world =
+                    crate::minimap::SIZE as f64 / 2.0 * f64::from(view.blocks_per_pixel);
+                let px_per_block = scale / f64::from(view.blocks_per_pixel);
+                let grid_c = rgba(255, 255, 255, 60);
+                let label_c = rgba(255, 255, 255, 160);
+                let labels = spacing * px_per_block >= 44.0;
+                let mut line = |at: f64, vertical: bool, label: &str| {
+                    let o = if vertical {
+                        view.map_offset(at - v.pos[0], 0.0).0 * scale
+                    } else {
+                        view.map_offset(0.0, at - v.pos[2]).1 * scale
+                    };
+                    let p = if vertical { mwx + o } else { mwy + o };
+                    if p < x + 1.0 || p > x + side - 1.0 {
+                        return;
+                    }
+                    if vertical {
+                        batch.fill(atlas, p, y, 1.0, side, grid_c);
+                        if labels {
+                            batch.text(atlas, label, p + 2.0, y + 2.0, label_c, true);
+                        }
+                    } else {
+                        batch.fill(atlas, x, p, side, 1.0, grid_c);
+                        if labels {
+                            batch.text(atlas, label, x + 2.0, p - 9.0, label_c, true);
+                        }
+                    }
+                };
+                let start = ((v.pos[0] - half_world) / spacing).ceil() * spacing;
+                let mut at = start;
+                while at <= v.pos[0] + half_world {
+                    line(at, true, &format!("{}", at as i32));
+                    at += spacing;
+                }
+                let start = ((v.pos[2] - half_world) / spacing).ceil() * spacing;
+                let mut at = start;
+                while at <= v.pos[2] + half_world {
+                    line(at, false, &format!("{}", at as i32));
+                    at += spacing;
+                }
+            }
             // The player's own arrow, drawn as the minimap draws it.
-            if let Some(r) = atlas.sprites.get("map/decorations/player").copied() {
+            if atlas_on
+                && let Some(r) = atlas.sprites.get("map/decorations/player").copied()
+            {
                 let arrow = if view.rotate { 0.0 } else { 180.0 + view.yaw };
                 let (sin, cos) = (arrow + 180.0).to_radians().sin_cos();
                 let corner =

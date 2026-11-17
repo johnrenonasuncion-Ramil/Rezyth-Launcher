@@ -8628,6 +8628,9 @@ impl Game<'_> {
                     vehicle_hearts,
                 };
                 let at = [p.position.x, p.position.y, p.position.z];
+                // AppleSkin (Rezyth Settings) draws the saturation as a number
+                // above the food bar; read it while the player is borrowed.
+                let appleskin_sat = p.health.food.saturation;
                 // The native mods' health HUD (`native_health_hud`): a mod
                 // that answers draws every row instead.
                 let mut native_health_hud = None;
@@ -8641,6 +8644,21 @@ impl Game<'_> {
                 self.gui_layer("minecraft:player_health", &mut batch, |g, batch| {
                     hud_layout::paint(batch, &g.gui.atlas, &draws);
                 });
+                // AppleSkin: the saturation as a number above the food bar,
+                // right-aligned with the icons.
+                if self.settings.extras.volt_mods.appleskin_hud {
+                    let text = format!("{appleskin_sat:.1}");
+                    let atlas = &self.gui.atlas;
+                    let tw = HudBatch::text_width(atlas, &text);
+                    batch.text(
+                        atlas,
+                        &text,
+                        batch.width * 0.5 + 91.0 - tw,
+                        batch.height - 49.0,
+                        u32::MAX,
+                        true,
+                    );
+                }
                 bar_height = self
                     .health_hud
                     .left_height

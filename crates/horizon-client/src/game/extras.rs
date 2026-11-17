@@ -319,6 +319,7 @@ impl Game<'_> {
         // The chunks the image can reach (its corners when it turns).
         let reach = minimap::SIZE as f32 / 2.0 * view.blocks_per_pixel * std::f32::consts::SQRT_2;
         let radius = ((reach / 16.0).ceil() as i32 + 1).min(self.settings.render_distance.max(2));
+        self.extras.minimap.seed = self.world_seed();
         self.extras.minimap.update(
             &self.world,
             self.res.facts(),
@@ -327,7 +328,8 @@ impl Game<'_> {
             layer,
             MINIMAP_BUDGET,
         );
-        if !self.extras.minimap.compose(view) {
+        let atlas_mode = self.settings.extras.volt_qol.atlas_mode;
+        if !self.extras.minimap.compose(view, atlas_mode) {
             return;
         }
         let Some(rect) = self.gui.atlas.sprites.get(MINIMAP_SPRITE).copied() else {

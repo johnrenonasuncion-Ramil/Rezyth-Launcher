@@ -10,6 +10,8 @@ use crate::{
     blocks::{BlockFacts, Fluid, MAP_COLORS},
     chunk::Chunk,
     fast_hash::FxHashMap,
+    volt_features::{biome_tint, slime_spawns_in_chunk},
+    volt_qol::AtlasViewMode,
     world::World,
 };
 use std::time::{Duration, Instant};
@@ -91,6 +93,8 @@ struct Tile {
     height: [i16; 256],
     /// Water depth below the surface, for the map's water shading.
     depth: [u8; 256],
+    /// Biome id per column at its surface, for the atlas' biome tint.
+    biome: [u16; 256],
     revision: u64,
     layer: Layer,
     scanned: Instant,
@@ -159,6 +163,7 @@ fn scan_tile(chunk: &Chunk, palette: &Palette, air: u32, layer: Layer, revision:
         color: [0; 256],
         height: [chunk.min_y() as i16; 256],
         depth: [0; 256],
+        biome: [0; 256],
         revision,
         layer,
         scanned: Instant::now(),
@@ -170,6 +175,8 @@ fn scan_tile(chunk: &Chunk, palette: &Palette, air: u32, layer: Layer, revision:
             tile.color[i] = c;
             tile.height[i] = h;
             tile.depth[i] = d;
+            let top_y = chunk.min_y() + chunk.sections.len() as i32 * 16 - 1;
+            tile.biome[i] = chunk.biome(x, h.clamp(chunk.min_y(), top_y), z);
         }
     }
     tile
@@ -223,6 +230,47 @@ impl View {
     }
 }
 
+/// The Volt Atlas mode's per-pixel tint over a composed map pixel: surface
+/// leaves it alone, relief amplifies the height shading, biome mixes in the
+/// column's biome hue, and slime chunks glow green where slimes spawn.
+fn tint(
+    mut rgba: [u8; 4],
+    mode: AtlasViewMode,
+    height: i16,
+    biome: u16,
+    x: i32,
+    z: i32,
+    seed: i64,
+) -> [u8; 4] {
+    match mode {
+        AtlasViewMode::Surface => rgba,
+        AtlasViewMode::HeightRelief => {
+            // Stronger slope shading: darken by the column's own height
+            // relative to the world's mid-height.
+            let shade = (1.0 - (f32::from(height) / 320.0).clamp(-0.45, 0.45)) ;
+            for c in &mut rgba[..3] {
+                *c = (*c as f32 * shade) as u8;
+            }
+            rgba
+        }
+        AtlasViewMode::BiomeTint => {
+            let (r, g, b) = biome_tint(biome);
+            rgba[0] = (rgba[0] as u16 * 40 + r as u16 * 60) as u8 / 100;
+            rgba[1] = (rgba[1] as u16 * 40 + g as u16 * 60) as u8 / 100;
+            rgba[2] = (rgba[2] as u16 * 40 + b as u16 * 60) as u8 / 100;
+            rgba
+        }
+        AtlasViewMode::SlimeChunks => {
+            if height < 40 && slime_spawns_in_chunk(x >> 4, z >> 4, i32::from(height), seed) {
+                rgba[0] = rgba[0] / 3;
+                rgba[1] = 200u8.max(rgba[1]);
+                rgba[2] = rgba[2] / 3;
+            }
+            rgba
+        }
+    }
+}
+
 /// `MapColor.getColorFromPackedId` as RGBA.
 fn packed_rgba(id: u8, brightness: u8) -> [u8; 4] {
     let id = usize::from(id);
@@ -269,6 +317,10 @@ pub struct Minimap {
     tiles: FxHashMap<(i32, i32), Tile>,
     palette: Option<Palette>,
     composed: Option<View>,
+    /// The Volt Atlas mode the image was composed with (Rezyth Settings).
+    composed_mode: Option<AtlasViewMode>,
+    /// The world seed, for the atlas' slime-chunk tint.
+    pub seed: i64,
     /// Tiles changed since the image was composed.
     changed: bool,
     /// The composed image, `SIZE` x `SIZE` RGBA.
@@ -320,7 +372,10 @@ impl Minimap {
                 }
                 let tile = scan_tile(chunk, palette, air, layer, world.revision);
                 if self.tiles.get(&key).is_none_or(|t| {
-                    t.color != tile.color || t.height != tile.height || t.depth != tile.depth
+                    t.color != tile.color
+                        || t.height != tile.height
+                        || t.depth != tile.depth
+                        || t.biome != tile.biome
                 }) {
                     self.changed = true;
                 }
@@ -333,9 +388,11 @@ impl Minimap {
         }
         scanned
     }
-    /// Recompose the image if the view or the tiles changed; true when it did.
-    pub fn compose(&mut self, view: View) -> bool {
+    /// Recompose the image if the view, the atlas mode or the tiles changed;
+    /// true when it did. `mode` is Rezyth Settings' Volt Atlas view mode.
+    pub fn compose(&mut self, view: View, mode: AtlasViewMode) -> bool {
         if !self.changed
+            && self.composed_mode == Some(mode)
             && self.composed.is_some_and(|c| !view.differs(&c))
             && !self.image.is_empty()
         {
@@ -343,12 +400,13 @@ impl Minimap {
         }
         self.changed = false;
         self.composed = Some(view);
+        self.composed_mode = Some(mode);
         self.image.resize(SIZE * SIZE * 4, 0);
         let (r, f) = view.axes();
         let bpp = f64::from(view.blocks_per_pixel);
         let half = SIZE as f64 / 2.0;
         let mut cached: Option<((i32, i32), &Tile)> = None;
-        let mut column = |x: i32, z: i32| -> Option<(u8, i16, u8)> {
+        let mut column = |x: i32, z: i32| -> Option<(u8, i16, u8, u16)> {
             let key = (x >> 4, z >> 4);
             let tile = match cached {
                 Some((k, t)) if k == key => t,
@@ -359,7 +417,7 @@ impl Minimap {
                 }
             };
             let i = ((z & 15) * 16 + (x & 15)) as usize;
-            Some((tile.color[i], tile.height[i], tile.depth[i]))
+            Some((tile.color[i], tile.height[i], tile.depth[i], tile.biome[i]))
         };
         for j in 0..SIZE {
             for i in 0..SIZE {
@@ -383,10 +441,10 @@ impl Minimap {
                 let wz = view.z + bpp * (u * r[1] - v * f[1]);
                 let (x, z) = (wx.floor() as i32, wz.floor() as i32);
                 let rgba = match column(x, z) {
-                    Some((color, height, depth)) if color & !WALL != 0 => {
+                    Some((color, height, depth, biome)) if color & !WALL != 0 => {
                         let north = column(x, z - 1).filter(|c| c.0 & !WALL != 0).map(|c| c.1);
                         let b = brightness(color, height, north, depth, x + z);
-                        packed_rgba(color & !WALL, b)
+                        tint(packed_rgba(color & !WALL, b), mode, height, biome, x, z, self.seed)
                     }
                     _ => UNKNOWN,
                 };
@@ -650,31 +708,40 @@ mod tests {
             blocks_per_pixel: 1.0,
             round: false,
         };
-        assert!(map.compose(view));
-        assert!(!map.compose(view), "the same view is not recomposed");
+        assert!(map.compose(view, crate::volt_qol::AtlasViewMode::Surface));
+        assert!(
+            !map.compose(view, crate::volt_qol::AtlasViewMode::Surface),
+            "the same view is not recomposed"
+        );
+        // A Volt Atlas mode change recomposes even with the same view.
+        assert!(map.compose(view, crate::volt_qol::AtlasViewMode::BiomeTint));
+        assert!(
+            !map.compose(view, crate::volt_qol::AtlasViewMode::BiomeTint),
+            "the same mode is not recomposed"
+        );
         // North up: the stone is 10 pixels above the centre.
         assert_eq!(pixel(&map, 64, 54), stone);
         // Turning with the player facing east (yaw -90): north is to the left.
         view.rotate = true;
         view.yaw = -90.0;
-        assert!(map.compose(view));
+        assert!(map.compose(view, crate::volt_qol::AtlasViewMode::Surface));
         assert_eq!(pixel(&map, 54, 63), stone);
         let (nx, ny) = view.north();
         assert!((nx + 1.0).abs() < 1e-5 && ny.abs() < 1e-5, "{nx} {ny}");
         // Facing north, north is up.
         view.yaw = 180.0;
-        map.compose(view);
+        map.compose(view, crate::volt_qol::AtlasViewMode::Surface);
         assert_eq!(pixel(&map, 64, 54), stone);
         // Round maps are transparent in the corners, framed at the edge.
         view.round = true;
-        map.compose(view);
+        map.compose(view, crate::volt_qol::AtlasViewMode::Surface);
         assert_eq!(map.image[3], 0);
         assert_eq!(&map.image[(64 * SIZE) * 4..(64 * SIZE) * 4 + 4], &BORDER);
         // A small move recomposes only once it is visible.
         view.x += 0.1;
-        assert!(!map.compose(view));
+        assert!(!map.compose(view, crate::volt_qol::AtlasViewMode::Surface));
         view.x += 0.2;
-        assert!(map.compose(view));
+        assert!(map.compose(view, crate::volt_qol::AtlasViewMode::Surface));
     }
 
     #[test]

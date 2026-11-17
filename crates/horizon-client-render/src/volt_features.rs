@@ -427,6 +427,32 @@ pub fn framing_grid(w: f32, h: f32) -> [(f32, f32, f32, f32); 4] {
     ]
 }
 
+/// The Volt Atlas grid's line spacing in blocks for a map of
+/// `blocks_per_pixel`: the smallest power-of-two multiple of 16 that stays
+/// at least 24 image pixels apart.
+pub fn atlas_grid_spacing(blocks_per_pixel: f32) -> i32 {
+    let mut spacing = 16;
+    while spacing as f32 * 24.0 < blocks_per_pixel * 128.0 && spacing < 4096 {
+        spacing *= 2;
+    }
+    spacing
+}
+
+/// The Volt Atlas biome tint's colour for a biome id: a stable hue from the
+/// id, full saturation, so each biome keeps its own tint on the map.
+pub fn biome_tint(id: u16) -> (u8, u8, u8) {
+    let h = (id as u32).wrapping_mul(2_654_435_761) % 360;
+    let (r, g, b) = match h {
+        0..=59 => (255u32, 255 * h / 60, 0),
+        60..=119 => (255 * (120 - h) / 60, 255, 0),
+        120..=179 => (0, 255, 255 * (h - 120) / 60),
+        180..=239 => (0, 255 * (240 - h) / 60, 255),
+        240..=299 => (255 * (h - 240) / 60, 0, 255),
+        _ => (255, 0, 255 * (360 - h) / 60),
+    };
+    (r as u8, g as u8, b as u8)
+}
+
 /// Screen-space projection of a 3D world waypoint for HUD rendering.
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectedWaypoint {
@@ -1042,6 +1068,35 @@ mod tests {
         assert_eq!(best_tool_slot(&[2.0, 8.0, 8.0]), Some(1));
         assert_eq!(best_tool_slot(&[1.0, 1.0]), None);
         assert_eq!(best_tool_slot(&[]), None);
+    }
+
+    /// The atlas grid's spacing grows with the map's zoom, in 16-block steps.
+    #[test]
+    fn atlas_grid_spacing_stays_readable_at_any_zoom() {
+        assert_eq!(atlas_grid_spacing(0.5), 16);
+        assert_eq!(atlas_grid_spacing(1.0), 16);
+        assert_eq!(atlas_grid_spacing(2.0), 16);
+        assert_eq!(atlas_grid_spacing(4.0), 32);
+        assert_eq!(atlas_grid_spacing(8.0), 64);
+        assert_eq!(atlas_grid_spacing(32.0), 256);
+        assert_eq!(atlas_grid_spacing(64.0), 512);
+        for bpp in [0.5, 1.0, 2.0, 3.7, 8.0, 32.0] {
+            let s = atlas_grid_spacing(bpp);
+            assert!(s >= 16 && s.is_power_of_two());
+            assert!(s as f32 * 24.0 >= bpp * 128.0 || s >= 4096);
+        }
+    }
+
+    /// The biome tint is stable per id and differs between biomes.
+    #[test]
+    fn biome_tint_is_stable_and_distinct() {
+        assert_eq!(biome_tint(3), biome_tint(3));
+        assert_ne!(biome_tint(1), biome_tint(2));
+        assert_ne!(biome_tint(1), biome_tint(200));
+        for id in 0..300 {
+            let (r, g, b) = biome_tint(id);
+            assert!(r.max(g).max(b) == 255);
+        }
     }
 
     /// The framing grid cuts the screen in thirds both ways.
