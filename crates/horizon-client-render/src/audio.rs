@@ -528,8 +528,6 @@ fn distance_gain(linear: Option<f32>, distance: f32) -> f32 {
         Some(_) => 0.0,
     }
 }
-// Only the output stream mixes; a build without one (no `audio` feature) never does.
-#[cfg_attr(not(feature = "audio"), allow(dead_code))]
 /// A one-pole low-pass (`y += alpha * (x - y)`): the underwater muffle
 /// Rezyth Settings low-passes the mixed output with while the listener's
 /// eyes are in water.
@@ -597,6 +595,8 @@ pub fn comb_echo(buf: &mut [f32], i: &mut usize, x: f32, gain: f32) -> f32 {
     y
 }
 
+// Only the output stream mixes; a build without one (no `audio` feature) never does.
+#[cfg_attr(not(feature = "audio"), allow(dead_code))]
 fn mix(mixer: &mut Mixer, data: &mut [f32], channels: usize, rate: u32) {
     data.fill(0.0);
     // The camera's forward and up vectors (`Camera.forwardVector`/`upVector`)
