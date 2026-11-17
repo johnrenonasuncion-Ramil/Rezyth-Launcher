@@ -727,6 +727,8 @@ mod tests {
             !map.compose(view, crate::volt_qol::AtlasViewMode::BiomeTint),
             "the same mode is not recomposed"
         );
+        // Back to Surface for the placement checks.
+        assert!(map.compose(view, crate::volt_qol::AtlasViewMode::Surface));
         // North up: the stone is 10 pixels above the centre.
         assert_eq!(pixel(&map, 64, 54), stone);
         // Turning with the player facing east (yaw -90): north is to the left.

@@ -551,14 +551,14 @@ pub fn occlusion_dirs() -> [[f32; 3]; 26] {
             while z <= 1.0 {
                 if x != 0.0 || y != 0.0 || z != 0.0 {
                     let edge = (x != 0.0) as u8 + (y != 0.0) as u8 + (z != 0.0) as u8;
-                    let len = if edge == 3 {
+                    let scale = if edge == 3 {
                         1.0 / 3.0_f32.sqrt()
                     } else if edge == 2 {
                         std::f32::consts::FRAC_1_SQRT_2
                     } else {
                         1.0
                     };
-                    out[i] = [x / len, y / len, z / len];
+                    out[i] = [x * scale, y * scale, z * scale];
                     i += 1;
                 }
                 z += 1.0;
@@ -1758,9 +1758,15 @@ mod tests {
         let mut buf = vec![0.0; 4];
         let mut i = 0;
         assert_eq!(comb_echo(&mut buf, &mut i, 1.0, 0.5), 1.0);
+        // The echo of a sample comes a full buffer later, decayed by the gain.
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.0);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.0);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.0);
         assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.5);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.0);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.0);
+        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.0);
         assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.25);
-        assert_eq!(comb_echo(&mut buf, &mut i, 0.0, 0.5), 0.125);
         assert!(comb_echo(&mut [], &mut 0, 1.0, 0.5) == 1.0);
     }
 

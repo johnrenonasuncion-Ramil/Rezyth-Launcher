@@ -1040,7 +1040,8 @@ mod tests {
     fn throw_direction_matches_the_look() {
         let d = throw_direction(0.0, 0.0);
         assert!(d[0].abs() < 1e-9 && d[1].abs() < 1e-9 && (d[2] - 1.0).abs() < 1e-9);
-        let down = throw_direction(0.0, std::f32::consts::FRAC_PI_2);
+        // Pitch is in degrees: 90 straight down.
+        let down = throw_direction(0.0, 90.0);
         assert!((down[1] + 1.0).abs() < 1e-6 && down[2].abs() < 1e-6);
     }
 
