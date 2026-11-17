@@ -915,11 +915,8 @@ fn build_voice_input<T: cpal::SizedSample + Copy>(
     device: &cpal::Device,
     config: &cpal::SupportedStreamConfig,
     mixer: Arc<Mutex<Mixer>>,
-) -> Result<cpal::Stream>
-where
-    f32: cpal::FromSample<T>,
-{
-    use cpal::FromSample;
+) -> Result<cpal::Stream> {
+    use cpal::Sample;
     let rate = config.sample_rate().0;
     let stream = device.build_input_stream(
         &config.config(),
@@ -929,7 +926,7 @@ where
                     &mut m,
                     &data
                         .iter()
-                        .map(|x| f32::from_sample(*x))
+                        .map(|x| f32::from_sample_(*x))
                         .collect::<Vec<f32>>(),
                     rate,
                 );
