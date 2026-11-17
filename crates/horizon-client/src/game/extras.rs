@@ -712,7 +712,14 @@ impl Game<'_> {
                 }
                 horizon_client::volt_features::ReplayState::Paused => rgba(255, 200, 60, a),
             };
-            batch.fill(atlas, x + (s - dot) / 2.0, y + (s - dot) / 2.0, dot, dot, color);
+            batch.fill(
+                atlas,
+                x + (s - dot) / 2.0,
+                y + (s - dot) / 2.0,
+                dot,
+                dot,
+                color,
+            );
         }
         // Keystrokes Overlay: the movement keys as a grid, lit while held.
         if keystrokes_hud {
