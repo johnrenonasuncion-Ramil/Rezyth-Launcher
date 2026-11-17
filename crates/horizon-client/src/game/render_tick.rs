@@ -365,6 +365,12 @@ impl Game<'_> {
             on_fire: self.camera_type.first_person()
                 && !self.spectator()
                 && self.player.as_ref().is_some_and(|p| p.fire_ticks > 0),
+            // Rezyth Settings' Low Fire: the burning overlay sits lower.
+            fire_drop: if self.settings.extras.volt_mods.low_shield_fire {
+                0.25
+            } else {
+                0.0
+            },
             gui_overlays: &gui_overlays,
         })
     }

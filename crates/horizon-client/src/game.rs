@@ -14387,8 +14387,17 @@ impl Game<'_> {
                 }
                 _ => ItemPose::Swing,
             };
+            // Rezyth Settings' Low Shield: a blocking shield sits lower.
+            let low_shield = self.settings.extras.volt_mods.low_shield_fire
+                && using
+                && stack.item == "minecraft:shield";
             let m = to_world
                 * vm
+                * if low_shield {
+                    glam::Mat4::from_translation(glam::Vec3::new(0.0, -0.15, 0.0))
+                } else {
+                    glam::Mat4::IDENTITY
+                }
                 * horizon_client::first_person::item_pose(left, inverse_height, attack, pose);
             // Seeded by the player id plus the context ordinal.
             let (context, seed) = if left {

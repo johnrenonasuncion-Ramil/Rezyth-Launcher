@@ -635,6 +635,64 @@ impl Game<'_> {
                 .collect();
             extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &rows);
         }
+        // Toggle Sprint/Sneak HUD: a latched toggle reads out.
+        if v.toggle_sprint {
+            let mut rows: Vec<(String, u32)> = Vec::new();
+            if self.toggles.is_down(1) {
+                rows.push((
+                    horizon_client::lang::tr("key.sprint", &[]),
+                    rgba(85, 255, 85, 255),
+                ));
+            }
+            if self.toggles.is_down(0) || self.touch_sneaking() {
+                rows.push((
+                    horizon_client::lang::tr("key.sneak", &[]),
+                    rgba(255, 255, 85, 255),
+                ));
+            }
+            extras_hud::draw_panel(batch, atlas, corners, Corner::BottomLeft, &rows);
+        }
+        // Keystrokes Overlay: the movement keys as a grid, lit while held.
+        if v.keystrokes_hud {
+            let keys = [
+                ("key.forward", 1, 0),
+                ("key.left", 0, 1),
+                ("key.back", 1, 1),
+                ("key.right", 2, 1),
+                ("key.jump", 0, 2),
+                ("key.sneak", 2, 2),
+            ];
+            let (k, gap) = (16.0_f32, 2.0_f32);
+            let (gw, gh) = (3.0 * k + 2.0 * gap, 3.0 * k + 2.0 * gap);
+            let (x, y) = corners.place(Corner::BottomLeft, gw, gh);
+            for (mapping, cx, cy) in keys {
+                let held = self.mapped_key_down(mapping);
+                let (kx, ky) = (x + cx as f32 * (k + gap), y + cy as f32 * (k + gap));
+                batch.fill(
+                    atlas,
+                    kx,
+                    ky,
+                    k,
+                    k,
+                    if held {
+                        rgba(255, 255, 255, 90)
+                    } else {
+                        extras_hud::BACKGROUND
+                    },
+                );
+                let name =
+                    horizon_client::keybinds::display_name(self.settings.keys.get(mapping)).plain();
+                let tw = HudBatch::text_width(atlas, &name);
+                batch.text(
+                    atlas,
+                    &name,
+                    kx + (k - tw) / 2.0,
+                    ky + 4.0,
+                    if held { u32::MAX } else { rgba(255, 255, 255, 160) },
+                    true,
+                );
+            }
+        }
     }
     /// The height the status effect icons take at the top right
     /// (`Hud.extractEffects`: beneficial at y 1, harmful at y 26).
