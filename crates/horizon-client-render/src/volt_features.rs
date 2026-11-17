@@ -355,7 +355,11 @@ pub fn trajectory_points(
     for _ in 0..60 {
         v = [v[0] * 0.99, v[1] * 0.99 - gravity, v[2] * 0.99];
         p = [p[0] + v[0], p[1] + v[1], p[2] + v[2]];
-        let hit = solid([p[0].floor() as i32, p[1].floor() as i32, p[2].floor() as i32]);
+        let hit = solid([
+            p[0].floor() as i32,
+            p[1].floor() as i32,
+            p[2].floor() as i32,
+        ]);
         points.push(p);
         if hit {
             break;

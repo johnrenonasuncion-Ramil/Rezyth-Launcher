@@ -100,11 +100,7 @@ impl Game<'_> {
                     };
                     g.cuboid(
                         [f64::from(x), f64::from(y), f64::from(z)],
-                        [
-                            f64::from(x + 1),
-                            f64::from(y + 1),
-                            f64::from(z + 1),
-                        ],
+                        [f64::from(x + 1), f64::from(y + 1), f64::from(z + 1)],
                         color,
                         1.5,
                     );
