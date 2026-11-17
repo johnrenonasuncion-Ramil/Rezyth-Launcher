@@ -90,15 +90,23 @@ impl Game<'_> {
         {
             let pos = BlockPos::new(hit.pos[0], hit.pos[1], hit.pos[2]);
             let name = self.res.facts().get(self.block_state(pos)).name.clone();
-            let biome = self.world.chunks.get(&(pos.x >> 4, pos.z >> 4)).map(|chunk| {
-                let at = &world_biomes!(self).list[chunk.biome(pos.x, pos.y, pos.z) as usize];
-                at.name.clone()
-            });
+            let biome = self
+                .world
+                .chunks
+                .get(&(pos.x >> 4, pos.z >> 4))
+                .map(|chunk| {
+                    let at = &world_biomes!(self).list[chunk.biome(pos.x, pos.y, pos.z) as usize];
+                    at.name.clone()
+                });
             let mut rows = vec![
                 (name.to_string(), u32::MAX),
                 (format!("{} {} {}", pos.x, pos.y, pos.z), u32::MAX),
                 (
-                    format!("light {} sky {}", self.block_light(pos), self.sky_light(pos)),
+                    format!(
+                        "light {} sky {}",
+                        self.block_light(pos),
+                        self.sky_light(pos)
+                    ),
                     u32::MAX,
                 ),
             ];
