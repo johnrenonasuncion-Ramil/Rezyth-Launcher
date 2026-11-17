@@ -34,6 +34,7 @@ fn add(chat: &mut Chat, font: &Font, content: Text) {
                 added: 0,
                 content,
                 tag: None,
+                sender: None,
             },
         );
     }
@@ -51,6 +52,7 @@ fn smooth_chat_slides_a_line_in_and_can_hide_the_indicator() {
         tag: Some(std::sync::Arc::new(Tag::system_single_player(
             SYSTEM_INDICATOR,
         ))),
+        sender: None,
     });
     let text_alpha = |draws: &[GuiDraw]| {
         draws.iter().find_map(|d| match d {

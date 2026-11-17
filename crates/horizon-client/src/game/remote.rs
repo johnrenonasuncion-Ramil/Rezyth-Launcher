@@ -194,6 +194,7 @@ type QueuedChat = (
     Option<Signature>,
     ChatTrust,
     String,
+    Option<String>,
 );
 
 /// `ChatTrustLevel`; a modified message keeps the signed content it was
@@ -1774,6 +1775,7 @@ impl Game<'_> {
         source: horizon_client::chat::ChatSource,
         signature: Option<Signature>,
         trust: ChatTrust,
+        sender: Option<String>,
     ) -> bool {
         // ChatListener.showMessageToPlayer: Only Show Secure Chat drops what is not secure.
         if matches!(trust, ChatTrust::NotSecure) && self.settings.file.bool("onlyShowSecureChat") {
@@ -1792,6 +1794,7 @@ impl Game<'_> {
                 trust.tag(),
                 self.ticks,
                 focused,
+                sender,
             );
         } else {
             // addServerSystemMessage and addClientSystemMessage both carry
@@ -1825,15 +1828,16 @@ impl Game<'_> {
         signature: Option<Signature>,
         trust: ChatTrust,
         narration: String,
+        sender: Option<String>,
     ) {
         let source = horizon_client::chat::ChatSource::Player;
         if self.chat_delay_ms() > 0 {
             if let Some(r) = self.remote.as_mut() {
                 r.chat_queue
-                    .push_back((line, source, signature, trust, narration));
+                    .push_back((line, source, signature, trust, narration, sender));
             }
         } else {
-            self.accept_chat(line, source, signature, trust, &narration);
+            self.accept_chat(line, source, signature, trust, &narration, sender);
         }
     }
 
@@ -1861,7 +1865,7 @@ impl Game<'_> {
         let narration = self
             .decorate_chat(chat_type, &error, Decoration::Narration)
             .plain();
-        self.handle_player_chat(line, None, ChatTrust::Error, narration);
+        self.handle_player_chat(line, None, ChatTrust::Error, narration, None);
     }
 
     /// `ChatTrustLevel.evaluate` of a player message, with
@@ -1927,7 +1931,7 @@ impl Game<'_> {
         r.secure_chat.ignore_pending(&signature);
         let queued = r.chat_queue.len();
         r.chat_queue
-            .retain(|(_, _, s, _, _)| s.as_ref() != Some(&signature));
+            .retain(|(_, _, s, _, _, _)| s.as_ref() != Some(&signature));
         if r.chat_queue.len() == queued {
             self.ui
                 .chat
@@ -1945,8 +1949,9 @@ impl Game<'_> {
         signature: Option<Signature>,
         trust: ChatTrust,
         narration: &str,
+        sender: Option<String>,
     ) -> bool {
-        let shown = self.player_chat_line(line, source, signature, trust, narration);
+        let shown = self.player_chat_line(line, source, signature, trust, narration, sender);
         if let Some(signature) = &signature {
             self.mark_message_processed(signature, shown);
         }
@@ -1966,10 +1971,11 @@ impl Game<'_> {
         signature: Option<Signature>,
         trust: ChatTrust,
         narration: &str,
+        sender: Option<String>,
     ) -> bool {
         // handleChatMessageError says its line as system chat.
         let error = matches!(trust, ChatTrust::Error);
-        let shown = self.signed_chat_line(line, source, signature, trust);
+        let shown = self.signed_chat_line(line, source, signature, trust, sender);
         if shown && error {
             self.say_system_chat_queued(&horizon_client::text::Text::literal(narration));
         } else if shown {
@@ -2017,10 +2023,10 @@ impl Game<'_> {
         }
         // A message the Chat option hides is dropped and the next one is tried,
         // until one shows.
-        while let Some((line, source, signature, trust, narration)) =
+        while let Some((line, source, signature, trust, narration, sender)) =
             self.remote.as_mut().and_then(|r| r.chat_queue.pop_front())
         {
-            if self.accept_chat(line, source, signature, trust, &narration) {
+            if self.accept_chat(line, source, signature, trust, &narration, sender) {
                 break;
             }
         }
@@ -2036,8 +2042,8 @@ impl Game<'_> {
         else {
             return;
         };
-        for (line, source, signature, trust, narration) in queue {
-            self.accept_chat(line, source, signature, trust, &narration);
+        for (line, source, signature, trust, narration, sender) in queue {
+            self.accept_chat(line, source, signature, trust, &narration, sender);
         }
         if let Some(r) = self.remote.as_mut() {
             r.chat_previous = None;
@@ -5100,7 +5106,8 @@ impl Game<'_> {
                     }
                     return Ok(());
                 }
-                self.handle_player_chat(line, signature, trust, narration);
+                let sender = r.tab_players.get(&p.sender).map(|t| t.name.clone());
+                self.handle_player_chat(line, signature, trust, narration, sender);
             }
             C::DisguisedChat(p) => {
                 let content = horizon_client::scoreboard::tag_to_json(&p.message);
@@ -5108,7 +5115,7 @@ impl Game<'_> {
                     .decorate_chat(&p.chat_type, &content, Decoration::Narration)
                     .plain();
                 let line = self.decorate_chat(&p.chat_type, &content, Decoration::Chat);
-                self.handle_player_chat(line, None, ChatTrust::Secure, narration);
+                self.handle_player_chat(line, None, ChatTrust::Secure, narration, None);
             }
             C::DeleteChat(p) => self.handle_delete_chat(&p.signature)?,
             C::PlayerInfoUpdate(p) => {
@@ -5715,6 +5722,40 @@ impl Game<'_> {
             mob.slim = is_slim;
             mob.skin_3d = skin_3d;
             mob.cape = cape;
+        }
+        // Rezyth Settings' Chat Heads: each chat sender's face texture, by
+        // name (the level loop above only draws the rendered players; the
+        // chat's senders may be anyone in the tab list).
+        if self
+            .settings
+            .extras
+            .mod_catalog
+            .is_on(horizon_client::volt_mods::VoltModId::ChatHeads)
+        {
+            let wanted: Vec<String> = self.ui.chat.sender_names();
+            if !wanted.is_empty() {
+                let mut by_name = std::mem::take(&mut self.ui.chat.sender_skins);
+                by_name.clear();
+                for name in wanted {
+                    let Some(uuid) = self.remote.as_ref().and_then(|r| {
+                        r.tab_players
+                            .iter()
+                            .find(|(_, p)| p.name == name)
+                            .map(|(u, _)| *u)
+                    }) else {
+                        continue;
+                    };
+                    let (skin, _) = self.drawn_skin(uuid, skin_of(&skins, uuid));
+                    by_name.insert(name, skin);
+                }
+                // The local player's own messages, echoed locally or by the
+                // server, carry their name too.
+                let (skin, _) = self.drawn_skin(own, skin_of(&skins, own));
+                if !self.ui.chat.mention_name.is_empty() {
+                    by_name.insert(self.ui.chat.mention_name.clone(), skin);
+                }
+                self.ui.chat.sender_skins = by_name;
+            }
         }
         if self.player_model.is_some() {
             let (skin, is_slim) = self.drawn_skin(own, skin_of(&skins, own));

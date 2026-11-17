@@ -780,6 +780,11 @@ impl Settings {
             timestamps: self.extras.volt_chat.chat_timestamps,
             compact_spam: self.extras.volt_chat.chat_compact_spam,
             mention_ping: self.extras.volt_chat.chat_mention_ping,
+            // The Chat Heads catalog mod: the game fills Chat's sender_skins.
+            heads: self
+                .extras
+                .mod_catalog
+                .is_on(crate::volt_mods::VoltModId::ChatHeads),
         }
     }
 }

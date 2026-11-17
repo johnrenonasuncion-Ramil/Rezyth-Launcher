@@ -9,8 +9,10 @@ use crate::{
     hud::{HudAtlas, HudBatch},
     hud_layout::{self, GuiDraw, PoseOp},
     screen_draw::{self as d, Draw, Measure, TextField},
+    tab_list,
     text::{self, ClickEvent, Style, Text},
 };
+use std::collections::HashMap;
 
 #[cfg(test)]
 #[path = "chat_tests.rs"]
@@ -143,6 +145,9 @@ pub struct ChatOptions {
     pub timestamps: bool,
     pub compact_spam: bool,
     pub mention_ping: bool,
+    /// Rezyth Settings' Chat Heads: the sender's skin face beside their
+    /// messages' first lines.
+    pub heads: bool,
 }
 impl Default for ChatOptions {
     fn default() -> Self {
@@ -158,6 +163,7 @@ impl Default for ChatOptions {
             timestamps: false,
             compact_spam: false,
             mention_ping: false,
+            heads: false,
         }
     }
 }
@@ -188,6 +194,9 @@ struct Message {
     source: ChatSource,
     /// `GuiMessage.signature`: a signed player message's, for deletion.
     signature: Option<Box<Signature>>,
+    /// The sender's name (Rezyth Settings' Chat Heads): the face beside the
+    /// message's first line.
+    sender: Option<std::sync::Arc<str>>,
 }
 /// A wrapped line (`GuiMessage.Line`).
 #[derive(Clone, Debug)]
@@ -195,6 +204,8 @@ struct Line {
     added: u64,
     content: Text,
     tag: Option<std::sync::Arc<Tag>>,
+    /// The sender's name on a message's first line only (Chat Heads).
+    sender: Option<std::sync::Arc<str>>,
 }
 
 /// `GuiMessageTag`: the bar at the left of a message's lines, the tooltip
@@ -287,6 +298,9 @@ pub struct Chat {
     /// `ChatComponent.messageDeletionQueue`: deletions of messages still
     /// too new to replace, with the tick from which they may be.
     deletions: Vec<(Box<Signature>, u64)>,
+    /// Rezyth Settings' Chat Heads: each chat sender's face texture path by
+    /// name, refreshed from the tab list by the game (empty: no face drawn).
+    pub sender_skins: HashMap<String, String>,
 }
 impl Chat {
     pub fn lines_per_page(&self, focused: bool) -> usize {
@@ -311,7 +325,8 @@ impl Chat {
         self.add_message(&atlas.font, content, tag, source, ticks, focused);
     }
     /// `add` of a player message with its signature, which a server's
-    /// deletion names it by (`GuiMessage.signature`).
+    /// deletion names it by (`GuiMessage.signature`), and its sender's name
+    /// for Chat Heads.
     pub fn add_signed(
         &mut self,
         atlas: &HudAtlas,
@@ -320,8 +335,9 @@ impl Chat {
         tag: Option<Tag>,
         ticks: u64,
         focused: bool,
+        sender: Option<String>,
     ) {
-        self.add_player_message(&atlas.font, content, signature, tag, ticks, focused);
+        self.add_player_message(&atlas.font, content, signature, tag, ticks, focused, sender);
     }
     #[cfg(test)]
     fn add_signed_message(
@@ -332,9 +348,10 @@ impl Chat {
         ticks: u64,
         focused: bool,
     ) {
-        self.add_player_message(font, content, signature, None, ticks, focused);
+        self.add_player_message(font, content, signature, None, ticks, focused, None);
     }
     /// `ChatComponent.addPlayerMessage`: the tag the message's trust level made.
+    #[allow(clippy::too_many_arguments)]
     fn add_player_message(
         &mut self,
         font: &crate::font::Font,
@@ -343,6 +360,7 @@ impl Chat {
         tag: Option<Tag>,
         ticks: u64,
         focused: bool,
+        sender: Option<String>,
     ) {
         self.push_message(
             font,
@@ -352,6 +370,7 @@ impl Chat {
                 tag: tag.map(std::sync::Arc::new),
                 source: ChatSource::Player,
                 signature: signature.map(Box::new),
+                sender: sender.map(std::sync::Arc::from),
             },
             focused,
         );
@@ -373,6 +392,7 @@ impl Chat {
                 tag,
                 source,
                 signature: None,
+                sender: None,
             },
             focused,
         );
@@ -425,6 +445,19 @@ impl Chat {
     pub fn take_mention_ping(&mut self) -> bool {
         std::mem::take(&mut self.mention_ping)
     }
+    /// The distinct senders of the live messages, oldest first (Chat Heads:
+    /// whose faces to resolve).
+    pub fn sender_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = Vec::new();
+        for m in &self.messages {
+            if let Some(s) = &m.sender
+                && !names.iter().any(|n| n == s)
+            {
+                names.push(s.to_string());
+            }
+        }
+        names
+    }
     fn add_lines(&mut self, font: &crate::font::Font, message: &Message, focused: bool) {
         // GuiMessage.splitLines: room for the tag's icon (its width, 4 before and 2 after).
         let icon = if message.tag.as_ref().is_some_and(|tag| tag.icon) {
@@ -434,7 +467,8 @@ impl Chat {
         };
         let width = self.max_width() - icon;
         let content = self.displayed(&message.content);
-        for line in font.wrap_components(&content, width) {
+        // The sender's face goes beside the message's first line only.
+        for (i, line) in font.wrap_components(&content, width).into_iter().enumerate() {
             if focused && self.scroll > 0 {
                 self.new_since_scroll = true;
                 self.scroll_by(1, focused);
@@ -445,6 +479,7 @@ impl Chat {
                     added: message.added,
                     content: line,
                     tag: message.tag.clone(),
+                    sender: (i == 0).then(|| message.sender.clone()).flatten(),
                 },
             );
         }
@@ -546,6 +581,7 @@ impl Chat {
             ))),
             source: ChatSource::Server,
             signature: None,
+            sender: None,
         };
         // refreshTrimmedMessages.
         self.rewrap(font);
@@ -683,10 +719,30 @@ impl Chat {
             }
             let opacity = alpha * text_opacity;
             let color = hud_layout::white(opacity);
+            // Chat Heads: the sender's face beside their message's first
+            // line, the text shifted right past it.
+            let mut text_x = 0;
+            if self.options.heads
+                && let Some(sender) = &line.sender
+                && let Some(skin) = self.sender_skins.get(sender.as_ref())
+                && color >> 24 != 0
+            {
+                tab_list::face(
+                    &mut out,
+                    skin,
+                    0,
+                    bottom - bottom_to_text,
+                    8,
+                    true,
+                    false,
+                    color,
+                );
+                text_x = 10;
+            }
             if color >> 24 != 0 {
                 out.push(GuiDraw::Text {
                     text: line.content.clone(),
-                    x: 0,
+                    x: text_x,
                     y: bottom - bottom_to_text,
                     color,
                     shadow: true,
