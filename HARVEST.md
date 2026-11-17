@@ -712,3 +712,9 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
   texture) is refreshed per frame from the resolved skins while the ChatHeads
   mod is on, the local player included. The catalog toggle now draws real
   heads; no new options.txt key (the catalog's own persistence covers it).
+- **Wave 39** (`a74ba185a`, CI-green run 44186839564, 5609 passed / 0 failed):
+  the replay button's touch gestures — a tap acts (start, pause, end), a drag
+  moves the button (position follows the finger), a held drag (500 ms)
+  resizes it up-down and fades it left-right within the config's ranges; the
+  release after a drag saves options.txt. Desktop keeps the R key; the
+  gestures are touch-only.
