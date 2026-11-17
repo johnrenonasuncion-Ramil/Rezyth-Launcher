@@ -76,6 +76,64 @@ struct Mixer {
     /// The stream reported its device gone (`Library.isCurrentDeviceDisconnected`).
     #[cfg(feature = "audio")]
     device_lost: bool,
+    // --- Rezyth Settings' 3D proximity voice (`volt_chat.voice_*`) ---
+    // The capture settings, shared with the input stream's callback; the mix
+    // drains the ring while the loopback test path is on. The input stream
+    // needs the `audio` feature; without it the buffer stays empty and the
+    // HUD shows the mic as unavailable.
+    voice_enabled: bool,
+    voice_ptt_mode: bool,
+    voice_ptt_down: bool,
+    voice_vad_pct: u16,
+    voice_mic_pct: u16,
+    voice_out_pct: u16,
+    voice_distance_blocks: u16,
+    voice_cave_muffle: bool,
+    voice_loopback: bool,
+    /// The mic's captured samples (mono, at `voice_in_rate`), waiting for the mix.
+    voice_in: std::collections::VecDeque<f32>,
+    voice_in_rate: u32,
+    /// The loopback drain's resampler position and last sample.
+    voice_acc: f32,
+    voice_last: f32,
+    /// The last captured chunk's RMS (0..1) and gate result (the HUD reads them).
+    voice_level: f32,
+    voice_speaking: bool,
+    /// The loopback path's cave muffle: a low-pass and a comb echo.
+    voice_lpf: f32,
+    voice_echo_buf: Vec<f32>,
+    voice_echo_i: usize,
+}
+
+/// The input callback's capture half: measure the chunk, run the gate
+/// (push-to-talk while the key is held, else the voice-activity threshold)
+/// and push the mic-gained samples to the ring. Called with the input rate.
+// Only an input stream captures; a build without one (no `audio` feature) never does.
+#[cfg_attr(not(feature = "audio"), allow(dead_code))]
+fn capture_voice(m: &mut Mixer, data: &[f32], in_rate: u32) {
+    let rms = crate::voice::voice_rms(data);
+    m.voice_level = rms;
+    m.voice_in_rate = in_rate;
+    let gate = if m.voice_ptt_mode {
+        m.voice_ptt_down
+    } else {
+        crate::voice::voice_gate(rms, m.voice_vad_pct)
+    };
+    m.voice_speaking = m.voice_enabled && gate;
+    if !m.voice_speaking {
+        // Drop whatever is buffered so the loopback never lags behind the gate.
+        m.voice_in.clear();
+        return;
+    }
+    for &x in data {
+        m.voice_in
+            .push_back(crate::voice::voice_gain(x, m.voice_mic_pct));
+    }
+    // A ~200 ms bound at the input rate: a paused or slow mix never lags.
+    let bound = u64::from(in_rate) * 2 / 10;
+    while m.voice_in.len() as u64 > bound {
+        m.voice_in.pop_front();
+    }
 }
 /// A camera's forward, up and right vectors.
 type Basis = ([f64; 3], [f64; 3], [f64; 3]);
@@ -215,6 +273,10 @@ type Stream = cpal::Stream;
 type Stream = std::convert::Infallible;
 pub struct Audio {
     _stream: Option<Stream>,
+    /// Rezyth Settings' proximity voice: the microphone's capture stream, kept
+    /// open (none without an input device, or on a server build). Dropped with
+    /// the `Audio`, which stops the capture.
+    _voice_stream: Option<Stream>,
     device_name: String,
     pub engine: SoundEngine,
     backend: MixerBackend,
@@ -747,6 +809,43 @@ fn mix(mixer: &mut Mixer, data: &mut [f32], channels: usize, rate: u32) {
             }
         }
     }
+    // Rezyth Settings' proximity voice, the loopback test path: your own
+    // voice through the capture chain, at the output gain, muffled in caves.
+    // Half volume — your own voice at the listener plays quieter than a
+    // distant player's would.
+    if mixer.voice_loopback && mixer.voice_enabled {
+        let out_gain = crate::voice::voice_out_gain(0.5, mixer.voice_out_pct);
+        // The proximity gain at the listener's own distance (0): 1.0 for the
+        // loopback, and the path the other players' voices will take.
+        let proximity = crate::voice::voice_distance_gain(mixer.voice_distance_blocks, 0.0);
+        let step = mixer.voice_in_rate.max(1) as f32 / rate as f32;
+        let delay = (rate * 3 / 50).max(1) as usize;
+        if mixer.voice_echo_buf.len() != delay {
+            mixer.voice_echo_buf.resize(delay, 0.0);
+            mixer.voice_echo_i = 0;
+        }
+        let mut acc = mixer.voice_acc;
+        for frame in data.chunks_mut(channels) {
+            acc += step;
+            while acc >= 1.0 {
+                acc -= 1.0;
+                if let Some(x) = mixer.voice_in.pop_front() {
+                    mixer.voice_last = x;
+                }
+            }
+            let x = mixer.voice_last;
+            let y = if mixer.voice_cave_muffle {
+                let l = one_pole_lpf(&mut mixer.voice_lpf, x, 0.35);
+                comb_echo(&mut mixer.voice_echo_buf, &mut mixer.voice_echo_i, l, 0.3)
+            } else {
+                x
+            };
+            for s in frame {
+                *s += y * out_gain * proximity;
+            }
+        }
+        mixer.voice_acc = acc;
+    }
     // Limit the whole buffer together, preserving waveform and stereo balance
     // instead of flattening each overloaded sample; release over 200 ms
     // (OpenAL Soft's output limiter, `ALC_OUTPUT_LIMITER_SOFT`, releases
@@ -783,11 +882,61 @@ fn output_disabled(var: impl Fn(&str) -> Option<std::ffi::OsString>) -> Option<S
 /// An output stream on `device` in its default configuration, whatever its
 /// sample format: the mixer works in f32 and converts.
 #[cfg(feature = "audio")]
+/// Rezyth Settings' proximity voice: the microphone's capture stream on the
+/// default input device, feeding `capture_voice` on the shared mixer. None
+/// without an input device or an openable config — never fatal.
+#[cfg(feature = "audio")]
+fn open_voice_input(mixer: Arc<Mutex<Mixer>>) -> Option<cpal::Stream> {
+    let host = cpal::default_host();
+    let device = host.default_input_device()?;
+    let config = device.default_input_config().ok()?;
+    let rate = config.sample_rate().0;
+    let stream = match config.sample_format() {
+        cpal::SampleFormat::F32 => build_voice_input::<f32>(&device, &config, mixer),
+        cpal::SampleFormat::I16 => build_voice_input::<i16>(&device, &config, mixer),
+        cpal::SampleFormat::U16 => build_voice_input::<u16>(&device, &config, mixer),
+        _ => return None,
+    }
+    .ok()?;
+    stream.play().ok()?;
+    log::info!(
+        "Horizon: voice input {} ({} Hz, {})",
+        device.name().unwrap_or_else(|_| "unnamed device".into()),
+        rate,
+        config.sample_format()
+    );
+    Some(stream)
+}
+
+/// The input stream's callback: convert to f32 and hand the chunk to
+/// `capture_voice` on the shared mixer.
+#[cfg(feature = "audio")]
+fn build_voice_input<T: cpal::SizedSample + Copy>(
+    device: &cpal::Device,
+    config: &cpal::SupportedStreamConfig,
+    mixer: Arc<Mutex<Mixer>>,
+) -> Result<cpal::Stream>
+where
+    f32: cpal::FromSample<T>,
+{
+    let rate = config.sample_rate().0;
+    let stream = device.build_input_stream(
+        &config.config(),
+        move |data: &[T], _| {
+            if let Ok(mut m) = mixer.lock() {
+                capture_voice(&mut m, &data.iter().map(|x| f32::from_sample(*x)).collect::<Vec<f32>>(), rate);
+            }
+        },
+        |err| log::warn!("Horizon: voice input error: {err}"),
+        None,
+    )?;
+    Ok(stream)
+}
+
 fn open_device(
     device: &cpal::Device,
     mixer: Arc<Mutex<Mixer>>,
-) -> Result<(cpal::Stream, cpal::SupportedStreamConfig)> {
-    use cpal::SampleFormat as F;
+) -> Result<(cpal::Stream, cpal::SupportedStreamConfig)> {    use cpal::SampleFormat as F;
     let config = device.default_output_config()?;
     let stream = match config.sample_format() {
         F::F32 => build_stream::<f32>(device, &config, mixer.clone()),
@@ -1027,8 +1176,20 @@ impl Audio {
         } else {
             Vec::new()
         };
+        // Rezyth Settings' proximity voice: the microphone's capture stream,
+        // feeding the shared mixer's ring (`capture_voice`). No input device
+        // (or none openable) just means the mic is unavailable; the HUD says so.
+        #[cfg(feature = "audio")]
+        let voice_stream = if output {
+            open_voice_input(mixer.clone())
+        } else {
+            None
+        };
+        #[cfg(not(feature = "audio"))]
+        let voice_stream: Option<Stream> = None;
         Self {
             _stream: stream,
+            _voice_stream: voice_stream,
             device_name: target_device.to_owned(),
             engine,
             backend: MixerBackend {
@@ -1417,6 +1578,48 @@ impl Audio {
     pub fn set_wall_occlusion(&mut self, table: Option<[f32; 26]>) {
         self.wall_occlusion = table;
     }
+    /// Rezyth Settings' 3D proximity voice (`volt_chat.voice_*`): the capture
+    /// chain's settings, shared with the input stream's callback and the mix.
+    pub fn set_voice(
+        &mut self,
+        enabled: bool,
+        ptt_mode: bool,
+        vad_pct: u16,
+        mic_pct: u16,
+        out_pct: u16,
+        distance_blocks: u16,
+        cave_muffle: bool,
+        loopback: bool,
+    ) {
+        if let Ok(mut m) = self.backend.mixer.lock() {
+            m.voice_enabled = enabled;
+            m.voice_ptt_mode = ptt_mode;
+            m.voice_vad_pct = vad_pct;
+            m.voice_mic_pct = mic_pct;
+            m.voice_out_pct = out_pct;
+            m.voice_distance_blocks = distance_blocks;
+            m.voice_cave_muffle = cave_muffle;
+            m.voice_loopback = loopback;
+            if !enabled {
+                m.voice_speaking = false;
+                m.voice_in.clear();
+            }
+        }
+    }
+    /// The push-to-talk key's state this tick (`key.volt.voice_ptt`).
+    pub fn set_voice_ptt_down(&mut self, down: bool) {
+        if let Ok(mut m) = self.backend.mixer.lock() {
+            m.voice_ptt_down = down;
+        }
+    }
+    /// The mic's level (0..1) and whether the capture gate passes, for the
+    /// voice HUD button; `(0.0, false)` without an input stream.
+    pub fn voice_status(&self) -> (f32, bool) {
+        self.backend
+            .mixer
+            .lock()
+            .map_or((0.0, false), |m| (m.voice_level, m.voice_speaking))
+    }
     /// The wall-occlusion factor for a positional sound: the table's entry in
     /// the direction from the listener to it; 1.0 while off or relative.
     fn wall_factor(&self, at: Option<[f64; 3]>) -> f32 {
@@ -1720,6 +1923,55 @@ impl Sounds for Audio {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The proximity-voice capture and loopback drain: the activity gate
+    /// passes a loud chunk and drops a quiet one (clearing the ring), and the
+    /// mix plays the buffered voice at the output gain.
+    #[test]
+    fn voice_capture_gates_and_the_loopback_drains() {
+        let mut m = Mixer::default();
+        m.voice_enabled = true;
+        m.voice_ptt_mode = false;
+        m.voice_vad_pct = 22;
+        m.voice_mic_pct = 100;
+        m.voice_out_pct = 100;
+        m.voice_loopback = true;
+        // A loud chunk passes the gate into the ring, mic-gained.
+        let loud = [0.5_f32; 240];
+        capture_voice(&mut m, &loud, 48_000);
+        assert!(m.voice_speaking);
+        assert_eq!(m.voice_in.len(), 240);
+        assert!((m.voice_in[0] - 0.5).abs() < 1e-6);
+        // A quiet chunk drops the gate and empties the ring (no stale lag).
+        capture_voice(&mut m, &[0.01_f32; 240], 48_000);
+        assert!(!m.voice_speaking);
+        assert!(m.voice_in.is_empty());
+        // Loud again, then the mix drains it into the output buffer.
+        capture_voice(&mut m, &loud, 48_000);
+        assert_eq!(m.voice_in.len(), 240);
+        let mut data = vec![0.0_f32; 2 * 240];
+        mix(&mut m, &mut data, 2, 48_000);
+        assert!(m.voice_in.len() < 240, "the mix drains the ring");
+        // Both channels carry the voice at the loopback's half volume (before
+        // the limiter's gain).
+        assert!(data.iter().any(|s| *s > 0.05));
+    }
+
+    /// Push-to-talk captures only while the key is held, whatever the level.
+    #[test]
+    fn voice_ptt_gates_by_the_key() {
+        let mut m = Mixer::default();
+        m.voice_enabled = true;
+        m.voice_ptt_mode = true;
+        m.voice_ptt_down = false;
+        capture_voice(&mut m, &[0.5_f32; 240], 48_000);
+        assert!(!m.voice_speaking);
+        assert!(m.voice_in.is_empty());
+        m.voice_ptt_down = true;
+        capture_voice(&mut m, &[0.5_f32; 240], 48_000);
+        assert!(m.voice_speaking);
+        assert_eq!(m.voice_in.len(), 240);
+    }
 
     /// The wall-occlusion table covers all 26 cube directions, normalized,
     /// and each direction picks its own entry as nearest.

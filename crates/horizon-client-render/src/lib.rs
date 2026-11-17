@@ -118,6 +118,7 @@ pub mod title_edition;
 pub mod trims;
 pub mod ui;
 pub mod vault;
+pub mod voice;
 pub mod volt_features;
 pub mod volt_mods;
 pub mod volt_qol;

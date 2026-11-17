@@ -436,6 +436,10 @@ impl Game<'_> {
         // Copied now: `self` is borrowed mutably below (the click records),
         // while these two are read again at the end of the HUD.
         let (toggle_sprint, keystrokes_hud) = (v.toggle_sprint, v.keystrokes_hud);
+        // The voice HUD button's settings, copied for the same reason.
+        let vc = &self.settings.extras.volt_chat;
+        let (voice_hud_button, voice_enabled, voice_ptt_mode) =
+            (vc.voice_hud_button, vc.voice_enabled, vc.voice_ptt_mode);
         // The counts are the extras' own click records (the mod API's
         // `input.clicks-per-second`), so the panel and a mod read one state.
         let cps = if cps_hud {
@@ -654,6 +658,37 @@ impl Game<'_> {
                 ));
             }
             extras_hud::draw_panel(batch, atlas, corners, Corner::BottomLeft, &rows);
+        }
+        // Rezyth Settings' 3D proximity voice: the mic button — the mode and
+        // the live gate (green while the capture chain passes).
+        if voice_hud_button && voice_enabled {
+            let (_, speaking) = self.audio.voice_status();
+            let rows = [
+                (
+                    if voice_ptt_mode {
+                        horizon_client::lang::get_or(
+                            "horizon.volt.voice.ptt",
+                            "Voice: Push-to-Talk (V)",
+                        )
+                    } else {
+                        horizon_client::lang::get_or("horizon.volt.voice.vad", "Voice: Activity")
+                    },
+                    rgba(255, 255, 255, 255),
+                ),
+                (
+                    if speaking {
+                        horizon_client::lang::get_or("horizon.volt.voice.speaking", "Speaking")
+                    } else {
+                        horizon_client::lang::get_or("horizon.volt.voice.muted", "Muted")
+                    },
+                    if speaking {
+                        rgba(85, 255, 85, 255)
+                    } else {
+                        rgba(170, 170, 170, 255)
+                    },
+                ),
+            ];
+            extras_hud::draw_panel(batch, atlas, corners, Corner::TopRight, &rows);
         }
         // Keystrokes Overlay: the movement keys as a grid, lit while held.
         if keystrokes_hud {

@@ -14568,6 +14568,21 @@ impl Game<'_> {
         self.audio
             .set_underwater_lpf(q.sound_underwater_lpf && underwater);
         self.audio.set_cave_echo(if cave { 0.35 } else { 0.0 });
+        // Rezyth Settings' 3D proximity voice: the capture chain's settings
+        // and the push-to-talk key's state (V, or a touch button bound to it).
+        let vc = &self.settings.extras.volt_chat;
+        self.audio.set_voice(
+            vc.voice_enabled,
+            vc.voice_ptt_mode,
+            vc.voice_vad_threshold,
+            vc.voice_mic_gain_pct,
+            vc.voice_output_gain_pct,
+            vc.voice_distance_blocks,
+            vc.voice_cave_muffle,
+            vc.voice_loopback_test,
+        );
+        self.audio
+            .set_voice_ptt_down(self.mapped_key_down("key.volt.voice_ptt"));
         // Rezyth Settings' wall occlusion: probe the 26 directions around the
         // eye out to 8 blocks; a wall closer than 8 blocks muffles the sounds
         // coming from that direction (the closer, the more).
