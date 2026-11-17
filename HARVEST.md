@@ -704,3 +704,11 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
   blinking red recording, amber paused). The launcher-side replay player
   (timeline, speeds, free camera) is not built; the takes are real camera
   tracks.
+- **Wave 38** (`58a34bdcb`, CI-green run 44182002853, 5609 passed / 0 failed):
+  ChatHeads (the catalog mod) — the player-chat packet resolves the sender's
+  tab-list name, threaded through the chat-delay queue to `Chat`; each
+  message's first line draws the sender's 8x8 skin face + hat layer
+  (`tab_list::face`) left of the text. `Chat.sender_skins` (name -> face
+  texture) is refreshed per frame from the resolved skins while the ChatHeads
+  mod is on, the local player included. The catalog toggle now draws real
+  heads; no new options.txt key (the catalog's own persistence covers it).
