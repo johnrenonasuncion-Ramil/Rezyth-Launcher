@@ -694,3 +694,13 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
   VoiceVad, VoiceMicGain, VoiceOutGain, VoiceDistance, VoiceCaveMuffle,
   VoiceHudBtn, VoiceLoopback. The network transport (voice_port UDP) is not
   built; the loopback makes every setting audible on your own voice.
+- **Wave 37** (`7dc0eda40`, CI-green run 44170343174, 5609 passed / 0 failed):
+  Replay Recording + On-Screen Replay Button — `ReplayTrack`/`ReplaySample`
+  (serde JSON, tested round-trip) sampled once per world tick while recording;
+  the button (or `key.volt.replay`/R, or a bound touch button) cycles
+  idle → recording ⇄ paused → idle, writing the take to the player's
+  `replays/` folder and reporting in chat. The floating button (QolReplayButton)
+  draws at its configured position/size/opacity with a state dot (grey idle,
+  blinking red recording, amber paused). The launcher-side replay player
+  (timeline, speeds, free camera) is not built; the takes are real camera
+  tracks.
