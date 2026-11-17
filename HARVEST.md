@@ -622,3 +622,33 @@ gh workflow run android.yml -R johnrenonasuncion-Ramil/Rezyth-Launcher --ref fea
 Every port reuses this game's own hooks (`with_activity`, `platform::Hooks`, `logging`, the
 Options screens) and its translation files; no head file was copied verbatim where its module
 layout or its launcher's context differed.
+
+## Rezyth Settings wire-up, waves 22-26 (branch feat/volt-harvest, 2026-11-17)
+
+Each wave wires more Volt Settings rows to real engine consumers; verification is CI-only
+(`gh workflow run ci.yml -R johnrenonasuncion-Ramil/Rezyth-Launcher --ref feat/volt-harvest`,
+plus the weave push run building the APK).
+
+- **Wave 22** (`50122aeef`): World Inspector panel (block id/pos/light/biome under the
+  crosshair), Damage Direction arrow around the crosshair, Damage Popups floating over hit
+  mobs. New `game/damage_hud.rs`; `hud_arrow`/`damage_popup_style` in `volt_features.rs`.
+- **Wave 23** (`a21b8178c`): Trajectory arc gizmo, Spawn Light overlay boxes (red <= 0,
+  amber <= 7), Slime Tech panel (slime-chunk roll, y < 40). New `game/volt_overlays.rs`;
+  `throw_direction`/`trajectory_points`/`spawn_light_color`/`slime_spawns_in_chunk` in
+  `volt_features.rs`.
+- **Wave 24** (`c6898fc53`): Auto Tool hotbar-slot hint, Tool Break Shield warning panel,
+  Enchant Guide (real enchant names on the enchanting buttons). `best_tool_slot`/
+  `tool_break_warning` in `volt_features.rs`.
+- **Wave 25** (`b7b8c7abc`): Volt Cam Framing Grid thirds, underwater one-pole low-pass and
+  cave feedback-comb echo in the audio mixer's `mix()` (`one_pole_lpf`/`comb_echo` in
+  `audio.rs`, gated per tick from game.rs). `framing_grid` in `volt_features.rs`.
+- **Wave 26** (`c6b89ad52`): AppleSkin saturation number above the food bar; Volt Atlas
+  master switch (`atlas_enabled` gates the world map image/arrow), coordinate grid overlay
+  (`atlas_grid`, `atlas_grid_spacing`), and the four view modes in `Minimap::compose`
+  (Surface/HeightRelief/BiomeTint/SlimeChunks; tiles now record `chunk.biome`, `Minimap`
+  carries the world seed; `biome_tint` in `volt_features.rs`).
+
+Still unwired by design (need subsystems that do not exist yet, not faked): the 11 Volt
+Shaders WGSL rows (`horizon-shader-api/src/volt_shaders.rs` is config-only), the 9 voice rows
+(no capture pipeline), the 2 replay rows (no recorder), wall occlusion (needs a per-tick
+occlusion probe into the audio mixer), and the ChatHeads catalog mod.
