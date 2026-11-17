@@ -397,6 +397,7 @@ impl Game<'_> {
         self.draw_waypoint_markers(batch);
         self.draw_waypoint_button(batch);
         self.draw_volt_hud(batch, &mut corners);
+        self.draw_damage_hud(batch, &mut corners);
         self.native_hud(batch, &mut corners);
     }
     /// The Rezyth Settings HUD switches: armour & durability, the live CPS

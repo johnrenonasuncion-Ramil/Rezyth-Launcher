@@ -85,6 +85,9 @@ pub(super) struct CombatTracker {
     noted_since: Option<(usize, usize)>,
     /// `LivingEntity.lastHurtByMob` and its timestamp (the kill credit).
     last_hurt_by: Option<((u32, Text), i64)>,
+    /// The Damage Popups mod: each recent landed hit on a mob — its id, the
+    /// damage and when — newest last, pruned as the labels fade.
+    pub(super) popups: Vec<(u32, f32, i64)>,
     /// The mob the player last hurt (`getLastHurtMob`) and when.
     pub(super) last_hurt_mob: Option<(u32, i64)>,
     /// The mob whose projectile is hitting the player now.
@@ -329,6 +332,9 @@ impl Game<'_> {
         self.combat.noted_since = None;
         self.combat.projectile_direct = None;
         self.combat.projectile_attacker = None;
+        self.combat
+            .popups
+            .retain(|&(_, _, at)| self.world.game_time - at < 20);
         self.combat.fall_before = self.player.as_ref().map_or(0.0, |p| p.fall_distance);
     }
     /// `FallLocation.getCurrentFallLocation` and the fall distance so far.

@@ -109,6 +109,7 @@ mod creative_hotbar;
 mod creatures;
 mod crossbow;
 pub(crate) mod cushions;
+mod damage_hud;
 mod debug_keys;
 mod debug_lines;
 mod debug_options;
@@ -11874,6 +11875,8 @@ impl Game<'_> {
                 None,
                 amount,
             );
+            // The Damage Popups mod: the amount floats over the mob hit.
+            self.record_damage_popup(self.mobs[index].id, amount);
         }
         if let Some(p) = self.player.as_mut() {
             if p.attack_log.len() >= 64 {

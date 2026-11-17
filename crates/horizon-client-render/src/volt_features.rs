@@ -304,6 +304,32 @@ pub fn short_dimension_label(dim: &str) -> &'static str {
     }
 }
 
+/// The four corners of a HUD arrow whose base sits `radius` px from
+/// `center`, pointing along `angle` (screen radians, 0 = right, positive
+/// clockwise — `ProjectedWaypoint::edge_angle`'s convention).
+pub fn hud_arrow(center: (f32, f32), angle: f32, radius: f32) -> [[f32; 2]; 4] {
+    let (sin, cos) = angle.sin_cos();
+    let (cx, cy) = center;
+    let (ex, ey) = (cx + cos * radius, cy + sin * radius);
+    let (px, py) = (-sin, cos);
+    [
+        [ex + cos * 6.0, ey + sin * 6.0],
+        [ex - cos * 2.0 + px * 4.0, ey - sin * 2.0 + py * 4.0],
+        [ex - cos * 2.0 - px * 4.0, ey - sin * 2.0 - py * 4.0],
+        [ex - cos * 6.0, ey - sin * 6.0],
+    ]
+}
+
+/// A damage popup's rise (in blocks) and label alpha `age_ticks` after the
+/// hit landed: it climbs and fades for one second, and is gone at 20 ticks.
+pub fn damage_popup_style(age_ticks: i64) -> Option<(f32, u8)> {
+    if !(0..20).contains(&age_ticks) {
+        return None;
+    }
+    let t = age_ticks as f32;
+    Some(((t * 0.045).min(0.9), (255.0 - t * 13.0) as u8))
+}
+
 /// Screen-space projection of a 3D world waypoint for HUD rendering.
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectedWaypoint {
@@ -856,6 +882,29 @@ pub fn blueprint_materials(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The damage-direction arrow's tip sits `radius` out along its angle.
+    #[test]
+    fn hud_arrow_points_along_its_angle() {
+        let c = (100.0, 100.0);
+        let right = hud_arrow(c, 0.0, 40.0);
+        assert!((right[0][0] - 146.0).abs() < 0.001);
+        assert!((right[0][1] - 100.0).abs() < 0.001);
+        let up = hud_arrow(c, -std::f32::consts::FRAC_PI_2, 40.0);
+        assert!((up[0][0] - 100.0).abs() < 0.001);
+        assert!((up[0][1] - 54.0).abs() < 0.001);
+    }
+
+    /// A damage popup rises and fades over its twenty ticks of life.
+    #[test]
+    fn damage_popup_rises_then_fades_out() {
+        assert_eq!(damage_popup_style(0), Some((0.0, 255)));
+        let (rise10, alpha10) = damage_popup_style(10).unwrap();
+        assert!(rise10 > 0.0 && alpha10 < 255);
+        assert!(damage_popup_style(19).is_some());
+        assert_eq!(damage_popup_style(20), None);
+        assert_eq!(damage_popup_style(-1), None);
+    }
 
     /// The blueprint templates list their materials, sliced by the Y layer.
     #[test]
