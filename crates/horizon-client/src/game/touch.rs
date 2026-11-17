@@ -711,6 +711,33 @@ impl Game<'_> {
             }
             return true;
         }
+        // The replay button: a tap acts (start, pause, end), a drag moves it,
+        // a held drag resizes it (up-down) and fades it (left-right).
+        if t.phase == TouchPhase::Started
+            && self.replay_touch.is_none()
+            && self.replay_button_at(p)
+        {
+            self.replay_touch = Some(super::replay::ReplayTouch {
+                finger: t.id,
+                start: p,
+                began: Instant::now(),
+                mode: 0,
+                mode_start: p,
+                size: 0,
+                opacity: 0,
+            });
+            return true;
+        }
+        if let Some(st) = self.replay_touch
+            && st.finger == t.id
+        {
+            match t.phase {
+                TouchPhase::Moved => self.replay_touch_drag(p),
+                TouchPhase::Ended | TouchPhase::Cancelled => self.replay_touch_end(p),
+                _ => {}
+            }
+            return true;
+        }
         if self.touch.editor.is_some() && (self.touch_playing() || self.title.is_some()) {
             let [w, h] = self.touch_size();
             let config = self.touch.config.get_or_insert_with(LayoutConfig::default);

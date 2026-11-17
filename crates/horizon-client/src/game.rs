@@ -2495,6 +2495,8 @@ struct Game<'a> {
     /// floating button's state and the take it is building.
     replay_state: horizon_client::volt_features::ReplayState,
     replay_track: Option<horizon_client::volt_features::ReplayTrack>,
+    /// The replay button's held finger (its drag gestures).
+    replay_touch: Option<replay::ReplayTouch>,
     physical_buttons: HashSet<MouseButton>,
     drag_button: Option<MouseButton>,
     /// Control + left click as a right click (macOS).
@@ -19486,6 +19488,7 @@ impl<'a> Game<'a> {
             freelook: None,
             replay_state: Default::default(),
             replay_track: None,
+            replay_touch: None,
             physical_buttons: HashSet::new(),
             drag_button: None,
             right_click_emulation: Default::default(),
