@@ -1082,7 +1082,7 @@ mod tests {
         assert_eq!(atlas_grid_spacing(64.0), 512);
         for bpp in [0.5, 1.0, 2.0, 3.7, 8.0, 32.0] {
             let s = atlas_grid_spacing(bpp);
-            assert!(s >= 16 && s.is_power_of_two());
+            assert!(s >= 16 && s & (s - 1) == 0);
             assert!(s as f32 * 24.0 >= bpp * 128.0 || s >= 4096);
         }
     }

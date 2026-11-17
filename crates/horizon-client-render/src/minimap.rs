@@ -176,7 +176,7 @@ fn scan_tile(chunk: &Chunk, palette: &Palette, air: u32, layer: Layer, revision:
             tile.height[i] = h;
             tile.depth[i] = d;
             let top_y = chunk.min_y() + chunk.sections.len() as i32 * 16 - 1;
-            tile.biome[i] = chunk.biome(x, h.clamp(chunk.min_y(), top_y), z);
+            tile.biome[i] = chunk.biome(x, i32::from(h).clamp(chunk.min_y(), top_y), z);
         }
     }
     tile
