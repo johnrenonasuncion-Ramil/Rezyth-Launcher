@@ -2756,8 +2756,7 @@ impl Game<'_> {
         } else {
             0.0
         };
-        let extra =
-            bundle_extra + component.map_or(0.0, |size| size[1] + 2.0) + peek_extra;
+        let extra = bundle_extra + component.map_or(0.0, |size| size[1] + 2.0) + peek_extra;
         let min_width = (if probe.is_some() { 96.0_f32 } else { 0.0 })
             .max(component.map_or(0.0, |size| size[0]))
             .max(if peek_rows > 0 { 9.0 * 18.0 + 4.0 } else { 0.0 });
