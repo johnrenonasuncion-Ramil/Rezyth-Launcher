@@ -468,7 +468,11 @@ impl Chat {
         let width = self.max_width() - icon;
         let content = self.displayed(&message.content);
         // The sender's face goes beside the message's first line only.
-        for (i, line) in font.wrap_components(&content, width).into_iter().enumerate() {
+        for (i, line) in font
+            .wrap_components(&content, width)
+            .into_iter()
+            .enumerate()
+        {
             if focused && self.scroll > 0 {
                 self.new_since_scroll = true;
                 self.scroll_by(1, focused);
