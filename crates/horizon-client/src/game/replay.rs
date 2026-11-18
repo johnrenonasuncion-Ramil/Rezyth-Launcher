@@ -222,13 +222,13 @@ impl Game<'_> {
     /// One world tick's camera sample while recording; paused holds the take.
     /// An open playback advances one world tick per tick at its speed.
     pub(super) fn tick_replay(&mut self) {
-        if let Some(watch) = &mut self.replay_watch {
-            if watch.playing {
-                watch.playhead += f64::from(watch.speed);
-                if watch.playhead >= watch.length() {
-                    watch.playhead = watch.length();
-                    watch.playing = false;
-                }
+        if let Some(watch) = &mut self.replay_watch
+            && watch.playing
+        {
+            watch.playhead += f64::from(watch.speed);
+            if watch.playhead >= watch.length() {
+                watch.playhead = watch.length();
+                watch.playing = false;
             }
         }
         if !self.settings.extras.volt_qol.replay_buffer
