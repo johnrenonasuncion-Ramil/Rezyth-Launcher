@@ -39,6 +39,7 @@ impl Launcher {
                     HomeTab::Multiplayer => (tr("Multiplayer"), Some("user-multiple-02")),
                     HomeTab::Packs => (tr("Packs"), None),
                     HomeTab::Screenshots => (tr("Screenshots"), None),
+                    HomeTab::Replays => (tr("Replays"), None),
                     HomeTab::Console => (tr("Console"), Some("computer-terminal-01")),
                 };
                 ui::count_tab(
@@ -65,6 +66,9 @@ impl Launcher {
             HomeTab::Screenshots => self
                 .glass_screenshots(cx)
                 .map(IntoElement::into_any_element),
+            HomeTab::Replays => self
+                .replays_section(cx)
+                .map(|(_, body)| body.into_any_element()),
             HomeTab::Console => self.glass_console(cx).map(IntoElement::into_any_element),
         };
         div()

@@ -12,6 +12,7 @@ pub(super) enum HomeTab {
     Multiplayer,
     Packs,
     Screenshots,
+    Replays,
     Console,
 }
 
@@ -52,6 +53,10 @@ impl Launcher {
         if shots > 0 {
             tabs.push((HomeTab::Screenshots, Some(shots)));
         }
+        let replays = self.replays_count();
+        if replays > 0 {
+            tabs.push((HomeTab::Replays, Some(replays)));
+        }
         if !self.prepare_log.is_empty() || self.client.is_some() {
             tabs.push((HomeTab::Console, None));
         }
@@ -80,6 +85,7 @@ impl Launcher {
                     HomeTab::Multiplayer => tr("Multiplayer"),
                     HomeTab::Packs => tr("Packs"),
                     HomeTab::Screenshots => tr("Screenshots"),
+                    HomeTab::Replays => tr("Replays"),
                     HomeTab::Console => tr("Console"),
                 };
                 let label = match count {
@@ -107,6 +113,7 @@ impl Launcher {
             HomeTab::Multiplayer => self.multiplayer_section(cx).map(split).unzip(),
             HomeTab::Packs => self.packs_section(cx).map(split).unzip(),
             HomeTab::Screenshots => self.screenshots_section(cx).map(split).unzip(),
+            HomeTab::Replays => self.replays_section(cx).map(split).unzip(),
             HomeTab::Console => self.console_section(cx).map(split).unzip(),
         };
         div()

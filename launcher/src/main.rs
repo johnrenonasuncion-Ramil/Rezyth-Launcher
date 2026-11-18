@@ -52,6 +52,7 @@ mod partner;
 mod perf;
 mod plate;
 mod profile_heads;
+mod replays_page;
 mod scene;
 mod screenshots_page;
 mod scrollbar;
@@ -392,6 +393,7 @@ struct Launcher {
     worlds: worlds_page::Worlds,
     multiplayer: multiplayer_page::Multiplayer,
     screenshots: screenshots_page::Screenshots,
+    replays: replays_page::Replays,
     game_packs: packs_page::Packs,
     world_packs: datapacks_page::WorldPacks,
     export: Option<export_page::ExportPanel>,
@@ -625,6 +627,7 @@ impl Launcher {
             worlds: worlds_page::Worlds::default(),
             multiplayer: multiplayer_page::Multiplayer::default(),
             screenshots: screenshots_page::Screenshots::default(),
+            replays: replays_page::Replays::default(),
             game_packs: packs_page::Packs::default(),
             world_packs: datapacks_page::WorldPacks::default(),
             export: None,
@@ -931,6 +934,11 @@ impl Launcher {
                 *shown = started.elapsed().as_secs();
                 changed = true;
             }
+        }
+        // A replay playing advances its playhead.
+        if self.replays.playing {
+            self.replay_play_step(cx);
+            changed = true;
         }
         while let Ok(msg) = self.rx.try_recv() {
             changed = true;
@@ -4843,6 +4851,7 @@ impl Render for Launcher {
                     "escape" if this.servers_escape() => {}
                     "escape" if this.instance_escape() => {}
                     "escape" if this.screenshot_escape() => {}
+                    "escape" if this.replays_escape() => {}
                     "left" if this.screenshot_step(false) => {}
                     "right" if this.screenshot_step(true) => {}
                     _ => return,
@@ -4924,6 +4933,9 @@ impl Render for Launcher {
         }
         if self.page == Page::Play {
             if let Some(viewer) = self.screenshot_viewer(cx) {
+                root = root.child(viewer);
+            }
+            if let Some(viewer) = self.replay_viewer(cx) {
                 root = root.child(viewer);
             }
         }
