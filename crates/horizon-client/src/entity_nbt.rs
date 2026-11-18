@@ -5836,9 +5836,9 @@ mod mod_thrown_nbt_tests {
             resolved.kind,
             ProjectileKind::ShulkerBullet {
                 target: Some(crate::mobs::Who::Mob(77)),
-                dir: None,
-                steps: 0,
-                delta: [0.0; 3],
+                dir: Some(2),
+                steps: 7,
+                delta: [0.1, 0.2, -0.3],
                 seed: 0,
             }
         );
