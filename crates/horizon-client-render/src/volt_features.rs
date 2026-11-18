@@ -1062,6 +1062,45 @@ impl ReplayTrack {
             _ => 0,
         }
     }
+
+    /// The camera pose at world tick `tick`, interpolated between the samples
+    /// either side of it (the same the launcher's viewer shows): the eye's
+    /// position, yaw and pitch. None for an empty take; outside it the nearest
+    /// end's pose.
+    pub fn pose_at(&self, tick: i64) -> Option<([f64; 3], f32, f32)> {
+        let first = self.samples.first()?;
+        let last = self.samples.last()?;
+        if tick <= first.tick {
+            return Some(([first.x, first.y, first.z], first.yaw, first.pitch));
+        }
+        if tick >= last.tick {
+            return Some(([last.x, last.y, last.z], last.yaw, last.pitch));
+        }
+        let i = self
+            .samples
+            .partition_point(|s| s.tick <= tick)
+            .saturating_sub(1);
+        let a = &self.samples[i];
+        let b = &self.samples[(i + 1).min(self.samples.len() - 1)];
+        let span = (b.tick - a.tick).max(1) as f64;
+        let t = (tick - a.tick) as f64 / span;
+        let lerp = |a: f64, b: f64| a + (b - a) * t;
+        Some((
+            [lerp(a.x, b.x), lerp(a.y, b.y), lerp(a.z, b.z)],
+            lerp_angle(a.yaw, b.yaw, t as f32),
+            a.pitch + (b.pitch - a.pitch) * t as f32,
+        ))
+    }
+}
+
+/// Degrees interpolated the short way round, so a view crossing ±180 does not
+/// spin the long way in a playback.
+fn lerp_angle(a: f32, b: f32, t: f32) -> f32 {
+    let mut delta = (b - a).rem_euclid(360.0);
+    if delta > 180.0 {
+        delta -= 360.0;
+    }
+    a + delta * t
 }
 
 /// The replay file's name: `replay-<unix>-<dimension>.voltreplay.json`, the
@@ -1105,6 +1144,29 @@ mod tests {
             replay_file_name(1, "overworld"),
             "replay-1-overworld.voltreplay.json"
         );
+    }
+
+    /// The camera pose interpolates between the samples either side, clamps
+    /// at the ends, turns the short way round ±180 and is None when empty.
+    #[test]
+    fn replay_pose_interpolates_and_wraps() {
+        let mut track = ReplayTrack {
+            dimension: "minecraft:overworld".into(),
+            start_game_time: 100,
+            samples: Vec::new(),
+        };
+        track.record(100, [0.0, 64.0, 0.0], 170.0, -10.0);
+        track.record(110, [10.0, 70.0, -4.0], -170.0, 10.0);
+        let (at, yaw, pitch) = track.pose_at(105).unwrap();
+        assert!((at[0] - 5.0).abs() < 1e-9);
+        assert!((at[1] - 67.0).abs() < 1e-9);
+        assert!((at[2] + 2.0).abs() < 1e-9);
+        // 170° to -170° is +20° the short way, never -340°.
+        assert!((yaw - 180.0).abs() < 1e-4 || (yaw + 180.0).abs() < 1e-4);
+        assert!((pitch - 0.0).abs() < 1e-9);
+        assert_eq!(track.pose_at(0).unwrap().0, [0.0, 64.0, 0.0]);
+        assert_eq!(track.pose_at(999).unwrap().0, [10.0, 70.0, -4.0]);
+        assert!(ReplayTrack::default().pose_at(0).is_none());
     }
 
     /// The damage-direction arrow's tip sits `radius` out along its angle.

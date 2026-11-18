@@ -6366,6 +6366,11 @@ impl Game<'_> {
     /// One client tick while connected (Minecraft.tick with a ClientLevel).
     pub(super) fn tick_remote(&mut self) -> Result<()> {
         self.tick_remote_level()?;
+        // Rezyth Settings' replay recorder and playback: one camera sample
+        // per world tick while recording; an open take advances by its
+        // speed. The window's game is always the client of a server (its own
+        // included), and the recorder is a client feature.
+        self.tick_replay();
         // The rockets boosting this player tick after it, also while it waits
         // for chunks.
         self.tick_own_rockets();

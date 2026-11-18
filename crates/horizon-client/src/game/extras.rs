@@ -721,6 +721,38 @@ impl Game<'_> {
                 color,
             );
         }
+        // A replay playing: its name, how far in it is, and how to stop.
+        if let Some(watch) = &self.replay_watch {
+            let (at, length) = watch.clock();
+            let name = horizon_client::text::Text::translate(
+                "horizon.replay.watch.hud",
+                &[horizon_client::text::Text::literal(watch.name.clone())],
+            )
+            .plain();
+            let clock = horizon_client::text::Text::translate(
+                "horizon.replay.watch.clock",
+                &[
+                    horizon_client::text::Text::literal(at),
+                    horizon_client::text::Text::literal(length),
+                ],
+            )
+            .plain();
+            let key = horizon_client::keybinds::display_name(
+                self.settings.keys.get("key.volt.replay_watch"),
+            )
+            .plain();
+            let stop = horizon_client::text::Text::translate(
+                "horizon.replay.watch.stop",
+                &[horizon_client::text::Text::literal(key)],
+            )
+            .plain();
+            let rows = [
+                (name, rgba(255, 255, 255, 255)),
+                (clock, rgba(170, 170, 170, 255)),
+                (stop, rgba(170, 170, 170, 255)),
+            ];
+            extras_hud::draw_panel(batch, atlas, corners, Corner::TopLeft, &rows);
+        }
         // Keystrokes Overlay: the movement keys as a grid, lit while held.
         if keystrokes_hud {
             let keys = [

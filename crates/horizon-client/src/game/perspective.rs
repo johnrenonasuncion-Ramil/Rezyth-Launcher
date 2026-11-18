@@ -242,6 +242,13 @@ impl Game<'_> {
     /// front of) it, pulled in where visual shapes are in the way. Returns the
     /// position, yaw and pitch to render from.
     pub(super) fn camera_view(&mut self, partial: f32) -> Option<(glam::DVec3, f32, f32)> {
+        // A replay playing replaces the player's camera with the take's
+        // recorded one for the whole render.
+        if let Some(watch) = &self.replay_watch
+            && let Some((at, yaw, pitch)) = watch.pose()
+        {
+            return Some((glam::DVec3::from_array(at), yaw, pitch));
+        }
         // Minecraft.cameraEntity: a server's spectator camera on a mob or
         // another player.
         let (entity, descending) = match self.camera_mob() {

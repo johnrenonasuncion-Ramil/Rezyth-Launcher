@@ -2498,6 +2498,9 @@ struct Game<'a> {
     replay_track: Option<horizon_client::volt_features::ReplayTrack>,
     /// The replay button's held finger (its drag gestures).
     replay_touch: Option<replay::ReplayTouch>,
+    /// A take playing in game (`key.volt.replay_watch`): its recorded camera
+    /// replaces the player's for the render (`game/replay.rs`).
+    replay_watch: Option<replay::ReplayWatch>,
     physical_buttons: HashSet<MouseButton>,
     drag_button: Option<MouseButton>,
     /// Control + left click as a right click (macOS).
@@ -12565,6 +12568,7 @@ impl Game<'_> {
         self.using = None;
         self.screen = Screen::Playing;
         self.title = None;
+        self.replay_watch = None;
         self.clear_lod();
         self.pending_uploads.clear();
         // Volt Boost's memory saver: hand the emptied queues' and the
@@ -12767,6 +12771,7 @@ impl Game<'_> {
         // A recording cannot cross into another world, and a replay feeding the
         // title screen is nonsense.
         self.repro_world_closed();
+        self.replay_watch = None;
         self.clear_waypoints();
         self.post_effects.clear();
         self.spectated_post_effect = None;
@@ -14616,9 +14621,6 @@ impl Game<'_> {
         } else {
             self.audio.set_wall_occlusion(None);
         }
-        // Rezyth Settings' replay recorder: one camera sample per world tick
-        // while recording (the button or key started it).
-        self.tick_replay();
         // The Boost tab's Zero-Stutter Mesh Pool: workers keep recycled
         // section buffers within its larger budget.
         horizon_client::streaming::set_expanded_mesh_pool(
@@ -16259,6 +16261,7 @@ impl Game<'_> {
         // screen does not hide it: vanilla checks the HUD and the game mode, not the screen.
         let adventure = self.mode == horizon_client::command::args::GameMode::Adventure;
         let outline = if !self.ui.hide_gui
+            && self.replay_watch.is_none()
             && (self.may_build() || adventure)
             && !self.touch_hides_outline()
         {
@@ -17838,6 +17841,9 @@ impl Game<'_> {
                 return;
             }
             if self.replay_shortcut(key, event.repeat) {
+                return;
+            }
+            if self.replay_watch_shortcut(key, event.repeat) {
                 return;
             }
         }
@@ -19492,6 +19498,7 @@ impl<'a> Game<'a> {
             replay_state: Default::default(),
             replay_track: None,
             replay_touch: None,
+            replay_watch: None,
             physical_buttons: HashSet::new(),
             drag_button: None,
             right_click_emulation: Default::default(),

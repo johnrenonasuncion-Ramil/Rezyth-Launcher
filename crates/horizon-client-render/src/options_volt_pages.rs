@@ -439,7 +439,7 @@ impl VoltAct {
                 "Adds 21:9 cinema letterbox bars to the top and bottom of the screen."
             }
             Self::QolReplay => {
-                "Records multiplayer and world sessions as Volt Replays. Watch them from the launcher's Replays page: timeline, speeds, pause, and a free camera that shows you in third person."
+                "Records multiplayer and world sessions as Volt Replays. Watch them from the launcher's Replays page (timeline, speeds, pause, the camera's path), or press K in game to fly the newest take's recorded camera in the world it was recorded in."
             }
             Self::QolReplayButton => {
                 "Shows a floating Start / Pause / End recording button in the HUD. Drag it anywhere; hold it, then drag up-down for size and left-right for opacity. Applies when you next join a world or server."

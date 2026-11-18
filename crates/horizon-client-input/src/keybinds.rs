@@ -81,6 +81,7 @@ pub const MAPPINGS: &[(&str, &str, &str)] = &[
     ("key.volt.world_map", "key.keyboard.j", "volt_mods"),
     ("key.volt.voice_ptt", "key.keyboard.v", "volt_mods"),
     ("key.volt.replay", "key.keyboard.r", "volt_mods"),
+    ("key.volt.replay_watch", "key.keyboard.k", "volt_mods"),
 ];
 /// Mappings Options builds as `ToggleKeyMapping` (hold or toggle by option).
 pub fn is_toggle(name: &str) -> bool {
