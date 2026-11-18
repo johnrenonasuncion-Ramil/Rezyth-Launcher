@@ -727,6 +727,40 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
   launcher's 80 ms frame tick; Escape closes. `launcher/src/replays.rs` is the
   pure list/load/pose layer, tested. The in-world free camera (watching the
   take from inside the live game) is not built.
+- **Wave 41** (`d8d5f16c5`, CI-green weave 44221602339 + checks 44221602331):
+  3D Proximity Voice over the session connection — `horizon-protocol/src/voice.rs`
+  defines the `horizon:voice` custom payload: a guest's frame (capture rate,
+  count, mono f32 samples, capped at 8192), the hub's relay (sender uuid and
+  server position in front), and their parsers (garbage refused), tested.
+  `audio.rs` feeds the same gated, mic-gained samples to a network ring
+  (`voice_net`, 200 ms bound), drained per tick by `take_voice_net`; relayed
+  voices mix at their distance gain from the listener, the output gain and the
+  cave muffle, with per-speaker resampling/muffle state and bounded queues
+  (1 s each, 64 speakers); `push_remote_voice`/`clear_remote_voice(s)` manage
+  them, and a dry ring plays silence. `remote.rs` sends the captured chunks
+  each tick to a Horizon server (`r.mod_net`), receives the relays, and
+  forgets a player's voice on `PlayerInfoRemove` and every voice on
+  disconnect. `game/lan_voice.rs`: the server validates and relays each chunk
+  to the other Horizon players in the same dimension with the sender's uuid
+  and server position, at most 24 chunks per connection per tick. A vanilla
+  server ignores the unknown channel, so voice stays between Horizon players;
+  no UDP `voice_port`.
+- **Wave 42** (`3e3627fab`, fixups `31d29b0d6` + `a720abd11`; CI-green weave
+  44225100410 + 44226948014 and checks 44226948551, 5612 passed / 0 failed):
+  in-game replay playback and the recorder's tick — `ReplayTrack::pose_at`
+  interpolates the recorded camera at a tick (short-way yaw around ±180),
+  tested; the recorder's sampling moved from `apply_settings` (event-driven,
+  so takes were rarely sampled) to `tick_remote`, giving one camera sample per
+  world tick in single player, LAN and servers. `key.volt.replay_watch` (K)
+  starts the newest take in `replays/` in its own dimension (recording,
+  dimension, empty and malformed guards, translated messages) and the key
+  again stops it; the HUD shows its name, `m:ss / m:ss` and the stop key; the
+  render camera flies the take's pose (block outline hidden); the watch clears
+  on world open/close/dimension change and when a new recording starts. The
+  Replay Recording row's description now matches the feature (launcher page
+  plus the in-game camera, no third-person promise). The fixups add the
+  rustfmt wrap, the dry-voice-ring silence with its test, and the clippy
+  let-chain.
 - **Direction (user decision)**: the Shaders tab's remaining rows stay
   config-only (the WGSL revert stands; the abandoned wiring remains on the
   local `backup/volt-shaders-wiring` branch).
