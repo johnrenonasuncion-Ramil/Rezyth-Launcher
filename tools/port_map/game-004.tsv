@@ -49,8 +49,8 @@ AnimationState.getTimeInMillis	port	crates/horizon-client/src/mobs/keyframes.rs:
 AreaEffectCloud.defineSynchedData	port	crates/horizon-client/src/game/lan_entities.rs::Game::lan_projectile_states	radius, waiting and particle for dragon breath and lingering clouds; read back in remote_projectiles.rs::remote_projectile_data
 AreaEffectCloud.setRadius	inline	crates/horizon-client/src/game/potions.rs::Game::tick_potion_cloud	radius shrinks per tick and per victim; the 0..32 clamp is not needed
 AreaEffectCloud.refreshDimensions	inline	crates/horizon-client/src/game/potions.rs::Game::tick_potion_cloud	the affected box is rebuilt from the radius every check
-AreaEffectCloud.readAdditionalSaveData	missing		minor: clouds are not loaded from a world; a saved lingering or breath cloud, or one made by /summon, does not appear
-AreaEffectCloud.addAdditionalSaveData	missing		minor: a lingering potion or dragon breath cloud is gone after the world is saved and reopened
+AreaEffectCloud.readAdditionalSaveData	port	crates/horizon-client/src/game/persist.rs::cloud_from_nbt	Radius, Duration, WaitTime, Age, RadiusPerTick and potion_contents; gap: minor: RadiusOnUse, DurationOnUse and the owner are not read, and a vanilla dragon flame or fireball cloud cannot be told from a plain breath cloud
+AreaEffectCloud.addAdditionalSaveData	port	crates/horizon-client/src/game/persist.rs::cloud_to_nbt	Radius, Duration, WaitTime, Age, RadiusPerTick and potion_contents; gap: minor: RadiusOnUse, DurationOnUse and the owner are not written
 AreaEffectCloud.get	skip:other		entity data component accessor for predicates and /data; Horizon keeps the cloud's potion in PotionCloud
 AreaEffectCloud.applyImplicitComponents	inline	crates/horizon-client/src/game/potions.rs::Game::splash	the lingering branch takes the thrown stack's potion effects and colour; potion_duration_scale is fixed at 0.25
 AreaEffectCloud.applyImplicitComponent	inline	crates/horizon-client/src/game/potions.rs::Game::splash	same: potion contents only

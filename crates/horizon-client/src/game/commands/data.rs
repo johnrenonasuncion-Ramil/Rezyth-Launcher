@@ -194,13 +194,7 @@ impl Game<'_> {
                     .or_else(|| entity_nbt::fireball_to_nbt(p, random_uuid(), owner, raw))
                     .or_else(|| entity_nbt::throwable_to_nbt(p, random_uuid(), owner, raw))
                     .or_else(|| {
-                        entity_nbt::spit_or_bullet_to_nbt(
-                            p,
-                            random_uuid(),
-                            owner,
-                            target,
-                            raw,
-                        )
+                        entity_nbt::spit_or_bullet_to_nbt(p, random_uuid(), owner, target, raw)
                     })?
             }
             Target::Crystal(id) => {

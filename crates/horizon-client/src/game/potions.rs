@@ -94,23 +94,41 @@ enum Victim {
 /// What a lingering potion's `AreaEffectCloud` applies: the potion's effects
 /// (at the lingering item's 0.25 duration scale) and who it has affected.
 pub(super) struct PotionCloud {
-    effects: Vec<(&'static str, i32, i32)>,
+    pub(super) effects: Vec<(&'static str, i32, i32)>,
     /// The effects above that were added hidden (`MobEffectInstance.isVisible` false: no
     /// particles); the instances the cloud applies are copies and keep that.
-    hidden: Vec<&'static str>,
+    pub(super) hidden: Vec<&'static str>,
     /// The effects above that were ambient (`MobEffectInstance.isAmbient`).
-    ambient: Vec<&'static str>,
+    pub(super) ambient: Vec<&'static str>,
     /// `AreaEffectCloud.radiusPerTick`: `-radius / duration` when it was made.
-    radius_per_tick: f32,
+    pub(super) radius_per_tick: f32,
     /// The potion's colour (`PotionContents.getColor`).
-    color: u32,
+    pub(super) color: u32,
     /// Each victim and the tick it can be affected again.
     victims: Vec<(Victim, i32)>,
     /// Who its instant damage names (`indirectMagic(cloud, owner)`): the
     /// thrower, else the cloud.
-    source: Text,
+    pub(super) source: Text,
 }
 impl PotionCloud {
+    /// A cloud a chunk loaded with: no victims yet, named after the cloud.
+    pub(super) fn loaded(
+        effects: Vec<(&'static str, i32, i32)>,
+        hidden: Vec<&'static str>,
+        ambient: Vec<&'static str>,
+        radius_per_tick: f32,
+        color: u32,
+    ) -> Self {
+        Self {
+            effects,
+            hidden,
+            ambient,
+            radius_per_tick,
+            color,
+            victims: Vec::new(),
+            source: Text::translate("entity.minecraft.area_effect_cloud", &[]),
+        }
+    }
     /// `AreaEffectCloud.updateParticle`: an entity effect in the potion's colour.
     pub(super) fn particle(&self) -> ParticleOptions {
         let c = |shift: u32| (self.color >> shift & 255) as f32 / 255.0;
@@ -1319,7 +1337,9 @@ impl Game<'_> {
             radius: 2.5,
             age: 0,
             duration: 300,
+            wait_time: super::potions::LINGERING_WAIT,
             from_dragon: false,
+            from_fireball: false,
             potion: Some(PotionCloud {
                 effects,
                 hidden,
@@ -1687,7 +1707,9 @@ impl Game<'_> {
                     radius: 3.0,
                     age: 0,
                     duration: 600,
+                    wait_time: super::potions::LINGERING_WAIT,
                     from_dragon: false,
+                    from_fireball: false,
                     potion: Some(PotionCloud {
                         effects: def.effects.to_vec(),
                         hidden: Vec::new(),

@@ -11,7 +11,7 @@ use crate::{
     projectiles::{Projectile, ProjectileKind},
     save::{
         doubles, float, floats, item_from_nbt, item_to_nbt, number, put, read_doubles, text,
-        uuid_from_tag,
+        uuid_from_tag as saved_uuid_from_tag,
     },
 };
 use horizon_core::geometry::Vec3;
@@ -33,7 +33,11 @@ pub fn position(tag: &Tag) -> Option<Vec3> {
     read_doubles::<3>(tag.get("Pos")).map(|p| Vec3::new(p[0], p[1], p[2]))
 }
 pub fn uuid(tag: &Tag) -> Option<[i32; 4]> {
-    uuid_from_tag(tag.get("UUID"))
+    saved_uuid_from_tag(tag.get("UUID"))
+}
+/// Any entity's UUID tag as the four ints (`NbtUtils.loadUUID`).
+pub fn uuid_from_tag(tag: Option<&Tag>) -> Option<[i32; 4]> {
+    saved_uuid_from_tag(tag)
 }
 pub fn motion(tag: &Tag) -> Vec3 {
     read_doubles::<3>(tag.get("Motion")).map_or(Vec3::ZERO, |m| Vec3::new(m[0], m[1], m[2]))
@@ -5803,11 +5807,9 @@ mod mod_thrown_nbt_tests {
             ("TYD", Tag::Double(0.2_f64.to_bits())),
             ("TZD", Tag::Double((-0.3_f64).to_bits())),
         ];
-        let mut bullet = spit_or_bullet_from_nbt(
-            &summoned("minecraft:shulker_bullet", &move_state),
-            None,
-        )
-        .unwrap();
+        let mut bullet =
+            spit_or_bullet_from_nbt(&summoned("minecraft:shulker_bullet", &move_state), None)
+                .unwrap();
         if let ProjectileKind::ShulkerBullet { target: at, .. } = &mut bullet.kind {
             *at = Some(crate::mobs::Who::Mob(77));
         }
@@ -5821,10 +5823,7 @@ mod mod_thrown_nbt_tests {
             ProjectileKind::ShulkerBullet { target: None, .. }
         ));
         let ProjectileKind::ShulkerBullet {
-            dir,
-            steps,
-            delta,
-            ..
+            dir, steps, delta, ..
         } = loaded.kind
         else {
             unreachable!("a loaded shulker bullet is one");

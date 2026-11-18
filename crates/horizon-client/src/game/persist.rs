@@ -3,11 +3,11 @@
 //! scheduled block/fluid ticks (chunk `block_ticks`/`fluid_ticks`).
 use super::{FallingBlock, Game};
 use horizon_client::{
-    Result,
+    Result, brewing,
     chunk::Chunk,
     entity_nbt,
     mobs::Who,
-    save::{ChunkExtras, random_uuid},
+    save::{ChunkExtras, float, number, random_uuid, text},
 };
 use horizon_core::{
     geometry::{Direction, Vec3},
@@ -166,6 +166,144 @@ fn painting_center(p: &horizon_client::entities::Painting) -> Vec3 {
 fn block_entity_pos(tag: &Tag) -> [i32; 3] {
     [tag.get("x"), tag.get("y"), tag.get("z")]
         .map(|v| horizon_client::save::number(v).unwrap_or(0) as i32)
+}
+/// `AreaEffectCloud.addAdditionalSaveData`: its size, timing and contents.
+fn cloud_to_nbt(c: &crate::game::dragon::Breath, uuid: [i32; 4], raw: Option<&Tag>) -> Tag {
+    let mut e = vec![
+        ("id", Tag::String("minecraft:area_effect_cloud".into())),
+        ("UUID", Tag::IntArray(uuid.to_vec())),
+        (
+            "Pos",
+            Tag::List(c.at.iter().map(|v| Tag::Double(v.to_bits())).collect()),
+        ),
+        ("Age", Tag::Int(c.age)),
+        ("Duration", Tag::Int(c.duration)),
+        ("WaitTime", Tag::Int(c.wait_time)),
+        ("Radius", Tag::Float(c.radius.to_bits())),
+    ];
+    if let Some(potion) = &c.potion {
+        let effects = potion
+            .effects
+            .iter()
+            .map(|&(effect, duration, amplifier)| {
+                let hidden = potion.hidden.contains(&effect);
+                let mut e = vec![("id", Tag::String(brewing::namespaced(effect).into()))];
+                if amplifier != 0 {
+                    e.push(("amplifier", Tag::Byte(amplifier.clamp(0, 255) as u8 as i8)));
+                }
+                e.push(("duration", Tag::Int(duration)));
+                if potion.ambient.contains(&effect) {
+                    e.push(("ambient", Tag::Byte(1)));
+                }
+                if hidden {
+                    e.push(("show_particles", Tag::Byte(0)));
+                }
+                e.push(("show_icon", Tag::Byte(i8::from(!hidden))));
+                Tag::compound(e)
+            })
+            .collect();
+        e.push((
+            "potion_contents",
+            Tag::compound([
+                ("custom_color", Tag::Int(potion.color as i32)),
+                ("custom_effects", Tag::List(effects)),
+            ]),
+        ));
+        e.push((
+            "custom_particle",
+            Tag::String("minecraft:entity_effect".into()),
+        ));
+    } else {
+        e.push((
+            "custom_particle",
+            Tag::String("minecraft:dragon_breath".into()),
+        ));
+    }
+    if c.from_dragon {
+        e.push(("horizon:from_dragon", Tag::Byte(1)));
+    }
+    if c.from_fireball {
+        e.push(("horizon:dragon_fireball", Tag::Byte(1)));
+    }
+    with_raw(Tag::compound(e), raw)
+}
+/// `AreaEffectCloud.readAdditionalSaveData`: the cloud's size, timing and
+/// contents. Its victims are not saved; the potion's source is not either.
+fn cloud_from_nbt(tag: &Tag, id: u32, at: Vec3) -> Option<crate::game::dragon::Breath> {
+    let radius = float(tag.get("Radius")).unwrap_or(0.5) as f32;
+    let duration = number(tag.get("Duration")).unwrap_or(600) as i32;
+    let mut effects = Vec::new();
+    let mut hidden = Vec::new();
+    let mut ambient = Vec::new();
+    let mut color = None;
+    if let Some(Tag::Compound(c)) = tag.get("potion_contents") {
+        if let Some(potion) = text(c.get(&"potion".into())).and_then(|p| brewing::potion(&p)) {
+            effects.extend(potion.effects.iter().copied());
+        }
+        if let Some(Tag::List(list)) = c.get(&"custom_effects".into()) {
+            for e in list {
+                let Some(def) = text(e.get("id")).and_then(|id| brewing::effect(&id)) else {
+                    continue;
+                };
+                let effect = brewing::namespaced(def.id);
+                let duration = number(e.get("duration")).unwrap_or(0) as i32;
+                let amplifier = number(e.get("amplifier")).unwrap_or(0) as i32;
+                effects.retain(|(saved, ..)| *saved != effect);
+                effects.push((effect, duration, amplifier));
+                let shown = number(e.get("show_particles")).is_none_or(|v| v != 0);
+                if shown {
+                    hidden.retain(|saved| *saved != effect);
+                } else {
+                    hidden.push(effect);
+                }
+                if number(e.get("ambient")).is_some_and(|v| v != 0) {
+                    ambient.push(effect);
+                } else {
+                    ambient.retain(|saved| *saved != effect);
+                }
+            }
+        }
+        color = number(c.get(&"custom_color".into())).map(|v| v as u32);
+    }
+    if color.is_none() && !effects.is_empty() {
+        color = Some(brewing::effects_color(
+            effects
+                .iter()
+                .map(|&(effect, _, amplifier)| (effect, amplifier)),
+        ));
+    }
+    let from_fireball = number(tag.get("horizon:dragon_fireball")).is_some_and(|v| v != 0);
+    let from_dragon = number(tag.get("horizon:from_dragon")).is_some_and(|v| v != 0)
+        || (effects.is_empty()
+            && !from_fireball
+            && text(tag.get("custom_particle")).is_some_and(|p| p.ends_with(":dragon_breath")));
+    let potion = (!effects.is_empty()).then(|| {
+        super::potions::PotionCloud::loaded(
+            effects,
+            hidden,
+            ambient,
+            float(tag.get("RadiusPerTick")).map_or(-radius / duration.max(1) as f32, |v| v as f32),
+            color.unwrap_or(brewing::BASE_POTION_COLOR),
+        )
+    });
+    Some(crate::game::dragon::Breath {
+        id,
+        at: [at.x, at.y, at.z],
+        radius,
+        age: number(tag.get("Age")).unwrap_or(0) as i32,
+        duration,
+        wait_time: number(tag.get("WaitTime")).map_or(
+            if potion.is_some() {
+                crate::game::potions::LINGERING_WAIT
+            } else {
+                20
+            },
+            |v| v as i32,
+        ),
+        from_dragon,
+        from_fireball,
+        potion,
+    })
 }
 fn chunk_of(p: Vec3) -> (i32, i32) {
     ((p.x.floor() as i32) >> 4, (p.z.floor() as i32) >> 4)
@@ -450,8 +588,7 @@ impl Game<'_> {
                             if matches!(
                                 p.kind,
                                 horizon_client::projectiles::ProjectileKind::ShulkerBullet { .. }
-                            ) && let Some(target) =
-                                entity_nbt::uuid_from_tag(tag.get("Target"))
+                            ) && let Some(target) = entity_nbt::uuid_from_tag(tag.get("Target"))
                             {
                                 bullet_targets.push((p.id, target));
                             }
@@ -516,6 +653,15 @@ impl Game<'_> {
                             let id = t.id;
                             self.tridents.push(t);
                             self.remember(id, uuid, tag);
+                        }
+                    }
+                    "minecraft:area_effect_cloud" => {
+                        if let Some(at) = entity_nbt::position(&tag) {
+                            let id = self.take_entity_id();
+                            if let Some(c) = cloud_from_nbt(&tag, id, at) {
+                                self.remember(id, uuid, tag);
+                                self.breath_clouds.push(c);
+                            }
                         }
                     }
                     "minecraft:firework_rocket" => {
@@ -701,9 +847,7 @@ impl Game<'_> {
         // present now; a target the level no longer has stays empty.
         let player = self.acting_player_uuid();
         for (id, uuid) in bullet_targets {
-            let mob = (uuid != player)
-                .then(|| self.mob_by_uuid(uuid))
-                .flatten();
+            let mob = (uuid != player).then(|| self.mob_by_uuid(uuid)).flatten();
             if let Some(p) = self.creatures.projectiles.iter_mut().find(|p| p.id == id) {
                 entity_nbt::resolve_shulker_bullet_target(p, uuid, player, mob);
             }
@@ -1275,6 +1419,19 @@ impl Game<'_> {
                 out.entry(chunk_of(c.position))
                     .or_default()
                     .push(c.to_nbt(uuid, raw.as_ref()));
+            }
+        }
+        for c in &self.breath_clouds {
+            let at = Vec3::new(c.at[0], c.at[1], c.at[2]);
+            if keys.contains(&chunk_of(at)) {
+                let uuid = self
+                    .persist
+                    .uuids
+                    .get(&c.id)
+                    .copied()
+                    .unwrap_or_else(random_uuid);
+                let tag = cloud_to_nbt(c, uuid, self.persist.raw.get(&c.id));
+                out.entry(chunk_of(at)).or_default().push(tag);
             }
         }
         for s in &self.ominous_spawners {
@@ -1861,6 +2018,67 @@ mod tests {
     use super::*;
 
     const MOUNT: [i32; 4] = [1, 2, 3, 4];
+
+    /// `AreaEffectCloud.addAdditionalSaveData` / `readAdditionalSaveData`: a
+    /// cloud's size, timing and effects come back, a lingering potion's with
+    /// its hidden and ambient flags; a dragon's breath stays a breath.
+    #[test]
+    fn an_area_effect_cloud_round_trips() {
+        let potion = super::super::potions::PotionCloud {
+            effects: vec![("minecraft:speed", 400, 1)],
+            hidden: vec!["minecraft:speed"],
+            ambient: Vec::new(),
+            radius_per_tick: -3.0 / 600.0,
+            color: 0x33EB_FF,
+            victims: Vec::new(),
+            source: horizon_client::text::Text::translate(
+                "entity.minecraft.area_effect_cloud",
+                &[],
+            ),
+        };
+        let lingering = crate::game::dragon::Breath {
+            id: 7,
+            at: [1.0, 2.0, 3.0],
+            radius: 3.0,
+            age: 20,
+            duration: 600,
+            wait_time: crate::game::potions::LINGERING_WAIT,
+            from_dragon: false,
+            from_fireball: false,
+            potion: Some(potion),
+        };
+        let tag = cloud_to_nbt(&lingering, MOUNT, None);
+        let at = entity_nbt::position(&tag).unwrap();
+        let back = cloud_from_nbt(&tag, 8, at).unwrap();
+        assert_eq!((back.id, back.radius, back.age), (8, 3.0, 20));
+        assert_eq!(
+            (back.duration, back.wait_time, back.from_dragon),
+            (600, crate::game::potions::LINGERING_WAIT, false)
+        );
+        let Some(potion) = back.potion else {
+            panic!("the lingering potion's cloud keeps its effects");
+        };
+        assert_eq!(potion.effects, vec![("minecraft:speed", 400, 1)]);
+        assert_eq!(potion.hidden, vec!["minecraft:speed"]);
+        assert_eq!(potion.color, 0x33EB_FF);
+        assert!((potion.radius_per_tick - -3.0 / 600.0).abs() < 1e-12);
+
+        let dragon = crate::game::dragon::Breath {
+            id: 9,
+            at: [4.0, 5.0, 6.0],
+            radius: 5.0,
+            age: 30,
+            duration: 200,
+            wait_time: 20,
+            from_dragon: true,
+            from_fireball: false,
+            potion: None,
+        };
+        let tag = cloud_to_nbt(&dragon, [5, 6, 7, 8], None);
+        let back = cloud_from_nbt(&tag, 10, entity_nbt::position(&tag).unwrap()).unwrap();
+        assert!(back.from_dragon && back.potion.is_none());
+        assert_eq!(back.radius, 5.0);
+    }
 
     fn entity(kind: &str) -> Tag {
         Tag::compound([("id", Tag::String(kind.into()))])

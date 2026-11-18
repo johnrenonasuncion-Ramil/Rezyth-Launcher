@@ -1899,7 +1899,9 @@ impl Game<'_> {
                         radius: 5.0,
                         age: 0,
                         duration: 200,
+                        wait_time: 20,
                         from_dragon: true,
+                        from_fireball: false,
                         potion: None,
                     });
                 }
@@ -2507,7 +2509,9 @@ impl Game<'_> {
                     radius: 3.0,
                     age: 0,
                     duration: 600,
+                    wait_time: 20,
                     from_dragon: false,
+                    from_fireball: true,
                     potion: None,
                 });
                 // DragonFireball.onHit: level event 2006 (the burst of dragon
@@ -2554,6 +2558,11 @@ impl Game<'_> {
             // Lingering potions' clouds tick with the potions.
             if c.potion.is_some() {
                 return true;
+            }
+            // A plain cloud (one made by /summon) has no dragon effects.
+            if !(c.from_dragon || c.from_fireball) {
+                c.age += 1;
+                return c.age < c.duration;
             }
             if c.from_dragon && flame_over {
                 return false;
@@ -2797,20 +2806,18 @@ pub(super) struct Breath {
     pub(super) radius: f32,
     pub(super) age: i32,
     pub(super) duration: i32,
+    /// `AreaEffectCloud.waitTime`: 20 ticks, 10 for a lingering potion's.
+    pub(super) wait_time: i32,
     pub(super) from_dragon: bool,
+    /// A `DragonFireball`'s cloud, not the dragon's own breath.
+    pub(super) from_fireball: bool,
     /// A lingering potion's cloud (`ThrownLingeringPotion`): what it applies.
     pub(super) potion: Option<super::potions::PotionCloud>,
 }
 impl Breath {
-    /// `AreaEffectCloud.isWaiting`: before its wait time (20 ticks, 10 for a
-    /// lingering potion's).
+    /// `AreaEffectCloud.isWaiting`: before its wait time.
     pub(super) fn waiting(&self) -> bool {
-        self.age
-            < if self.potion.is_some() {
-                super::potions::LINGERING_WAIT
-            } else {
-                20
-            }
+        self.age < self.wait_time
     }
 }
 impl Game<'_> {
