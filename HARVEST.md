@@ -718,3 +718,15 @@ occlusion probe into the audio mixer), and the ChatHeads catalog mod.
   resizes it up-down and fades it left-right within the config's ranges; the
   release after a drag saves options.txt. Desktop keeps the R key; the
   gestures are touch-only.
+- **Wave 40** (`5ee7a9576`, CI-green run 44206546639): the launcher's
+  **Replays page** — a Home tab next to Screenshots (both skins) listing the
+  takes the recorder saved (`replays/*.voltreplay.json`), with a viewer: the
+  camera's path from above (dots along the track, the playhead's marker), a
+  scrubber (press/drag/release to seek), play/pause, speeds 0.5–4×, and the
+  interpolated pose readout at the playhead; playback advances on the
+  launcher's 80 ms frame tick; Escape closes. `launcher/src/replays.rs` is the
+  pure list/load/pose layer, tested. The in-world free camera (watching the
+  take from inside the live game) is not built.
+- **Direction (user decision)**: the Shaders tab's remaining rows stay
+  config-only (the WGSL revert stands; the abandoned wiring remains on the
+  local `backup/volt-shaders-wiring` branch).
