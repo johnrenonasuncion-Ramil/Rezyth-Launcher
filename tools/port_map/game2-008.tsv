@@ -117,7 +117,7 @@ ItemStack.addToTooltip	port	crates/horizon-client/src/item_tooltip.rs::lines
 ItemStack.addUnitComponentToTooltip	inline	crates/horizon-client/src/game/stations.rs::Game::stack_tooltip_lines	unit lines such as unbreakable, gated by the tooltip display
 ItemStack.canPlaceOnBlockInAdventureMode	port	crates/horizon-client/src/game/game_mode.rs::Game::can_place_on_in_adventure	the can_place_on predicates gate a placement in adventure mode
 ItemStack.canBreakBlockInAdventureMode	port	crates/horizon-client/src/game/game_mode.rs::Game::adventure_predicate	the main-hand stack's `can_break` predicate against the block at the position (one predicate or a list, block ids or tags, exact or ranged state properties; a predicate with `nbt` or `components` never matches), read by `game_mode.rs:200`; the same fn answers `can_place_on`
-ItemStack.getDamageSource	missing		a stack's `damage_type` component is not read when a weapon hits: the attack builds its damage from the mob's own sources (`mobs::Damage`), and `damage_type` is only used for the enchantment damage tags
+ItemStack.getDamageSource	port	crates/horizon-client/src/game/mace.rs::Game::item_damage_kind	the held stack's `minecraft:damage_type` component names the weapon hit's damage source
 ItemStackTemplate.fromNonEmptyStack	port	crates/horizon-items/src/item_data.rs::template_tag	stack to template tag
 ItemStackTemplate.withCount	skip:java		record copy with a new count
 ItemStackTemplate.apply	port	crates/horizon-assets/src/item_model.rs::stack_from_template	

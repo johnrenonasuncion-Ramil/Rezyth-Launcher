@@ -7,7 +7,7 @@ use super::Game;
 use horizon_client::{
     enchant::EffectContext,
     items::ItemStack,
-    mobs::{Damage, Mob, Species},
+    mobs::{Damage, DamageKind, Mob, Species},
     particles::{ParticleOptions, ParticleType},
 };
 use horizon_core::{
@@ -15,6 +15,7 @@ use horizon_core::{
     position::BlockPos,
     random::RandomSource,
 };
+use horizon_world::nbt::Tag;
 
 /// `MaceItem.SMASH_ATTACK_FALL_THRESHOLD`.
 const FALL_THRESHOLD: f64 = 1.5;
@@ -98,6 +99,25 @@ impl Game<'_> {
             .as_ref()
             .is_some_and(|s| &*s.item == "minecraft:mace")
     }
+    /// The held stack's `minecraft:damage_type` component: what a weapon hit
+    /// reports as its damage source, or the player attack when there is none.
+    fn item_damage_kind(&self) -> DamageKind {
+        let Some(tag) = self
+            .inventory
+            .get(self.selected)
+            .and_then(|stack| stack.as_ref())
+            .and_then(|stack| stack.data())
+            .and_then(|data| data.other("minecraft:damage_type"))
+        else {
+            return DamageKind::PlayerAttack;
+        };
+        let Tag::String(id) = tag else {
+            return DamageKind::PlayerAttack;
+        };
+        let id = id.to_string_lossy();
+        let leaked: &'static str = Box::leak(id.to_owned().into_boxed_str());
+        DamageKind::Custom(leaked)
+    }
     /// `MaceItem.canSmashAttack` for the player: falling and not gliding.
     fn can_smash_attack(&self) -> bool {
         self.player
@@ -111,10 +131,13 @@ impl Game<'_> {
     }
     /// The damage source of the player's hit from `from` with the held item.
     pub(super) fn attack_source(&self, from: [f64; 3]) -> Damage {
+        let kind = self.item_damage_kind();
         if self.smash_attack() {
             Damage::mace(from)
         } else {
-            Damage::player(from)
+            let mut source = Damage::player(from);
+            source.kind = kind;
+            source
         }
     }
     /// `MaceItem.getAttackDamageBonus` against `victim`: 4 per block for the

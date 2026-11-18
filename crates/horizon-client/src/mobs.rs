@@ -610,6 +610,8 @@ pub enum DamageKind {
     Wither,
     /// `wither_skull`: an owned wither skull's hit (`DamageSources.witherSkull`).
     WitherSkull,
+    /// A stack's `minecraft:damage_type` component: the damage type it deals.
+    Custom(&'static str),
 }
 impl DamageKind {
     /// DamageTypeTags.BYPASSES_INVULNERABILITY
