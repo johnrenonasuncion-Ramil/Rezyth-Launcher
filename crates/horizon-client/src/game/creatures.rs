@@ -4056,7 +4056,10 @@ impl Game<'_> {
                 | ProjectileKind::BreezeWindCharge
         );
         let shooter_may_break = match p.owner {
-            Some(Who::Player) => self.mode != GameMode::Adventure,
+            Some(Who::Player) => {
+                self.mode != GameMode::Adventure
+                    || self.adventure_predicate("minecraft:can_break", pos)
+            }
             Some(Who::Mob(_)) => false,
             None => true,
         };
