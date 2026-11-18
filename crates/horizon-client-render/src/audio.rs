@@ -858,6 +858,9 @@ fn mix(mixer: &mut Mixer, data: &mut [f32], channels: usize, rate: u32) {
                 acc -= 1.0;
                 if let Some(x) = mixer.voice_in.pop_front() {
                     mixer.voice_last = x;
+                } else {
+                    // The ring ran dry: silence, not the last sample held.
+                    mixer.voice_last = 0.0;
                 }
             }
             let x = mixer.voice_last;
@@ -903,6 +906,9 @@ fn mix(mixer: &mut Mixer, data: &mut [f32], channels: usize, rate: u32) {
                     acc -= 1.0;
                     if let Some(x) = voice.ring.pop_front() {
                         voice.last = x;
+                    } else {
+                        // The ring ran dry: silence, not the last sample held.
+                        voice.last = 0.0;
                     }
                 }
                 let x = voice.last;
@@ -2128,6 +2134,10 @@ mod tests {
             "half the sample at half proximity: {data:?}"
         );
         assert!(m.voice_remote[0].ring.len() < 480, "the mix drains it");
+        // Once drained it is silent, not the last sample held as DC.
+        let mut tail = vec![0.0_f32; 2 * 480];
+        mix(&mut m, &mut tail, 2, 48_000);
+        assert!(tail.iter().all(|s| *s == 0.0), "a dry ring is silent");
         // Past the reach: nothing added.
         m.voice_remote[0].at = [96.0, 0.0, 0.0];
         m.voice_remote[0].ring = vec![0.5_f32; 480].into();

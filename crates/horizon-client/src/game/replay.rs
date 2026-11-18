@@ -191,7 +191,11 @@ impl Game<'_> {
             }
         };
         if track.dimension != self.dim.id() {
-            let short = track.dimension.rsplit(':').next().unwrap_or(&track.dimension);
+            let short = track
+                .dimension
+                .rsplit(':')
+                .next()
+                .unwrap_or(&track.dimension);
             self.system_message(Text::translate(
                 "horizon.replay.watch.dimension",
                 &[Text::literal(short.to_owned())],
