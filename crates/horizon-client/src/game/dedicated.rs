@@ -1266,6 +1266,11 @@ impl Game<'_> {
 
     /// ServerGamePacketListenerImpl.tick: players idle longer than the
     /// timeout are kicked.
+    fn transfer_players(&mut self, conns: &[u32], host: &str, port: i32) {
+        if let Some(lan) = self.lan.as_mut() {
+            lan.hub.transfer(conns, host, port);
+        }
+    }
     fn kick_idle(&mut self, minutes: i32) {
         let Some(host) = self.lan.as_mut() else {
             return;
@@ -1726,6 +1731,48 @@ impl Game<'_> {
                         },
                     ],
                 ));
+            }
+            "transfer" if !rest.is_empty() => {
+                // TransferCommand: host, then an optional port and players.
+                let host = rest[0].to_owned();
+                let (port, rest) = rest[1..]
+                    .split_first()
+                    .and_then(|(first, rest)| {
+                        first
+                            .parse::<u16>()
+                            .ok()
+                            .map(|port| (i32::from(port), rest))
+                    })
+                    .unwrap_or((25565, &rest[1..]));
+                let players: Vec<u32> = if rest.is_empty() {
+                    self.lan
+                        .as_ref()
+                        .map(|h| {
+                            h.hub
+                                .guests
+                                .iter()
+                                .filter(|g| g.placed)
+                                .map(|g| g.conn)
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                } else {
+                    rest.iter()
+                        .filter_map(|name| {
+                            self.online_player(name)
+                                .and_then(|user| self.lan.as_ref()?.hub.guest_conn(user.id))
+                        })
+                        .collect()
+                };
+                self.console_reply(Text::translate(
+                    "commands.transfer.success",
+                    &[
+                        lit(&host),
+                        lit(&port.to_string()),
+                        lit(&players.len().to_string()),
+                    ],
+                ));
+                self.transfer_players(&players, &host, port);
             }
             "say" if !rest.is_empty() => {
                 // SayCommand from the console: an unsigned system chat

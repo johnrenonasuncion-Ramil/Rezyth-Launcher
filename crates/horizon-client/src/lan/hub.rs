@@ -663,6 +663,12 @@ impl Hub {
     pub fn guest(&self, conn: u32) -> Option<&Guest> {
         self.guests.iter().find(|g| g.conn == conn)
     }
+    pub fn guest_conn(&self, uuid: u128) -> Option<u32> {
+        self.guests
+            .iter()
+            .find(|g| g.uuid == uuid && g.placed)
+            .map(|g| g.conn)
+    }
     pub fn guest_mut(&mut self, conn: u32) -> Option<&mut Guest> {
         self.guests.iter_mut().find(|g| g.conn == conn)
     }
@@ -926,6 +932,24 @@ impl Hub {
                 name,
                 reason: text,
             });
+        }
+    }
+    /// `TransferCommand.transfer`: send the players to another server.
+    pub fn transfer(&mut self, conns: &[u32], host: &str, port: i32) {
+        if conns.is_empty() {
+            return;
+        }
+        let packet = C::Transfer(horizon_protocol::packets::configuration::Transfer {
+            host: host.to_owned(),
+            port,
+        })
+        .encode();
+        for conn in conns {
+            if let Some(g) = self.guest_mut(*conn)
+                && g.placed
+            {
+                g.sender.send(packet.clone());
+            }
         }
     }
 

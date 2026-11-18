@@ -60,8 +60,8 @@ TimeCommand.getDefaultClock	inline	crates/horizon-client/src/game/commands.rs::G
 TitleCommand.sendPacketToPlayers	port	crates/horizon-client/src/game/commands/text_commands.rs::Game::titles_or_packet	per-player send
 TitleCommand.showTitle	port	crates/horizon-client/src/game/commands/text_commands.rs::Game::cmd_title	title, subtitle and actionbar
 TitleCommand.setTimes	port	crates/horizon-client/src/game/commands/text_commands.rs::Game::cmd_title	times arm
-TransferCommand.register	missing		minor: no /transfer node; the client follows an incoming transfer (net.rs) but no command sends one
-TransferCommand.transfer	missing		minor: no command sends a ClientboundTransferPacket to a player
+TransferCommand.register	port	crates/horizon-client/src/game/dedicated.rs::Game::console_command	the console arm parses host, port and player names, already in the dedicated-only command tree
+TransferCommand.transfer	port	crates/horizon-client/src/lan/hub.rs::Hub::transfer	sends the ClientboundTransferPacket to each selected player
 TriggerCommand.suggestObjectives	port	crates/horizon-command/src/lib.rs::Suggests::suggest	Suggests::Triggers arm
 TriggerCommand.addValue	port	crates/horizon-client/src/scoreboard_cmd.rs::trigger	trigger.add arm
 TriggerCommand.setValue	port	crates/horizon-client/src/scoreboard_cmd.rs::trigger	trigger.set arm
