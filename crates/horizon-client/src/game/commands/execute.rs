@@ -114,6 +114,27 @@ impl Game<'_> {
             cart: None,
         }
     }
+    /// `LecternBlockEntity.createCommandSourceStack`: the command source a
+    /// lectern's book resolves from — the middle of the lectern, rotation
+    /// zero, the `NULL` command source.
+    pub(in crate::game) fn lectern_command_source(&self, key: (i32, i32, i32)) -> Source {
+        Source {
+            entity: None,
+            pos: [
+                f64::from(key.0) + 0.5,
+                f64::from(key.1) + 0.5,
+                f64::from(key.2) + 0.5,
+            ],
+            rot: [0.0, 0.0],
+            eyes: false,
+            silent: true,
+            store: None,
+            dimension: self.dim,
+            level: None,
+            block: None,
+            cart: None,
+        }
+    }
     pub(in crate::game) fn target_rotation(&self, t: Target) -> [f32; 2] {
         match t {
             Target::Player => [self.yaw, self.pitch],

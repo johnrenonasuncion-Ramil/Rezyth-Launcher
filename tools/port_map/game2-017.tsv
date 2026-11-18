@@ -90,7 +90,7 @@ JukeboxBlockEntity.tryForcePlaySong	skip:other		@VisibleForTesting hook; no play
 LecternBlockEntity.hasBook	inline	crates/horizon-client/src/game/books.rs::Game::use_lectern	book-present check before a book is placed
 LecternBlockEntity.onBookItemRemove	port	crates/horizon-client/src/game/books.rs::Game::lectern_menu_done	book gone: has_book off, container changed
 LecternBlockEntity.resolveBook	missing		`books.rs::view_pages` reads a written book's pages for the lectern's screen as they are: no selector, score or translatable resolution
-LecternBlockEntity.createCommandSourceStack	missing		only `resolveBook` builds it; a page's RunCommand goes through `click_command`, which has no lectern source, so a relative coordinate resolves at the player
+LecternBlockEntity.createCommandSourceStack	port	crates/horizon-client/src/game/commands/execute.rs::Game::lectern_command_source	the middle of the lectern, rotation zero and no feedback; a page's RunCommand runs from it in `books.rs`
 LecternBlockEntity.loadAdditional	port	crates/horizon-client/src/save.rs::decode_block_entity	Book and Page
 LecternBlockEntity.saveAdditional	port	crates/horizon-client/src/save.rs::encode_block_entity	Book and Page
 SculkCatalystBlockEntity.CatalystListener.tryAwardItSpreadsAdvancement	port	crates/horizon-client/src/game/creatures.rs::Game::mob_died	kill_mob_near_sculk_catalyst fires when the catalyst takes a mob's experience

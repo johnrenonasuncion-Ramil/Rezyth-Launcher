@@ -156,7 +156,14 @@ impl Game<'_> {
                     None
                 };
                 self.close_book();
+                // LecternBlockEntity.createCommandSourceStack: a lectern's
+                // page resolves from the lectern, not the reader.
+                let outer = self.command_source;
+                if let Some(key) = lectern {
+                    self.command_source = Some(self.lectern_command_source(key));
+                }
                 self.click_command(&command);
+                self.command_source = outer;
                 if let Some(book) = book {
                     self.command_prompt_returns_to(super::remote_chat::Behind::Book(Box::new(
                         book,
