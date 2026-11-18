@@ -170,7 +170,13 @@ pub fn start_riding(mobs: &mut [Mob], rider: u32, vehicle: u32) -> bool {
     if r.extra.boarding_cooldown > 0 || v.extra.rider.is_some() || v.rider.is_some() {
         return false;
     }
+    let shulker = r.species() == Species::Shulker;
     link(mobs, rider, vehicle);
+    // Shulker.startRiding: a shulker boarding resets its attach face to down.
+    if shulker && let Some(r) = mobs.iter_mut().find(|m| m.id == rider) {
+        r.extra.variant3 = 0;
+        r.extra.counter = 0;
+    }
     true
 }
 /// `LivingEntity.stopRiding` for the mob itself: it leaves its vehicle (which
