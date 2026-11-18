@@ -34,7 +34,7 @@ StonecutterMenu.removed	port	crates/horizon-client/src/game/stations.rs::Game::c
 ArrowItem.asProjectile	port	crates/horizon-client/src/game/dispenser.rs::Game::shoot_projectile_item	dispensed arrows are built in the arrow arm of the item shot
 BlockItem.updateBlockEntityComponents	port	crates/horizon-client/src/block_entity_item.rs::place	the placed block entity takes the item's components
 BlockItem.canPlace	port	crates/horizon-world/src/level/place.rs::Sim::place	the placement checks, including the survive check, run in Sim::place
-BlockItem.onDestroyed	missing		no `onDestroyed` on any item: an item entity of a shulker box or a bundle destroyed by fire or lava spills nothing
+BlockItem.onDestroyed	port	crates/horizon-client/src/entities.rs::ItemEntity::destroyed_spills	a shulker box spills its `minecraft:container` slots in slot order and a bundle its `minecraft:bundle_contents` when the item entity is destroyed
 BoatItem.getBoat	port	crates/horizon-client/src/game/boats.rs::Game::place_boat	boat placed at the hit point with the item's stack config
 BucketItem.playEmptySound	port	crates/horizon-world/src/level/buckets.rs::Sim::empty_sound	
 BundleItem.getWeightSafe	port	crates/horizon-items/src/bundle.rs::Contents::weight_fraction	float fraction; vanilla compares an exact Fraction

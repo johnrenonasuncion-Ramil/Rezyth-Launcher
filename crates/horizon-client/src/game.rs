@@ -4358,6 +4358,15 @@ impl Game<'_> {
                 );
             }
             if !environment.alive {
+                // Item.onDestroyed: what the destroyed stack held spills.
+                for stack in horizon_client::entities::ItemEntity::destroyed_spills(&item.stack) {
+                    self.spawn_item(
+                        stack,
+                        [item.position.x, item.position.y, item.position.z],
+                        dispenser::new_item_motion(),
+                        10,
+                    );
+                }
                 removed[i] = true;
                 cells.remove(i, item.position);
             }

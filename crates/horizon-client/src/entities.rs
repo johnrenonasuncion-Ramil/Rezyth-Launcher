@@ -225,6 +225,23 @@ impl ItemEntity {
             lava_hurt,
         }
     }
+    /// `Item.onDestroyed` for a stack destroyed with the item entity: a
+    /// shulker box spills its `minecraft:container` slots in slot order, and a
+    /// bundle spills its `minecraft:bundle_contents`.
+    pub fn destroyed_spills(stack: &ItemStack) -> Vec<ItemStack> {
+        let Some(data) = stack.data() else {
+            return Vec::new();
+        };
+        if !data.bundle_contents.is_empty() {
+            return data.bundle_contents.clone();
+        }
+        if !data.container.is_empty() {
+            let mut slots = data.container.clone();
+            slots.sort_by_key(|(slot, _)| *slot);
+            return slots.into_iter().map(|(_, stack)| stack).collect();
+        }
+        Vec::new()
+    }
     /// `ItemEntity.tick` on a server: an item whose box is inside a block
     /// (one placed where it lay) has no physics this tick
     /// (`level.noCollision(box.deflate(1.0E-7))`).
@@ -1991,6 +2008,37 @@ mod merge_tests {
         merge_with_neighbours(&mut items, &mut removed, &mut cells, 0, &max_stack);
         assert_eq!(removed, [true, false]);
         assert_eq!(items[1].stack.count, 2);
+    }
+}
+
+#[cfg(test)]
+mod destroyed_spills_tests {
+    use super::*;
+
+    /// `Item.onDestroyed`: a bundle spills its contents in stored order, and a
+    /// shulker box its slots in slot order; an ordinary stack spills nothing.
+    #[test]
+    fn a_destroyed_container_spills_its_contents() {
+        let mut bundle = ItemStack::new("minecraft:bundle", 1);
+        bundle
+            .data_mut()
+            .bundle_contents
+            .push(ItemStack::new("minecraft:diamond", 2));
+        let spills = ItemEntity::destroyed_spills(&bundle);
+        assert_eq!(spills.len(), 1);
+        assert_eq!(spills[0].item.as_ref(), "minecraft:diamond");
+        assert_eq!(spills[0].count, 2);
+
+        let mut box_item = ItemStack::new("minecraft:white_shulker_box", 1);
+        box_item.data_mut().container = vec![
+            (3, ItemStack::new("minecraft:gold_ingot", 1)),
+            (1, ItemStack::new("minecraft:iron_ingot", 2)),
+        ];
+        let spills = ItemEntity::destroyed_spills(&box_item);
+        assert_eq!(spills.len(), 2);
+        assert_eq!(spills[0].item.as_ref(), "minecraft:iron_ingot");
+        assert_eq!(spills[1].item.as_ref(), "minecraft:gold_ingot");
+        assert!(ItemEntity::destroyed_spills(&ItemStack::new("minecraft:stone", 1)).is_empty());
     }
 }
 
