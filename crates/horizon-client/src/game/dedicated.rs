@@ -676,6 +676,9 @@ struct ServerState {
     game_mode: i32,
     /// The mutable `force-gamemode` server property (`DedicatedServer.forceGameMode`).
     force_game_mode: bool,
+    /// The mutable `player-idle-timeout` server property
+    /// (`DedicatedServer.playerIdleTimeout`).
+    idle_timeout: i32,
 }
 
 /// `MinecraftServer.isAutoSave`: all of Horizon's server levels share this save flag.
@@ -1059,6 +1062,7 @@ impl Game<'_> {
             op_level: props.op_permission_level,
             game_mode: props.game_mode,
             force_game_mode: props.force_game_mode,
+            idle_timeout: props.player_idle_timeout,
             report: None,
             view: (
                 props.view_distance.clamp(2, 32) as u32,
@@ -1067,7 +1071,6 @@ impl Game<'_> {
             max_players: props.max_players.max(0) as usize,
         };
         let pause_after = props.pause_when_empty_seconds * 20;
-        let idle_timeout = props.player_idle_timeout;
         let mut next = Instant::now();
         // The panic that ended the tick loop, when one did.
         let mut crashed: Option<String> = None;
@@ -1153,8 +1156,8 @@ impl Game<'_> {
             {
                 host.hub.send_low_disk_space_warning();
             }
-            if idle_timeout > 0 {
-                self.kick_idle(idle_timeout);
+            if state.idle_timeout > 0 {
+                self.kick_idle(state.idle_timeout);
             }
             // MinecraftServer.tickServer records each tick's time, for /tick query (and the status).
             self.clock.record(tick_start.elapsed());
@@ -1439,6 +1442,21 @@ impl Game<'_> {
                     self.console_reply(Text::translate("commands.save.enabled", &[]));
                 } else {
                     self.console_reply(Text::translate("commands.save.alreadyOn", &[]));
+                }
+            }
+            "setidletimeout" => {
+                // SetPlayerIdleTimeoutCommand: the seconds before the idle
+                // sweep kicks a player (0 turns it off).
+                if let Some(seconds) = rest
+                    .first()
+                    .and_then(|s| s.parse::<u32>().ok())
+                    .and_then(|s| i32::try_from(s).ok())
+                {
+                    state.idle_timeout = seconds;
+                    self.console_reply(Text::translate(
+                        "commands.setidletimeout.success",
+                        &[lit(&seconds.to_string())],
+                    ));
                 }
             }
             "list" => {

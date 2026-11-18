@@ -142,7 +142,7 @@ ServerPackCommand.pushPack	missing		minor: no push; ResourcePackPush exists only
 ServerPackCommand.popPack	missing		minor: no pop; ResourcePackPop exists only in horizon-protocol
 SetBlockCommand.register	port	crates/horizon-command/src/vanilla.rs::registered	setblock literal with destroy, keep, replace and strict
 SetBlockCommand.setBlock	port	crates/horizon-client/src/game/commands.rs::Game::cmd_setblock	destroy, keep, replace, strict and block entity NBT
-SetPlayerIdleTimeoutCommand.register	missing		minor: no /setidletimeout literal; server.properties keeps player-idle-timeout only
+SetPlayerIdleTimeoutCommand.register	port	crates/horizon-client/src/game/dedicated.rs::Game::console_command	the console arm sets the idle timeout, already in the dedicated-only command tree
 SetPlayerIdleTimeoutCommand.setIdleTimeout	missing		minor: no in-game idle timeout change
 SetSpawnCommand.setSpawn	port	crates/horizon-client/src/game/commands.rs::Game::cmd_spawnpoint	forced spawn per target, overworld spawn or respawn anchor by dimension
 SetWorldSpawnCommand.setSpawn	port	crates/horizon-client/src/game/commands.rs::Game::cmd_setworldspawn	world spawn with angle and the fallback respawn update
