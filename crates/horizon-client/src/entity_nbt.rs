@@ -2544,16 +2544,11 @@ pub fn saved_with_chunk(p: &Projectile) -> bool {
         | ProjectileKind::Potion(..)
         | ProjectileKind::ExperienceBottle
         | ProjectileKind::LlamaSpit
-        | ProjectileKind::ShulkerBullet { target: None, .. }
+        | ProjectileKind::ShulkerBullet { .. }
         | ProjectileKind::Thrown(_) => true,
         ProjectileKind::Arrow { .. } => p.arrow.is_some(),
-        // Not written yet: tridents save from their own list, and a bullet
-        // with a target would lose it.
-        ProjectileKind::Trident
-        | ProjectileKind::ShulkerBullet {
-            target: Some(_), ..
-        }
-        | ProjectileKind::WitherSkull { .. } => false,
+        // Not written yet: tridents save from their own list.
+        ProjectileKind::Trident | ProjectileKind::WitherSkull { .. } => false,
     }
 }
 
@@ -2616,16 +2611,24 @@ pub fn throwable_from_nbt(tag: &Tag, player: Option<[i32; 4]>) -> Option<Project
 }
 
 /// `LlamaSpit` and `ShulkerBullet` as `/summon` or a chunk loads them:
-/// `Projectile`'s `Owner`, `LeftOwner`, `NoGravity` and the motion. A bullet
+/// `Projectile`'s `Owner`, `LeftOwner`, `NoGravity` and the motion; a bullet
+/// also takes its move step back (`Dir`, `Steps`, `TXD`/`TYD`/`TZD`). A bullet
 /// loaded without a `Target` has none, so it falls (`ShulkerBullet.tick`).
 pub fn spit_or_bullet_from_nbt(tag: &Tag, player: Option<[i32; 4]>) -> Option<Projectile> {
     let kind = match kind(tag)?.as_str() {
         "minecraft:llama_spit" => ProjectileKind::LlamaSpit,
         "minecraft:shulker_bullet" => ProjectileKind::ShulkerBullet {
             target: None,
-            dir: None,
-            steps: 0,
-            delta: [0.0; 3],
+            // ShulkerBullet.readAdditionalSaveData: the step it is on.
+            dir: number(tag.get("Dir"))
+                .filter(|d| (0..=5).contains(d))
+                .map(|d| d as u8),
+            steps: number(tag.get("Steps")).unwrap_or(0) as i32,
+            delta: [
+                float(tag.get("TXD")).unwrap_or(0.0),
+                float(tag.get("TYD")).unwrap_or(0.0),
+                float(tag.get("TZD")).unwrap_or(0.0),
+            ],
             seed: 0,
         },
         _ => return None,
@@ -2641,16 +2644,19 @@ pub fn spit_or_bullet_from_nbt(tag: &Tag, player: Option<[i32; 4]>) -> Option<Pr
     Some(p)
 }
 
-/// The save of [`spit_or_bullet_from_nbt`]'s kinds: `Projectile`'s keys.
+/// The save of [`spit_or_bullet_from_nbt`]'s kinds: `Projectile`'s keys, and
+/// `ShulkerBullet.addAdditionalSaveData`'s `Target` (the entity it homes on,
+/// by UUID, resolved where the world's UUIDs are known) and move step.
 pub fn spit_or_bullet_to_nbt(
     p: &Projectile,
     uuid: [i32; 4],
     owner: Option<[i32; 4]>,
+    target: Option<[i32; 4]>,
     raw: Option<&Tag>,
 ) -> Option<Tag> {
     if !matches!(
         p.kind,
-        ProjectileKind::LlamaSpit | ProjectileKind::ShulkerBullet { target: None, .. }
+        ProjectileKind::LlamaSpit | ProjectileKind::ShulkerBullet { .. }
     ) {
         return None;
     }
@@ -2665,7 +2671,44 @@ pub fn spit_or_bullet_to_nbt(
     };
     let mut tag = base.tag(raw);
     put_projectile(&mut tag, p, owner);
+    if let Some(target) = target {
+        put(&mut tag, "Target", Tag::IntArray(target.to_vec()));
+    }
+    if let ProjectileKind::ShulkerBullet {
+        dir: Some(dir),
+        steps,
+        delta,
+        ..
+    } = &p.kind
+    {
+        // ShulkerBullet.addAdditionalSaveData: the move it selected and the
+        // step velocity it flies it with.
+        put(&mut tag, "Dir", Tag::Int(i32::from(*dir)));
+        put(&mut tag, "Steps", Tag::Int(*steps));
+        put(&mut tag, "TXD", Tag::Double(delta[0].to_bits()));
+        put(&mut tag, "TYD", Tag::Double(delta[1].to_bits()));
+        put(&mut tag, "TZD", Tag::Double(delta[2].to_bits()));
+    }
     Some(tag)
+}
+
+/// Resolves a loaded shulker bullet's `Target` UUID once the level's entities
+/// are present (`ShulkerBullet` keeps the UUID until `getEntity` finds the
+/// entity): the acting player, or the mob that UUID belongs to. No match
+/// leaves it without a target, so it falls.
+pub fn resolve_shulker_bullet_target(
+    p: &mut Projectile,
+    uuid: [i32; 4],
+    player: [i32; 4],
+    mob: Option<u32>,
+) {
+    if let ProjectileKind::ShulkerBullet { target, .. } = &mut p.kind {
+        *target = if uuid == player {
+            Some(crate::mobs::Who::Player)
+        } else {
+            mob.map(crate::mobs::Who::Mob)
+        };
+    }
 }
 
 /// `Projectile`'s `Owner`.
@@ -5728,7 +5771,7 @@ mod mod_thrown_nbt_tests {
         // a spit and a target-less bullet are saved and selectable (`/data`, `@e`).
         let spit = spit_or_bullet_from_nbt(&summoned("minecraft:llama_spit", &[]), None).unwrap();
         assert!(saved_with_chunk(&spit));
-        let saved = spit_or_bullet_to_nbt(&spit, [1; 4], None, None).unwrap();
+        let saved = spit_or_bullet_to_nbt(&spit, [1; 4], None, None, None).unwrap();
         assert_eq!(kind(&saved).as_deref(), Some("minecraft:llama_spit"));
 
         // A summoned experience bottle flies as the bottle item, with a bottle's gravity.
@@ -5743,6 +5786,71 @@ mod mod_thrown_nbt_tests {
         assert_eq!(kind(&saved).as_deref(), Some("minecraft:experience_bottle"));
         let item = saved.get("Item").and_then(item_from_nbt).unwrap();
         assert_eq!(&*item.item, "minecraft:experience_bottle");
+    }
+
+    #[test]
+    fn a_shulker_bullets_target_survives_save_and_load() {
+        // ShulkerBullet.addAdditionalSaveData / readAdditionalSaveData: the
+        // bullet keeps the homed entity's UUID in `Target`; the loader holds
+        // it until the level's entities are in, then one the level has comes
+        // back (the player as the player, another entity as that mob) and one
+        // it no longer has does not.
+        let target = [-1, -2, -3, -4];
+        let move_state = [
+            ("Dir", Tag::Int(2)),
+            ("Steps", Tag::Int(7)),
+            ("TXD", Tag::Double(0.1_f64.to_bits())),
+            ("TYD", Tag::Double(0.2_f64.to_bits())),
+            ("TZD", Tag::Double((-0.3_f64).to_bits())),
+        ];
+        let mut bullet = spit_or_bullet_from_nbt(
+            &summoned("minecraft:shulker_bullet", &move_state),
+            None,
+        )
+        .unwrap();
+        if let ProjectileKind::ShulkerBullet { target: at, .. } = &mut bullet.kind {
+            *at = Some(crate::mobs::Who::Mob(77));
+        }
+        assert!(saved_with_chunk(&bullet));
+        let saved = spit_or_bullet_to_nbt(&bullet, [1; 4], None, Some(target), None).unwrap();
+        assert_eq!(uuid_from_tag(saved.get("Target")), Some(target));
+
+        let loaded = spit_or_bullet_from_nbt(&saved, None).unwrap();
+        assert!(matches!(
+            loaded.kind,
+            ProjectileKind::ShulkerBullet { target: None, .. }
+        ));
+        let ProjectileKind::ShulkerBullet {
+            dir,
+            steps,
+            delta,
+            ..
+        } = loaded.kind
+        else {
+            unreachable!("a loaded shulker bullet is one");
+        };
+        assert_eq!((dir, steps), (Some(2), 7));
+        assert_eq!(delta, [0.1, 0.2, -0.3]);
+        let mut resolved = loaded;
+        resolve_shulker_bullet_target(&mut resolved, target, [9; 4], Some(77));
+        assert_eq!(
+            resolved.kind,
+            ProjectileKind::ShulkerBullet {
+                target: Some(crate::mobs::Who::Mob(77)),
+                dir: None,
+                steps: 0,
+                delta: [0.0; 3],
+                seed: 0,
+            }
+        );
+        resolve_shulker_bullet_target(&mut resolved, [9; 4], [9; 4], None);
+        assert!(matches!(
+            resolved.kind,
+            ProjectileKind::ShulkerBullet {
+                target: Some(crate::mobs::Who::Player),
+                ..
+            }
+        ));
     }
 
     #[test]

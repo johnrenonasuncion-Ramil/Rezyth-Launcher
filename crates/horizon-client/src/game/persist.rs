@@ -341,6 +341,7 @@ impl Game<'_> {
     pub(super) fn spawn_loaded_entities(&mut self) {
         let loaded = std::mem::take(&mut self.world.loaded_entities);
         let player_uuid = self.level.player_uuid;
+        let mut bullet_targets = Vec::new();
         for (key, tags) in loaded {
             let count = tags.len();
             for mut tag in tags {
@@ -446,6 +447,14 @@ impl Game<'_> {
                             self.next_entity += 1;
                             p.id = self.next_entity;
                             self.restore_portal_cooldown(p.id, &tag);
+                            if matches!(
+                                p.kind,
+                                horizon_client::projectiles::ProjectileKind::ShulkerBullet { .. }
+                            ) && let Some(target) =
+                                entity_nbt::uuid_from_tag(tag.get("Target"))
+                            {
+                                bullet_targets.push((p.id, target));
+                            }
                             self.add_projectile(p);
                             self.remember_last_projectile_tags(&tag);
                         }
@@ -686,6 +695,18 @@ impl Game<'_> {
                 }
             }
             self.native_entities_load(self.dim.id(), [key.0, key.1], count);
+        }
+        // ShulkerBullet.readAdditionalSaveData keeps Target's UUID until the
+        // entity lookup can resolve it. Every entity of the loaded chunks is
+        // present now; a target the level no longer has stays empty.
+        let player = self.acting_player_uuid();
+        for (id, uuid) in bullet_targets {
+            let mob = (uuid != player)
+                .then(|| self.mob_by_uuid(uuid))
+                .flatten();
+            if let Some(p) = self.creatures.projectiles.iter_mut().find(|p| p.id == id) {
+                entity_nbt::resolve_shulker_bullet_target(p, uuid, player, mob);
+            }
         }
         self.resolve_warden_anger();
     }
@@ -1584,6 +1605,17 @@ impl Game<'_> {
         i: usize,
         keys: &HashSet<ChunkKey>,
     ) -> Option<(ChunkKey, Tag)> {
+        // ShulkerBullet.addAdditionalSaveData: Target is the entity it homes
+        // on, by UUID, resolved here where the world's UUIDs are known.
+        let target_who = match &self.creatures.projectiles[i].kind {
+            horizon_client::projectiles::ProjectileKind::ShulkerBullet { target, .. } => *target,
+            _ => None,
+        };
+        let target = match target_who {
+            Some(Who::Player) => Some(self.acting_player_uuid()),
+            Some(Who::Mob(id)) => Some(self.uuid_for(id)),
+            None => None,
+        };
         let p = &self.creatures.projectiles[i];
         if !keys.contains(&chunk_of(p.position)) || !entity_nbt::saved_with_chunk(p) {
             return None;
@@ -1598,7 +1630,7 @@ impl Game<'_> {
         let tag = entity_nbt::arrow_to_nbt(p, uuid, owner, in_block, raw.as_ref())
             .or_else(|| entity_nbt::fireball_to_nbt(p, uuid, owner, raw.as_ref()))
             .or_else(|| entity_nbt::throwable_to_nbt(p, uuid, owner, raw.as_ref()))
-            .or_else(|| entity_nbt::spit_or_bullet_to_nbt(p, uuid, owner, raw.as_ref()))?;
+            .or_else(|| entity_nbt::spit_or_bullet_to_nbt(p, uuid, owner, target, raw.as_ref()))?;
         Some((
             chunk_of(p.position),
             with_raw(tag, self.persist.raw.get(&p.id)),
