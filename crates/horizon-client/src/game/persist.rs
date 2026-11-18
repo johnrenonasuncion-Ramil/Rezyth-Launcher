@@ -2096,18 +2096,13 @@ mod tests {
     /// its hidden and ambient flags; a dragon's breath stays a breath.
     #[test]
     fn an_area_effect_cloud_round_trips() {
-        let potion = super::super::potions::PotionCloud {
-            effects: vec![("minecraft:speed", 400, 1)],
-            hidden: vec!["minecraft:speed"],
-            ambient: Vec::new(),
-            radius_per_tick: -3.0 / 600.0,
-            color: 0x33EB_FF,
-            victims: Vec::new(),
-            source: horizon_client::text::Text::translate(
-                "entity.minecraft.area_effect_cloud",
-                &[],
-            ),
-        };
+        let potion = super::super::potions::PotionCloud::loaded(
+            vec![("minecraft:speed", 400, 1)],
+            vec!["minecraft:speed"],
+            Vec::new(),
+            -3.0 / 600.0,
+            0x0033_EBFF,
+        );
         let lingering = crate::game::dragon::Breath {
             id: 7,
             at: [1.0, 2.0, 3.0],
@@ -2132,7 +2127,7 @@ mod tests {
         };
         assert_eq!(potion.effects, vec![("minecraft:speed", 400, 1)]);
         assert_eq!(potion.hidden, vec!["minecraft:speed"]);
-        assert_eq!(potion.color, 0x33EB_FF);
+        assert_eq!(potion.color, 0x0033_EBFF);
         assert!((potion.radius_per_tick - -3.0 / 600.0).abs() < 1e-12);
 
         let dragon = crate::game::dragon::Breath {

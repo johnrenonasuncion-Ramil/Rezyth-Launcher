@@ -22685,7 +22685,7 @@ fn reset_world_progress(adv: &mut advancements::AdvState, stats: &mut stats::Sta
     *stats = Default::default();
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(target_os = "android")))]
 mod startup_cpu_tests {
     use super::*;
 

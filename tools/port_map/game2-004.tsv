@@ -71,12 +71,12 @@ PiglinAi.getSoundForActivity	port	crates/horizon-client/src/mobs/piglin.rs::pigl
 PiglinAi.isNearAvoidTarget	inline	crates/horizon-client/src/mobs/piglin.rs::piglin_sound	the avoid target within 12 blocks picks the retreat grunt
 PiglinAi.babySometimesRideBabyHoglin	port	crates/horizon-client/src/mobs/piglin.rs::baby_sometimes_ride_baby_hoglin	the idle activity copies NEAREST_VISIBLE_BABY_HOGLIN into RIDE_TARGET for 10 to 30 seconds
 PiglinAi.broadcastAngerTarget	inline	crates/horizon-client/src/mobs/goals.rs::HurtByTarget::start	gap: minor: alerts same-kind mobs nearby; no closer-target check and no hoglin rule
-PiglinAi.broadcastUniversalAnger	missing		the rule reaches the mob world (`creatures.rs:788` sets `universal_anger`) and the wolf's target goal reads it (`tame.rs:81`, `NeutralMob.isAngryAt`), but nothing in `mobs/piglin.rs`: the piglin anger broadcast is `broadcast_anger` (`broadcastAngerTarget`) only, so no piglin is angered for a rule that is on
+PiglinAi.broadcastUniversalAnger	port	crates/horizon-client/src/mobs/piglin.rs::broadcast_anger	a hurt adult piglin and the adults around it hunt the nearest visible targetable player when `universal_anger` is on
 PiglinAi.setAngerTarget	port	crates/horizon-client/src/game/piglins.rs::Game::anger_piglins	gap: minor: only the player path (600-tick anger); a hoglin target does not set the hunt wait
-PiglinAi.setAngerTargetToNearestTargetablePlayerIfFound	missing		part of `broadcastUniversalAnger`, which the piglin AI does not run; `tame.rs:81` is the one place the rule picks a player, for the wolf
+PiglinAi.setAngerTargetToNearestTargetablePlayerIfFound	port	crates/horizon-client/src/mobs/piglin.rs::nearest_targetable_player	the universal-anger target is the nearest player within the follow range that the piglin sees
 PiglinAi.setAngerTargetIfCloserThanCurrent	inline	crates/horizon-client/src/mobs/goals.rs::HurtByTarget::start	gap: minor: alerts nearby piglins but never keeps a closer target
 PiglinAi.getAvoidTarget	port	crates/horizon-client/src/mobs/piglin.rs::avoid_target	the avoid target while its memory is there
-PiglinAi.getNearestVisibleTargetablePlayer	missing		only used by `broadcastUniversalAnger` and its anger target, neither of which the piglin AI runs
+PiglinAi.getNearestVisibleTargetablePlayer	port	crates/horizon-client/src/mobs/piglin.rs::nearest_targetable_player	the living, non-creative, non-spectator player within the follow range that the piglin sees
 PiglinAi.broadcastRetreat	port	crates/horizon-client/src/mobs/piglin.rs::broadcast_retreat	every adult piglin in range takes the retreat
 PiglinAi.retreatFromNearestTarget	port	crates/horizon-client/src/mobs/piglin.rs::retreat_from_nearest	RETREAT_DURATION of avoiding the nearest target
 PiglinAi.wantsToStopFleeing	port	crates/horizon-client/src/mobs/piglin.rs::wants_to_stop_fleeing	the avoid target is gone or nearby and no hoglin outnumbers the piglin
