@@ -825,6 +825,17 @@ fn broadcast_anger(m: &Mob, w: &MobWorld, by: Who, at: Vec3, events: &mut Vec<Mo
         events.push(MobEvent::SetTarget { mob, target: by });
     }
 }
+/// `PiglinAi.getNearestVisibleTargetablePlayer`: the living, non-creative,
+/// non-spectator player within the follow range that the piglin can see. With
+/// the `universal_anger` rule this is who a hurt piglin hunts, not its attacker.
+fn nearest_targetable_player(m: &mut Mob, w: &MobWorld) -> Option<Vec3> {
+    let p = w.player.as_ref()?;
+    if !p.alive || p.creative || p.spectator {
+        return None;
+    }
+    let range = m.attrs.follow_range;
+    (m.distance_sqr(p.position) <= range * range && m.sees(w, Who::Player)).then_some(p.position)
+}
 /// `PiglinAi.maybeRetaliate`: the tests. Not while retreating, only against
 /// an attacker it can attack and that is not more than 4 blocks further away
 /// than its target.
@@ -880,6 +891,19 @@ fn piglin_hurt(
         broadcast_retreat(m, w, by, at, events);
         m.ai.last_hurt_by = None;
     } else if !piglin_retaliates(m, w, by, at) {
+        m.ai.last_hurt_by = None;
+    } else if w.universal_anger {
+        // PiglinAi.retaliate with the universal_anger rule: the piglin and the
+        // adult piglins around it hunt the nearest visible targetable player,
+        // whoever hit them. The hurt-by goal would aim at the attacker, so the
+        // blow is used up here.
+        if let Some(at) = nearest_targetable_player(m, w) {
+            events.push(MobEvent::SetTarget {
+                mob: m.id,
+                target: Who::Player,
+            });
+            broadcast_anger(m, w, Who::Player, at, events);
+        }
         m.ai.last_hurt_by = None;
     }
 }

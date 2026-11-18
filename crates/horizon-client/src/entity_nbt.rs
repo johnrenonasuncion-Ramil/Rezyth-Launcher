@@ -5547,10 +5547,7 @@ mod warden_anger_tests {
                     uuid: a,
                     anger: 150
                 },
-                crate::mobs::warden::PendingSuspect {
-                    uuid: b,
-                    anger: 42
-                }
+                crate::mobs::warden::PendingSuspect { uuid: b, anger: 42 }
             ]
         );
         // An empty compound has no suspects, and one with a broken pair

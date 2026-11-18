@@ -699,6 +699,8 @@ impl Game<'_> {
             && self.riding != Some(m.id)
             && (!self.guest_rides(m.id) || self.carries_riders())
             && m.species() != Species::Wither
+            // Creaking.canUsePortal: one bound to its heart never leaves it.
+            && (m.species() != Species::Creaking || m.extra.home.is_none())
     }
     /// `Entity.canUsePortal(false)` for a primed TNT: it carries no mob.
     pub(super) fn tnt_can_use_portal(&self, id: u32) -> bool {

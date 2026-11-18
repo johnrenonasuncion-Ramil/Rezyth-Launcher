@@ -640,6 +640,11 @@ impl Mob {
     }
     /// Sensing.hasLineOfSight (cached per tick in vanilla).
     pub fn sees(&mut self, w: &MobWorld, who: Who) -> bool {
+        // Ravager.hasLineOfSight: biting, stunned or roaring, it sees nothing,
+        // so it neither takes a target nor keeps one in sight.
+        if self.species() == Species::Ravager && super::ravager::immobile(self) {
+            return false;
+        }
         if let Some(v) = self.ai.seen_cache.iter().find(|(k, _)| *k == who) {
             return v.1;
         }
