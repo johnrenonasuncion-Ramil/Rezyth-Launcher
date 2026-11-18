@@ -305,6 +305,38 @@ fn cloud_from_nbt(tag: &Tag, id: u32, at: Vec3) -> Option<crate::game::dragon::B
         potion,
     })
 }
+/// `EvokerFangs.addAdditionalSaveData`: its warmup and, when known, its
+/// owner (`Warmup` and `Owner`).
+fn fangs_to_nbt(
+    f: &super::fangs::Fangs,
+    uuid: [i32; 4],
+    owner: Option<[i32; 4]>,
+    raw: Option<&Tag>,
+) -> Tag {
+    let mut e = vec![
+        ("id", Tag::String("minecraft:evoker_fangs".into())),
+        ("UUID", Tag::IntArray(uuid.to_vec())),
+        (
+            "Pos",
+            Tag::List(f.pos.iter().map(|v| Tag::Double(v.to_bits())).collect()),
+        ),
+        ("YRot", Tag::Float(f.yaw.to_bits())),
+        ("Warmup", Tag::Int(f.warmup)),
+    ];
+    if let Some(owner) = owner {
+        e.push(("Owner", Tag::IntArray(owner.to_vec())));
+    }
+    with_raw(Tag::compound(e), raw)
+}
+/// `EvokerFangs.readAdditionalSaveData`: the warmup, and the owner's UUID
+/// until the level's entities are in.
+fn fangs_from_nbt(tag: &Tag) -> Option<(f32, i32, Option<[i32; 4]>)> {
+    Some((
+        float(tag.get("YRot")).unwrap_or(0.0) as f32,
+        number(tag.get("Warmup")).unwrap_or(0) as i32,
+        entity_nbt::uuid_from_tag(tag.get("Owner")),
+    ))
+}
 fn chunk_of(p: Vec3) -> (i32, i32) {
     ((p.x.floor() as i32) >> 4, (p.z.floor() as i32) >> 4)
 }
@@ -480,6 +512,7 @@ impl Game<'_> {
         let loaded = std::mem::take(&mut self.world.loaded_entities);
         let player_uuid = self.level.player_uuid;
         let mut bullet_targets = Vec::new();
+        let mut fang_owners = Vec::new();
         for (key, tags) in loaded {
             let count = tags.len();
             for mut tag in tags {
@@ -664,6 +697,18 @@ impl Game<'_> {
                             }
                         }
                     }
+                    "minecraft:evoker_fangs" => {
+                        if let Some(at) = entity_nbt::position(&tag)
+                            && let Some((yaw, warmup, owner)) = fangs_from_nbt(&tag)
+                        {
+                            let id = self.take_entity_id();
+                            self.insert_fangs(id, [at.x, at.y, at.z], yaw, warmup, 0);
+                            if let Some(owner) = owner {
+                                fang_owners.push((id, owner));
+                            }
+                            self.remember(id, uuid, tag);
+                        }
+                    }
                     "minecraft:firework_rocket" => {
                         if let Some(r) = entity_nbt::firework_rocket_from_nbt(&tag, player_uuid) {
                             let id = self.take_entity_id();
@@ -841,6 +886,15 @@ impl Game<'_> {
                 }
             }
             self.native_entities_load(self.dim.id(), [key.0, key.1], count);
+        }
+        // EvokerFangs.readAdditionalSaveData resolves its owner once the
+        // level's entities are present; one that is gone has no owner.
+        for (id, uuid) in fang_owners {
+            if let Some(owner) = self.mob_by_uuid(uuid)
+                && let Some(f) = self.fangs.list.iter_mut().find(|f| f.id == id)
+            {
+                f.owner = owner;
+            }
         }
         // ShulkerBullet.readAdditionalSaveData keeps Target's UUID until the
         // entity lookup can resolve it. Every entity of the loaded chunks is
@@ -1431,6 +1485,24 @@ impl Game<'_> {
                     .copied()
                     .unwrap_or_else(random_uuid);
                 let tag = cloud_to_nbt(c, uuid, self.persist.raw.get(&c.id));
+                out.entry(chunk_of(at)).or_default().push(tag);
+            }
+        }
+        for f in &self.fangs.list {
+            let at = Vec3::new(f.pos[0], f.pos[1], f.pos[2]);
+            if keys.contains(&chunk_of(at)) {
+                let uuid = self
+                    .persist
+                    .uuids
+                    .get(&f.id)
+                    .copied()
+                    .unwrap_or_else(random_uuid);
+                let tag = fangs_to_nbt(
+                    f,
+                    uuid,
+                    self.persist.uuids.get(&f.owner).copied(),
+                    self.persist.raw.get(&f.id),
+                );
                 out.entry(chunk_of(at)).or_default().push(tag);
             }
         }
@@ -2078,6 +2150,27 @@ mod tests {
         let back = cloud_from_nbt(&tag, 10, entity_nbt::position(&tag).unwrap()).unwrap();
         assert!(back.from_dragon && back.potion.is_none());
         assert_eq!(back.radius, 5.0);
+    }
+
+    /// `EvokerFangs.addAdditionalSaveData` / `readAdditionalSaveData`: the
+    /// warmup and owner come back, a fang with no owner stays without one.
+    #[test]
+    fn evoker_fangs_round_trip() {
+        use crate::game::fangs::Fangs;
+        let fangs = Fangs {
+            id: 1,
+            pos: [1.0, 2.0, 3.0],
+            yaw: 90.0,
+            warmup: -4,
+            life: 22,
+            owner: 0,
+            started: false,
+        };
+        let tag = fangs_to_nbt(&fangs, MOUNT, Some([5, 6, 7, 8]), None);
+        let (yaw, warmup, owner) = fangs_from_nbt(&tag).unwrap();
+        assert_eq!((yaw, warmup, owner), (90.0, -4, Some([5, 6, 7, 8])));
+        let no_owner = fangs_to_nbt(&fangs, MOUNT, None, None);
+        assert!(no_owner.get("Owner").is_none());
     }
 
     fn entity(kind: &str) -> Tag {

@@ -10,9 +10,9 @@ pub(super) struct Fangs {
     pub id: u32,
     pub pos: [f64; 3],
     pub yaw: f32,
-    warmup: i32,
+    pub(super) warmup: i32,
     pub life: i32,
-    owner: u32,
+    pub(super) owner: u32,
     pub started: bool,
 }
 #[derive(Default)]
