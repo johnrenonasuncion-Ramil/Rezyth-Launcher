@@ -36,6 +36,7 @@ use horizon_protocol::{
     item::{Hashed, Stack},
     packets::{
         Empty,
+        configuration::CustomPayload,
         play::{self, Clientbound as C, Serverbound as S},
     },
     registry::{Builtin, DimensionType, Dynamic, SyncedNames, ceil_log2},
@@ -1297,6 +1298,8 @@ impl Game<'_> {
         if let Some(mut r) = self.remote.take() {
             r.session.disconnect();
         }
+        // Relay voices belong to the connection that carried them.
+        self.audio.clear_remote_voices();
         super::lan::forget_sync_data();
         self.gui.atlas.object_skins.clear();
         self.server_packs_disconnect();
@@ -3506,6 +3509,20 @@ impl Game<'_> {
             C::CustomPayload(p) if p.channel == horizon_client::lan::recipes::CONTENT_CHANNEL => {
                 self.remote_recipe_content(&p.data);
             }
+            // Another player's voice, relayed with its server position.
+            C::CustomPayload(p) if p.channel == horizon_protocol::voice::CHANNEL => {
+                if let Some(incoming) = horizon_protocol::voice::parse_relay(&p.data)
+                    && let Some(sender) = incoming.sender
+                {
+                    let [x, y, z] = incoming.at;
+                    self.audio.push_remote_voice(
+                        sender,
+                        [f64::from(x), f64::from(y), f64::from(z)],
+                        incoming.rate,
+                        &incoming.samples,
+                    );
+                }
+            }
             // PingDebugMonitor.onPongReceived.
             C::PongResponse(p) => {
                 let delay = self.debug_millis() - p.time;
@@ -5200,6 +5217,7 @@ impl Game<'_> {
                         r.skin_textures.remove(&u);
                         r.listed.remove(&u);
                         r.attachments.remove(&Holder::Player(u));
+                        self.audio.clear_remote_voice(u);
                     }
                 }
             }
@@ -6360,6 +6378,18 @@ impl Game<'_> {
             r.session.send_far_terrain();
         }
         self.tick_chat_session();
+        // Rezyth Settings' proximity voice: what the mic captured since the
+        // last tick goes to the server, which relays it to the others. Only
+        // a Horizon server carries the channel.
+        if self.remote.as_ref().is_some_and(|r| r.joined && r.mod_net)
+            && let Some((rate, samples)) = self.audio.take_voice_net()
+        {
+            let data = horizon_protocol::voice::frame(rate, &samples);
+            self.send(S::CustomPayload(CustomPayload {
+                channel: horizon_protocol::voice::CHANNEL.into(),
+                data,
+            }));
+        }
         // Minecraft.tick sends this even when the player cannot tick yet,
         // including while waiting for chunks. Keep it outside early returns.
         if self.remote.as_ref().is_some_and(|r| r.joined) {

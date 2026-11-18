@@ -189,6 +189,7 @@ mod lan_screen;
 mod lan_stations;
 mod lan_trading;
 mod lan_vehicles;
+mod lan_voice;
 mod lan_waypoints;
 mod launch_api;
 mod leads;
@@ -3032,6 +3033,8 @@ struct Game<'a> {
     native_lifecycle: native_lifecycle::NativeLifecycle,
     /// Native mods' messages waiting (`game/native_net.rs`).
     native_net: native_net::NativeNet,
+    /// Relayed voice chunks this server tick, by connection (`game/lan_voice.rs`).
+    voice_relays: std::collections::HashMap<u32, u8>,
     /// The mod whose own screen is open (`Screen::Mod`).
     native_mod_screen: Option<String>,
     /// Meshed sections waiting for an upload budget (Horizon settings).
@@ -19812,6 +19815,7 @@ impl<'a> Game<'a> {
             native_input: Default::default(),
             native_lifecycle: Default::default(),
             native_net: Default::default(),
+            voice_relays: Default::default(),
             native_mod_screen: None,
             sky_darken_memo: Default::default(),
             water_plane_memo: Default::default(),

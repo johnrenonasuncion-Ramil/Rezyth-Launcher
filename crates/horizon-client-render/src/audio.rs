@@ -103,6 +103,27 @@ struct Mixer {
     voice_lpf: f32,
     voice_echo_buf: Vec<f32>,
     voice_echo_i: usize,
+    /// The mic's captured samples waiting for the network send (the same
+    /// gain and gate as the loopback ring); drained once a tick.
+    voice_net: std::collections::VecDeque<f32>,
+    /// The other players' voices the server relayed, by sender: each one's
+    /// ring, last position and resampler/muffle state.
+    voice_remote: Vec<RemoteVoice>,
+}
+
+/// One other player's voice on its way to the speakers: the server's last
+/// position for them (for the proximity gain) and the samples still queued.
+#[derive(Default)]
+struct RemoteVoice {
+    uuid: u128,
+    at: [f64; 3],
+    rate: u32,
+    ring: std::collections::VecDeque<f32>,
+    acc: f32,
+    last: f32,
+    lpf: f32,
+    echo_buf: Vec<f32>,
+    echo_i: usize,
 }
 
 /// The input callback's capture half: measure the chunk, run the gate
@@ -121,18 +142,24 @@ fn capture_voice(m: &mut Mixer, data: &[f32], in_rate: u32) {
     };
     m.voice_speaking = m.voice_enabled && gate;
     if !m.voice_speaking {
-        // Drop whatever is buffered so the loopback never lags behind the gate.
+        // Drop whatever is buffered so the loopback never lags behind the
+        // gate, and nothing held back is sent late either.
         m.voice_in.clear();
+        m.voice_net.clear();
         return;
     }
     for &x in data {
-        m.voice_in
-            .push_back(crate::voice::voice_gain(x, m.voice_mic_pct));
+        let x = crate::voice::voice_gain(x, m.voice_mic_pct);
+        m.voice_in.push_back(x);
+        m.voice_net.push_back(x);
     }
     // A ~200 ms bound at the input rate: a paused or slow mix never lags.
     let bound = u64::from(in_rate) * 2 / 10;
     while m.voice_in.len() as u64 > bound {
         m.voice_in.pop_front();
+    }
+    while m.voice_net.len() as u64 > bound {
+        m.voice_net.pop_front();
     }
 }
 /// A camera's forward, up and right vectors.
@@ -845,6 +872,52 @@ fn mix(mixer: &mut Mixer, data: &mut [f32], channels: usize, rate: u32) {
             }
         }
         mixer.voice_acc = acc;
+    }
+    // The other players' voices, relayed by the server: each one at its
+    // proximity gain from the listener's camera, at the output gain, muffled
+    // by the same cave setting as your own.
+    if mixer.voice_enabled && !mixer.voice_remote.is_empty() {
+        let listener = mixer.listener;
+        let reach = mixer.voice_distance_blocks;
+        let muffle = mixer.voice_cave_muffle;
+        let out_gain = crate::voice::voice_out_gain(1.0, mixer.voice_out_pct);
+        let delay = (rate * 3 / 50).max(1) as usize;
+        for voice in &mut mixer.voice_remote {
+            let dx = voice.at[0] - listener[0];
+            let dy = voice.at[1] - listener[1];
+            let dz = voice.at[2] - listener[2];
+            let distance = (dx * dx + dy * dy + dz * dz).sqrt() as f32;
+            let proximity = crate::voice::voice_distance_gain(reach, distance);
+            if proximity <= 0.0 {
+                continue;
+            }
+            let step = voice.rate.max(1) as f32 / rate as f32;
+            if muffle && voice.echo_buf.len() != delay {
+                voice.echo_buf.resize(delay, 0.0);
+                voice.echo_i = 0;
+            }
+            let mut acc = voice.acc;
+            for frame in data.chunks_mut(channels) {
+                acc += step;
+                while acc >= 1.0 {
+                    acc -= 1.0;
+                    if let Some(x) = voice.ring.pop_front() {
+                        voice.last = x;
+                    }
+                }
+                let x = voice.last;
+                let y = if muffle {
+                    let l = one_pole_lpf(&mut voice.lpf, x, 0.35);
+                    comb_echo(&mut voice.echo_buf, &mut voice.echo_i, l, 0.3)
+                } else {
+                    x
+                };
+                for s in frame {
+                    *s += y * out_gain * proximity;
+                }
+            }
+            voice.acc = acc;
+        }
     }
     // Limit the whole buffer together, preserving waveform and stereo balance
     // instead of flattening each overloaded sample; release over 200 ms
@@ -1614,6 +1687,8 @@ impl Audio {
             if !enabled {
                 m.voice_speaking = false;
                 m.voice_in.clear();
+                m.voice_net.clear();
+                m.voice_remote.clear();
             }
         }
     }
@@ -1630,6 +1705,61 @@ impl Audio {
             .mixer
             .lock()
             .map_or((0.0, false), |m| (m.voice_level, m.voice_speaking))
+    }
+    /// The mic samples captured for the network since the last call
+    /// (`horizon:voice`), as `(rate, samples)`; None while the gate is
+    /// closed, the mic is off, or nothing new was captured.
+    pub fn take_voice_net(&mut self) -> Option<(u32, Vec<f32>)> {
+        let mut m = self.backend.mixer.lock().ok()?;
+        if m.voice_net.is_empty() {
+            return None;
+        }
+        let rate = m.voice_in_rate.max(1);
+        Some((rate, m.voice_net.drain(..).collect()))
+    }
+    /// Another player's relayed voice (`horizon:voice`): their server
+    /// position (for the proximity gain), capture rate and samples. A sender
+    /// already queued gets the new samples and position appended.
+    pub fn push_remote_voice(&mut self, sender: u128, at: [f64; 3], rate: u32, samples: &[f32]) {
+        let Ok(mut m) = self.backend.mixer.lock() else {
+            return;
+        };
+        // A bounded list: a spammy or spoofed flood cannot grow it forever.
+        const MAX_VOICES: usize = 64;
+        let i = match m.voice_remote.iter().position(|v| v.uuid == sender) {
+            Some(i) => i,
+            None => {
+                if m.voice_remote.len() >= MAX_VOICES {
+                    m.voice_remote.remove(0);
+                }
+                m.voice_remote.push(RemoteVoice {
+                    uuid: sender,
+                    ..RemoteVoice::default()
+                });
+                m.voice_remote.len() - 1
+            }
+        };
+        let voice = &mut m.voice_remote[i];
+        voice.at = at;
+        voice.rate = rate.max(1);
+        // At most a second queued, so a burst never plays late for long.
+        let bound = voice.rate as usize;
+        voice.ring.extend(samples.iter().copied());
+        while voice.ring.len() > bound {
+            voice.ring.pop_front();
+        }
+    }
+    /// Forget a player's queued voice when they leave (`PlayerInfoRemove`).
+    pub fn clear_remote_voice(&mut self, sender: u128) {
+        if let Ok(mut m) = self.backend.mixer.lock() {
+            m.voice_remote.retain(|v| v.uuid != sender);
+        }
+    }
+    /// Forget every queued voice when the connection ends.
+    pub fn clear_remote_voices(&mut self) {
+        if let Ok(mut m) = self.backend.mixer.lock() {
+            m.voice_remote.clear();
+        }
     }
     /// The wall-occlusion factor for a positional sound: the table's entry in
     /// the direction from the listener to it; 1.0 while off or relative.
@@ -1949,16 +2079,18 @@ mod tests {
             voice_loopback: true,
             ..Default::default()
         };
-        // A loud chunk passes the gate into the ring, mic-gained.
+        // A loud chunk passes the gate into the rings, mic-gained.
         let loud = [0.5_f32; 240];
         capture_voice(&mut m, &loud, 48_000);
         assert!(m.voice_speaking);
         assert_eq!(m.voice_in.len(), 240);
+        assert_eq!(m.voice_net.len(), 240, "the network ring gets the same");
         assert!((m.voice_in[0] - 0.5).abs() < 1e-6);
-        // A quiet chunk drops the gate and empties the ring (no stale lag).
+        // A quiet chunk drops the gate and empties the rings (no stale lag).
         capture_voice(&mut m, &[0.01_f32; 240], 48_000);
         assert!(!m.voice_speaking);
         assert!(m.voice_in.is_empty());
+        assert!(m.voice_net.is_empty());
         // Loud again, then the mix drains it into the output buffer.
         capture_voice(&mut m, &loud, 48_000);
         assert_eq!(m.voice_in.len(), 240);
@@ -1968,6 +2100,40 @@ mod tests {
         // Both channels carry the voice at the loopback's half volume (before
         // the limiter's gain).
         assert!(data.iter().any(|s| *s > 0.05));
+    }
+
+    /// Another player's relayed voice mixes at its proximity gain from the
+    /// listener; a voice past the reach stays silent.
+    #[test]
+    fn voice_remote_mixes_by_proximity() {
+        let mut m = Mixer {
+            voice_enabled: true,
+            voice_out_pct: 100,
+            voice_distance_blocks: 48,
+            listener: [0.0, 0.0, 0.0],
+            ..Default::default()
+        };
+        // 24 blocks away of a 48 block reach: half volume.
+        m.voice_remote.push(RemoteVoice {
+            uuid: 9,
+            at: [24.0, 0.0, 0.0],
+            rate: 48_000,
+            ring: vec![0.5_f32; 480].into(),
+            ..RemoteVoice::default()
+        });
+        let mut data = vec![0.0_f32; 2 * 480];
+        mix(&mut m, &mut data, 2, 48_000);
+        assert!(
+            data.iter().any(|s| (*s - 0.25).abs() < 1e-5),
+            "half the sample at half proximity: {data:?}"
+        );
+        assert!(m.voice_remote[0].ring.len() < 480, "the mix drains it");
+        // Past the reach: nothing added.
+        m.voice_remote[0].at = [96.0, 0.0, 0.0];
+        m.voice_remote[0].ring = vec![0.5_f32; 480].into();
+        let mut silent = vec![0.0_f32; 2 * 480];
+        mix(&mut m, &mut silent, 2, 48_000);
+        assert!(silent.iter().all(|s| *s == 0.0));
     }
 
     /// Push-to-talk captures only while the key is held, whatever the level.

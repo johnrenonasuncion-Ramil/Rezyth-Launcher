@@ -1,11 +1,13 @@
 //! Rezyth Settings' 3D proximity voice (`volt_chat.voice_*`): the microphone
-//! capture chain and the loopback test path. The capture runs on the audio
-//! input stream (the `audio` feature; without it the buffer stays empty and
-//! the HUD shows the mic as unavailable), the output mix drains it while the
-//! loopback test path is on. The network transport to the other players (the
-//! `voice_port` UDP socket) is not built yet; the loopback makes every
-//! setting here — mic gain, the activity gate, the cave muffle, the output
-//! gain — audible on your own voice.
+//! capture chain, the loopback test path and the network transport. The
+//! capture runs on the audio input stream (the `audio` feature; without it the
+//! buffer stays empty and the HUD shows the mic as unavailable), the output
+//! mix drains it while the loopback test path is on. The transport carries the
+//! same gained, gated samples over the session connection as `horizon:voice`
+//! custom payloads; a Horizon server relays each chunk to the other players in
+//! the dimension, with the sender's server position, and their clients mix it
+//! at the proximity gain below. A vanilla server ignores the unknown channel,
+//! so voice stays between Horizon players.
 
 /// The RMS level (0..1) of a capture chunk.
 pub fn voice_rms(frame: &[f32]) -> f32 {

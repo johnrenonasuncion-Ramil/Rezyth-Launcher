@@ -2053,6 +2053,9 @@ impl Game<'_> {
         let Some(mut host) = self.lan.take() else {
             return;
         };
+        // The voice relay allowance is a server tick's, like the native
+        // message one.
+        self.voice_relays.clear();
         let holding = lan::Holding::start();
         // Last tick's tracked entities: enough for place collision and joins
         // before this tick moves anyone.
