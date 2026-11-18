@@ -1054,6 +1054,12 @@ impl Game<'_> {
                 let from = events.len();
                 let started = timed.then(std::time::Instant::now);
                 let kept = m.tick(&w, &mut scratch, &mut events);
+                // Ravager.updateControlFlags: a boat or mob rider takes its
+                // own movement goals away.
+                if m.species() == Species::Ravager {
+                    let on_boat = self.boats.iter().any(|b| Some(b.id) == m.extra.mount);
+                    horizon_client::mobs::ravager::update_control_flags(m, on_boat);
+                }
                 if let Some(t) = started {
                     tick_ms += t.elapsed().as_secs_f32() * 1000.0;
                     ticked += 1;

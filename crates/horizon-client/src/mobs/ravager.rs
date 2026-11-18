@@ -4,7 +4,9 @@
 use super::{
     Damage, Mob, MobEvent, MobWorld, Species, Who,
     anim::{Poses, State},
-    goals::{Float, HurtByTarget, LookAtPlayer, MeleeAttack, NearestTarget, Stroll},
+    goals::{
+        Float, HurtByTarget, JUMP, LOOK, LookAtPlayer, MOVE, MeleeAttack, NearestTarget, Stroll,
+    },
     path::PathType,
 };
 use horizon_core::geometry::trig::Mth;
@@ -48,6 +50,19 @@ pub fn register(m: &mut Mob) {
 /// `Ravager.isImmobile`: biting, stunned or roaring.
 pub fn immobile(m: &Mob) -> bool {
     m.extra.counter > 0 || m.extra.counter2 > 0 || m.extra.anim_ticks > 0
+}
+/// `Ravager.updateControlFlags`: a mob rider or a boat takes the ravager's
+/// own move, jump and look goals away; jumping only while it is on the ground.
+pub fn update_control_flags(m: &mut Mob, on_boat: bool) {
+    let free = m.extra.rider.is_none() && !on_boat;
+    let mut flags = 0;
+    if free {
+        flags |= MOVE | LOOK;
+        if m.on_ground {
+            flags |= JUMP;
+        }
+    }
+    m.ai.goals.disabled = (m.ai.goals.disabled & !(MOVE | JUMP | LOOK)) | flags;
 }
 /// `Ravager.doHurtTarget`: the bite animation (entity event 4 for clients).
 pub fn on_attack(m: &mut Mob, events: &mut Vec<MobEvent>) {
