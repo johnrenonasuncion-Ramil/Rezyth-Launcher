@@ -687,6 +687,7 @@ impl Game<'_> {
             }
             self.native_entities_load(self.dim.id(), [key.0, key.1], count);
         }
+        self.resolve_warden_anger();
     }
     /// A saved mob and, under `Passengers`, the mobs riding it.
     pub(super) fn load_mob(&mut self, tag: Tag, mount: Option<u32>) -> Option<u32> {
@@ -1054,6 +1055,38 @@ impl Game<'_> {
         }
         self.write_leash(&mut tag, i);
         self.put_mob_passengers(&mut tag, id);
+        // `Warden.addAdditionalSaveData`: the anger compound names each
+        // suspect by UUID, so it is written here where the world's entity
+        // UUIDs are known (`entity_nbt` has only the saved mob's own).
+        if self.mobs[i].species() == horizon_client::mobs::Species::Warden {
+            use horizon_client::mobs::Who;
+            let player = self.acting_player_uuid();
+            let suspects = self.mobs[i]
+                .extra
+                .warden
+                .as_ref()
+                .map(|st| {
+                    st.anger
+                        .suspects()
+                        .iter()
+                        .map(|who| (*who, st.anger.anger_of(*who)))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            let pairs: Vec<([i32; 4], i32)> = suspects
+                .into_iter()
+                .map(|(who, anger)| {
+                    let uuid = match who {
+                        Who::Player => player,
+                        Who::Mob(mob) => self.uuid_for(mob),
+                    };
+                    (uuid, anger)
+                })
+                .collect();
+            if let Tag::Compound(c) = &mut tag {
+                c.insert("anger".into(), entity_nbt::anger_to_nbt(&pairs));
+            }
+        }
         tag
     }
     /// Forget an entity that left the world (its UUID and loaded compound).
@@ -1144,6 +1177,42 @@ impl Game<'_> {
             .iter()
             .find(|(id, u)| **u == uuid && self.mobs.iter().any(|m| m.id == **id))
             .map(|(id, _)| *id)
+    }
+    /// `WardenAngerManager.createFromUuids`: a loaded warden's suspects are
+    /// resolved to the entities of the level now that the chunk's entities are
+    /// in; one the level no longer has is dropped, as vanilla's constructor
+    /// does.
+    fn resolve_warden_anger(&mut self) {
+        use horizon_client::mobs::Who;
+        let player = self.acting_player_uuid();
+        let mut resolved: Vec<(usize, Vec<(Who, i32)>)> = Vec::new();
+        for (i, m) in self.mobs.iter().enumerate() {
+            let Some(st) = &m.extra.warden else {
+                continue;
+            };
+            if st.pending_anger.is_empty() {
+                continue;
+            }
+            let pairs = st
+                .pending_anger
+                .iter()
+                .filter_map(|p| {
+                    let who = if p.uuid == player {
+                        Who::Player
+                    } else {
+                        Who::Mob(self.mob_by_uuid(p.uuid)?)
+                    };
+                    Some((who, p.anger))
+                })
+                .collect();
+            resolved.push((i, pairs));
+        }
+        for (i, pairs) in resolved {
+            if let Some(st) = self.mobs[i].extra.warden.as_mut() {
+                st.anger.restore(pairs);
+                st.pending_anger.clear();
+            }
+        }
     }
     /// A mob's UUID, made up for new ones.
     pub(super) fn mob_uuid(&mut self, id: u32) -> [i32; 4] {

@@ -240,6 +240,20 @@ impl AngerManagement {
     pub fn active_entity(&self, can_target: impl Fn(Who) -> bool) -> Option<Who> {
         self.suspects.iter().copied().find(|w| can_target(*w))
     }
+    /// `AngerManagement`'s constructor from its save: the suspects that were
+    /// resolved to entities, with their anger (`createFromUuids` drops those
+    /// the level no longer has).
+    pub fn restore(&mut self, pairs: impl IntoIterator<Item = (Who, i32)>) {
+        self.anger.clear();
+        self.suspects.clear();
+        for (who, level) in pairs {
+            if level > 0 && !self.anger.contains_key(&who) {
+                self.anger.insert(who, level.min(MAX_ANGER));
+                self.suspects.push(who);
+            }
+        }
+        self.sort_and_update_highest();
+    }
     pub fn anger_of(&self, who: Who) -> i32 {
         self.anger.get(&who).copied().unwrap_or(0)
     }
@@ -248,10 +262,22 @@ impl AngerManagement {
     }
 }
 
+/// A suspect of a saved warden, before the entity it names is loaded: the
+/// `anger` compound stores UUIDs, and `WardenAngerManager.createFromUuids`
+/// resolves them against the level once every entity of the chunk is in.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct PendingSuspect {
+    pub uuid: [i32; 4],
+    pub anger: i32,
+}
+
 /// The warden's state: anger, its vibration listener and its brain.
 #[derive(Clone, Debug, Default)]
 pub struct Warden {
     pub anger: AngerManagement,
+    /// `anger`'s suspects as saved UUIDs, resolved on the first tick after a
+    /// chunk load (`WardenAngerManager.createFromUuids`).
+    pub pending_anger: Vec<PendingSuspect>,
     pub vibration: sculk::Data,
     pub brain: Brain,
     /// `getClientAngerLevel`, synchronised once a second.
@@ -1050,6 +1076,23 @@ mod tests {
         assert_eq!(a.active_anger(None), 44);
         a.clear(Who::Mob(5));
         assert_eq!(a.active_anger(None), 0);
+    }
+
+    /// `WardenAngerManager.createFromUuids`: the restored suspects keep their
+    /// anger and the manager sorts them as if they had been increased.
+    #[test]
+    fn restoring_a_saved_anger_keeps_the_levels_and_order() {
+        let mut a = AngerManagement::default();
+        a.restore([(Who::Mob(2), 50), (Who::Player, 10), (Who::Mob(1), 90)]);
+        assert_eq!(a.anger_of(Who::Mob(1)), 90);
+        assert_eq!(a.anger_of(Who::Mob(2)), 50);
+        assert_eq!(a.anger_of(Who::Player), 10);
+        assert_eq!(a.active_anger(None), 90);
+        assert_eq!(a.active_entity(|_| true), Some(Who::Mob(1)));
+        // A suspect the level no longer has never reaches `restore`.
+        let mut b = AngerManagement::default();
+        b.restore(Vec::new());
+        assert_eq!(b.active_anger(None), 0);
     }
 
     #[test]

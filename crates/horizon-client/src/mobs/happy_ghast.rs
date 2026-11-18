@@ -564,14 +564,21 @@ pub fn ai_step(m: &mut Mob, w: &MobWorld) {
         }
     }
     // continuousHeal: a point every 30 seconds, every second in rain or snow
-    // (Level.precipitationAt).
+    // (Level.precipitationAt), or at cloud height under the open sky
+    // (Entity.isInClouds: the overworld's visual/cloud_height 192.33, the box
+    // from one block below to four above it).
     if m.alive() && m.death_time == 0 && m.health < m.attrs.max_health {
         let (x, y, z) = (
             m.position.x.floor() as i32,
             m.position.y.floor() as i32,
             m.position.z.floor() as i32,
         );
-        let wet = w.precipitation_at(x, y, z).is_some();
+        let wet = w.precipitation_at(x, y, z).is_some()
+            || (!w.nether
+                && !w.end
+                && w.can_see_sky(x, y, z)
+                && m.position.y + f64::from(m.height()) >= 192.33 - 1.0
+                && m.position.y <= 192.33 + 4.0);
         let interval = if wet { 20 } else { 600 };
         if m.age.is_multiple_of(interval) {
             m.heal(1.0);

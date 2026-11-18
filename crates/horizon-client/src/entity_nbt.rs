@@ -328,6 +328,41 @@ fn is_air(registry: &BlockRegistry, state: BlockStateId) -> bool {
         )
     })
 }
+/// `AngerManagement.CODEC`: the warden's `anger` compound, `suspects` holding
+/// one `{uuid, anger}` per suspect (most angry first, as `AngerManagement`
+/// keeps them).
+pub fn anger_to_nbt(suspects: &[([i32; 4], i32)]) -> Tag {
+    Tag::compound([(
+        "suspects",
+        Tag::List(
+            suspects
+                .iter()
+                .map(|(uuid, anger)| {
+                    Tag::compound([
+                        ("uuid", Tag::IntArray(uuid.to_vec())),
+                        ("anger", Tag::Int(*anger)),
+                    ])
+                })
+                .collect(),
+        ),
+    )])
+}
+/// The `anger` compound of a saved warden: the suspect UUIDs and their anger,
+/// for `WardenAngerManager.createFromUuids` to resolve once the chunk is loaded.
+pub fn anger_from_nbt(tag: &Tag) -> Vec<crate::mobs::warden::PendingSuspect> {
+    let Some(Tag::List(suspects)) = tag.get("suspects") else {
+        return Vec::new();
+    };
+    suspects
+        .iter()
+        .filter_map(|s| {
+            Some(crate::mobs::warden::PendingSuspect {
+                uuid: uuid_from_tag(s.get("uuid"))?,
+                anger: number(s.get("anger"))? as i32,
+            })
+        })
+        .collect()
+}
 /// The mob's entity compound. `registry` is what writes a field holding a block
 /// state (an enderman's `carriedBlockState`): without one, a caller that has no
 /// resources (unit tests, structure templates) keeps whatever the loaded
@@ -1925,6 +1960,14 @@ pub fn mob_from_nbt(
         crate::mobs::warden::finalize(&mut m, false, &mut Vec::new());
         if let (Some(st), Some(listener)) = (m.extra.warden.as_mut(), tag.get("listener")) {
             st.vibration = crate::sculk::Data::from_nbt(listener);
+        }
+        // `Warden.readAdditionalSaveData`: the anger compound names its
+        // suspects by UUID; `WardenAngerManager.createFromUuids` resolves them
+        // once the level's entities are loaded.
+        if let Some(st) = m.extra.warden.as_mut()
+            && let Some(anger) = tag.get("anger")
+        {
+            st.pending_anger = anger_from_nbt(anger);
         }
     }
     // Armadillo.readAdditionalSaveData: keeps the constructor's time when absent.
@@ -5478,6 +5521,46 @@ mod neutral_anger_tests {
         // The anger that is left when the mob comes back.
         assert_eq!(crate::mobs::anger_left(3000, 1000), 2000);
         assert_eq!(crate::mobs::anger_left(3000, 4000), 0);
+    }
+}
+
+#[cfg(test)]
+mod warden_anger_tests {
+    use super::*;
+
+    /// `Warden.addAdditionalSaveData` / `readAdditionalSaveData`: `anger` is
+    /// the suspect UUIDs with their anger, which come back unchanged.
+    #[test]
+    fn a_wardens_anger_round_trips_through_its_compound() {
+        let a = [1, 2, 3, 4];
+        let b = [-5, -6, -7, -8];
+        let tag = anger_to_nbt(&[(a, 150), (b, 42)]);
+        let Some(Tag::List(suspects)) = tag.get("suspects") else {
+            panic!("anger.suspects is the list of suspects");
+        };
+        assert_eq!(suspects.len(), 2);
+        let back = anger_from_nbt(&tag);
+        assert_eq!(
+            back,
+            vec![
+                crate::mobs::warden::PendingSuspect {
+                    uuid: a,
+                    anger: 150
+                },
+                crate::mobs::warden::PendingSuspect {
+                    uuid: b,
+                    anger: 42
+                }
+            ]
+        );
+        // An empty compound has no suspects, and one with a broken pair
+        // keeps only the pairs that read.
+        assert!(anger_from_nbt(&Tag::Compound(Default::default())).is_empty());
+        let broken = Tag::compound([(
+            "suspects",
+            Tag::List(vec![Tag::compound([("anger", Tag::Int(20))])]),
+        )]);
+        assert!(anger_from_nbt(&broken).is_empty());
     }
 }
 

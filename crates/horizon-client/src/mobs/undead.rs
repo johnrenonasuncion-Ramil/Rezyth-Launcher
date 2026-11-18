@@ -899,6 +899,12 @@ pub fn perform_ranged_attack(m: &mut Mob, who: Who, cx: &mut Cx, power: f32) {
         Some(Who::Mob(m.id)),
     );
     p.set_bonus(super::gear::arrow_bonus(m));
+    // WitherSkeleton.getArrow: the arrow it shoots burns for 100 seconds.
+    if m.species() == Species::WitherSkeleton
+        && let Some(arrow) = p.arrow.as_mut()
+    {
+        arrow.ignite_for_seconds(100.0);
+    }
     p.shoot(
         &mut arrow_random,
         [xd, yd + dist * 0.2, zd],
