@@ -143,6 +143,7 @@ impl Mob {
             can_pass_doors: self.ai.nav.can_pass_doors,
             can_walk_over_fences: self.ai.nav.can_walk_over_fences,
             stands_on_lava: self.kind.flags.lava_walker,
+            home: self.extra.home,
         }
     }
     /// `Mob.getMaxFallDistance` (normal difficulty), with `Creeper`'s

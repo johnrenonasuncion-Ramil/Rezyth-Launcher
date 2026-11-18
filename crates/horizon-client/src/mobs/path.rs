@@ -155,6 +155,8 @@ pub struct PathMob {
     pub can_walk_over_fences: bool,
     /// Striders stand on lava (`canStandOnFluid`).
     pub stands_on_lava: bool,
+    /// `CreakingPathNavigation`'s heart: no path beyond 32 blocks of it.
+    pub home: Option<[i32; 3]>,
 }
 impl PathMob {
     pub fn malus(&self, t: PathType) -> f32 {
@@ -485,6 +487,16 @@ impl<'a, 'w> Finder<'a, 'w> {
     }
     /// WalkNodeEvaluator.getPathTypeOfMob.
     fn path_type_of_mob(&self, x: i32, y: i32, z: i32) -> PathType {
+        // Creaking.HomeNodeEvaluator.getPathType: a heart-bound creaking
+        // never takes a node more than 32 blocks from its heart.
+        if let Some(home) = self.mob.home {
+            let dx = f64::from(x) - f64::from(home[0]);
+            let dy = f64::from(y) - f64::from(home[1]);
+            let dz = f64::from(z) - f64::from(home[2]);
+            if dx * dx + dy * dy + dz * dz > 32.0 * 32.0 {
+                return PathType::Blocked;
+            }
+        }
         if let Evaluator::Swim { .. } = self.eval {
             return self.swim_path_type(x, y, z);
         }

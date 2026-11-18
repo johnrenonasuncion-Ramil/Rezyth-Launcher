@@ -72,8 +72,8 @@ Creaking.canUsePortal	missing		`game/nether_portal.rs::mob_can_use_portal` tests
 Creaking.readAdditionalSaveData	port	crates/horizon-client/src/entity_nbt.rs::mob_from_nbt	home_pos is read back as the transient home
 Creaking.checkEyeBlink	inline	crates/horizon-client/src/mobs/creaking.rs::animate	eye flicker timing on the dying creaking
 Creaking.knockback	port	crates/horizon-client/src/mobs.rs::Mob::knockback	
-Creaking.CreakingPathNavigation.createPathFinder	missing		no home-distance node evaluator: `m.extra.home` is read for damage, tearing down and the save, never by the pathfinder
-Creaking.HomeNodeEvaluator.getPathType	missing		no node is marked blocked for being more than 32 blocks from the heart
+Creaking.CreakingPathNavigation.createPathFinder	port	crates/horizon-client/src/mobs/nav.rs::Mob::path_mob	the path mob carries the transient heart into the finder
+Creaking.HomeNodeEvaluator.getPathType	port	crates/horizon-client/src/mobs/path.rs::path::Finder::path_type_of_mob	a node more than 32 blocks from the heart is blocked
 CreakingAi.initCoreActivity	port	crates/horizon-client/src/mobs/monster_brain.rs::creaking_packages	core swim, look-at-target and move sink
 CreakingAi.initIdleActivity	port	crates/horizon-client/src/mobs/monster_brain.rs::creaking_packages	idle: attack active creakings, look sometimes, stroll, look-walk or do nothing
 CreakingAi.initFightActivity	port	crates/horizon-client/src/mobs/monster_brain.rs::creaking_packages	fight: walk to target, melee on a 40 tick cooldown, stop when unreachable
