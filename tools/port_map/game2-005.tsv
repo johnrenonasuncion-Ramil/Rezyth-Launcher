@@ -139,4 +139,5 @@ EvokerFangs.getAnimationProgress	port	crates/horizon-client/src/game/fangs.rs::G
 EyeOfEnder.setItem	skip:ui		the item sprite a flying eye shows; Horizon draws the eye itself
 EyeOfEnder.shouldRenderAtSqrDistance	skip:ui		render distance culling only
 EyeOfEnder.spawnParticles	port	crates/horizon-client/src/game/end.rs::Game::eye_break_particles	the portal crumbs drawn in toward the eye
-EyeOfEnder.readAdditionalSaveData	missing		a flying eye of ender is not saved: `entity_nbt.rs` has no writer for it (nor `saved_with_chunk` a kind for it), so a save mid-flight loses it
+EyeOfEnder.addAdditionalSaveData	port	crates/horizon-client/src/game/end.rs::eye_to_nbt	Pos and Motion; gap: minor: the optional render `Item` is not written, and like vanilla the target, the life counter and the survival roll are not saved
+EyeOfEnder.readAdditionalSaveData	port	crates/horizon-client/src/game/end.rs::eye_from_nbt	Pos and Motion; gap: minor: the optional render `Item` is not read, and like vanilla the target, the life counter and the survival roll are not saved, so a loaded eye falls

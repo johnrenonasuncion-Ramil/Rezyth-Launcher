@@ -709,6 +709,12 @@ impl Game<'_> {
                             self.remember(id, uuid, tag);
                         }
                     }
+                    "minecraft:eye_of_ender" => {
+                        let id = self.take_entity_id();
+                        if self.end.load_eye(&tag, id) {
+                            self.remember(id, uuid, tag);
+                        }
+                    }
                     "minecraft:firework_rocket" => {
                         if let Some(r) = entity_nbt::firework_rocket_from_nbt(&tag, player_uuid) {
                             let id = self.take_entity_id();
@@ -1504,6 +1510,19 @@ impl Game<'_> {
                     self.persist.raw.get(&f.id),
                 );
                 out.entry(chunk_of(at)).or_default().push(tag);
+            }
+        }
+        for (id, at, velocity) in self.end.eyes_for_save() {
+            let p = Vec3::new(at[0], at[1], at[2]);
+            if keys.contains(&chunk_of(p)) {
+                let uuid = self
+                    .persist
+                    .uuids
+                    .get(&id)
+                    .copied()
+                    .unwrap_or_else(random_uuid);
+                let tag = super::end::eye_to_nbt(at, velocity, uuid, self.persist.raw.get(&id));
+                out.entry(chunk_of(p)).or_default().push(tag);
             }
         }
         for s in &self.ominous_spawners {

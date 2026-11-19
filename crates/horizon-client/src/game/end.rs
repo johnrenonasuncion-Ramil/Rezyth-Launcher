@@ -261,6 +261,64 @@ impl EndState {
     pub(super) fn eye_positions(&self) -> impl Iterator<Item = (u32, [f64; 3])> {
         self.eyes.iter().map(|e| (e.id, e.position.to_array()))
     }
+    /// Every eye in flight for the save: (id, position, motion).
+    pub(super) fn eyes_for_save(&self) -> impl Iterator<Item = (u32, [f64; 3], [f64; 3])> + '_ {
+        self.eyes
+            .iter()
+            .map(|e| (e.id, e.position.to_array(), e.velocity.to_array()))
+    }
+    /// `EyeOfEnder` a chunk loads: an eye the level has comes back in flight,
+    /// one a chunk without a position is dropped.
+    pub(super) fn load_eye(&mut self, tag: &Tag, id: u32) -> bool {
+        match eye_from_nbt(tag, id) {
+            Some(eye) => {
+                self.eyes.push(eye);
+                true
+            }
+            None => false,
+        }
+    }
+}
+
+/// `EyeOfEnder.addAdditionalSaveData`: the base entity tags. The optional
+/// render `Item` is the plain eye Horizon does not model, and the target, the
+/// life counter and the survival roll are not saved (vanilla saves none of
+/// them either), so a loaded eye has no target and falls.
+pub(super) fn eye_to_nbt(
+    at: [f64; 3],
+    velocity: [f64; 3],
+    uuid: [i32; 4],
+    raw: Option<&Tag>,
+) -> Tag {
+    let tag = Tag::compound([
+        ("id", Tag::String("minecraft:eye_of_ender".into())),
+        ("UUID", Tag::IntArray(uuid.to_vec())),
+        (
+            "Pos",
+            Tag::List(at.iter().map(|v| Tag::Double(v.to_bits())).collect()),
+        ),
+        (
+            "Motion",
+            Tag::List(velocity.iter().map(|v| Tag::Double(v.to_bits())).collect()),
+        ),
+    ]);
+    super::persist::with_raw(tag, raw)
+}
+/// `EyeOfEnder.readAdditionalSaveData`: the base entity tags. A loaded eye
+/// keeps its motion and, with no saved target, falls as vanilla's would.
+fn eye_from_nbt(tag: &Tag, id: u32) -> Option<EyeOfEnder> {
+    let position = horizon_client::entity_nbt::position(tag)?;
+    let v = horizon_client::entity_nbt::motion(tag);
+    let position = glam::DVec3::new(position.x, position.y, position.z);
+    Some(EyeOfEnder {
+        id,
+        position,
+        previous: position,
+        velocity: glam::DVec3::new(v.x, v.y, v.z),
+        target: position,
+        life: 0,
+        survive: false,
+    })
 }
 
 /// The EyeOfEnder entity.
@@ -1661,6 +1719,29 @@ fn eye_quad(
 mod tests {
     use super::*;
     use horizon_client::containers::EndGateway;
+
+    /// `EyeOfEnder.addAdditionalSaveData` / `readAdditionalSaveData`: a flying
+    /// eye saves its position and motion and comes back in flight; the target,
+    /// life counter and survival roll are not saved (vanilla saves none of
+    /// them either), and the plain eye writes no render `Item`.
+    #[test]
+    fn a_flying_eye_of_ender_survives_the_save_without_its_target() {
+        let tag = eye_to_nbt([1.5, 2.0, 3.5], [0.1, 0.2, -0.3], [1, 2, 3, 4], None);
+        let mut state = EndState::default();
+        assert!(state.load_eye(&tag, 8));
+        let eye = state.eyes.last().expect("the eye loaded");
+        assert_eq!(eye.id, 8);
+        assert_eq!(eye.position.to_array(), [1.5, 2.0, 3.5], "Pos comes back");
+        assert_eq!(eye.velocity.to_array(), [0.1, 0.2, -0.3]);
+        assert_eq!(eye.target.to_array(), [1.5, 2.0, 3.5], "no saved target");
+        assert_eq!((eye.life, eye.survive), (0, false));
+        let eye = state.eyes.pop().expect("the eye loaded");
+        let _ = eye;
+        assert!(tag.get("Item").is_none(), "the plain eye is the default");
+        // An eye of ender without a position is not loaded.
+        let no_pos = Tag::compound([("id", Tag::String("minecraft:eye_of_ender".into()))]);
+        assert!(!state.load_eye(&no_pos, 9));
+    }
 
     #[test]
     fn a_new_exit_keeps_the_gateways_exact_teleport() {
