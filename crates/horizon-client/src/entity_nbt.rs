@@ -5069,7 +5069,7 @@ mod item_component_tests {
         let mut shulker = spawn("minecraft:shulker", 5);
         apply_item_components(&mut shulker, &egg);
         assert_eq!(shulker.extra.color, 5, "lime, not NO_COLOR");
-        let mut egg = crate::items::ItemStack::new("minecraft:shulker_spawn_egg", 1);
+        let egg = crate::items::ItemStack::new("minecraft:shulker_spawn_egg", 1);
         let mut shulker = spawn("minecraft:shulker", 6);
         shulker.extra.color = 3;
         apply_item_components(&mut shulker, &egg);
