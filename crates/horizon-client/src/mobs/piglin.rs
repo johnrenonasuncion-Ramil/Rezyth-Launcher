@@ -918,7 +918,10 @@ fn piglin_hurt(
 /// of sight becomes its `ANGRY_AT` for 600 ticks. With `universal_anger` a
 /// player's hit hunts the nearest visible targetable player instead.
 fn brute_hurt(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>, by: Who) {
-    if matches!(species_of(w, by), Some(Species::Piglin | Species::PiglinBrute)) {
+    if matches!(
+        species_of(w, by),
+        Some(Species::Piglin | Species::PiglinBrute)
+    ) {
         return;
     }
     let Some(at) = w.target_info(by).map(|t| t.position) else {
@@ -927,14 +930,12 @@ fn brute_hurt(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>, by: Who) {
     if !piglin_retaliates(m, w, by, at) {
         return;
     }
-    let target = if by == Who::Player
-        && w.universal_anger
-        && nearest_targetable_player(m, w).is_some()
-    {
-        Who::Player
-    } else {
-        by
-    };
+    let target =
+        if by == Who::Player && w.universal_anger && nearest_targetable_player(m, w).is_some() {
+            Who::Player
+        } else {
+            by
+        };
     if attackable(m, w, target, false) {
         m.extra.piglin.angry_at = Some(target);
         m.extra.piglin.anger = BRUTE_ANGER;
@@ -1390,8 +1391,7 @@ impl Goal for BruteTarget {
         self.found.is_some()
     }
     fn can_continue(&mut self, m: &mut Mob, cx: &mut Cx) -> bool {
-        m.ai
-            .target
+        m.ai.target
             .is_some_and(|target| brute_is_nearest_valid_attack_target(m, cx.w, target))
     }
     fn start(&mut self, m: &mut Mob, _: &mut Cx) {
@@ -2287,8 +2287,16 @@ mod brute_target_tests {
                     brute_find_nearest_valid_attack_target(&mut brute, &w),
                     Some(Who::Mob(2))
                 );
-                assert!(brute_is_nearest_valid_attack_target(&mut brute, &w, Who::Mob(2)));
-                assert!(!brute_is_nearest_valid_attack_target(&mut brute, &w, Who::Mob(3)));
+                assert!(brute_is_nearest_valid_attack_target(
+                    &mut brute,
+                    &w,
+                    Who::Mob(2)
+                ));
+                assert!(!brute_is_nearest_valid_attack_target(
+                    &mut brute,
+                    &w,
+                    Who::Mob(3)
+                ));
 
                 brute.extra.piglin.anger = 0;
                 brute.extra.piglin.angry_at = None;
