@@ -199,7 +199,8 @@ fn teleport(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>) -> bool {
             f64::from(t[1]),
             f64::from(t[2]) + 0.5,
         );
-        m.previous = m.position;
+        // Shulker.getRenderPosition: the renderer slides the shell from the
+        // old spot to the new one across the teleport's tick.
         // Level.levelEvent(2016, oldPos, packedDiff): the teleport's
         // particles at both ends, seen by the players around.
         events.push(MobEvent::LevelEvent {

@@ -126,7 +126,7 @@ Shulker.move	missing		the `SHULKER_BOX` mover type has no counterpart: `shulker:
 Shulker.findAttachableSurface	port	crates/horizon-client/src/mobs/shulker.rs::attachable	
 Shulker.isPositionBlocked	inline	crates/horizon-client/src/mobs/shulker.rs::can_stay_at	the blocked-position check is part of can_stay_at
 Shulker.onSyncedDataUpdated	skip:other		network sync hook; the box is computed from the face on demand
-Shulker.getRenderPosition	missing		no render slide: `client_tick` eases the lid and squares the body, and nothing interpolates the position across a teleport
+Shulker.getRenderPosition	port	crates/horizon-client/src/mobs/shulker.rs::teleport	the teleport keeps the old position as the renderer's previous, so the shell slides to its new spot
 Shulker.setVariant	inline	crates/horizon-client/src/mobs/shulker.rs::register	colour comes from spawn data; NO_COLOR when unset
 Shulker.getColor	inline	crates/horizon-client/src/mobs/shulker.rs::texture	colour is read from extra.color for the texture
 Shulker.get	skip:other		component getter; Horizon reads extra.color directly
