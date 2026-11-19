@@ -50,20 +50,20 @@ Pillager.wantsItem	skip:other		dead code: only a white banner passes, and Pillag
 PiglinBrute.createAttributes	skip:data		attributes come from entity-types.json
 PiglinBrute.customServerAiStep	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	gap: minor: the brain tick is replaced by the goals set in register_brute; the activity update is in PiglinBruteAi rows
 PiglinBrute.finalizeSpawn	inline	crates/horizon-client/src/mobs/finalize.rs::Ctx::mob	golden axe in the main hand via populate; initMemories is missing
-PiglinBrute.hurtServer	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	gap: minor: retaliation is the HurtByTarget goal; no PiglinAi.maybeRetaliate for non-piglin attackers
+PiglinBrute.hurtServer	port	crates/horizon-client/src/mobs/piglin.rs::brute_hurt	PiglinAi.maybeRetaliate for non-piglin attackers: attackable ignoring line of sight, not much further than the current target, then a 600-tick ANGRY_AT memory and broadcast
 PiglinBrute.wantsToPickUp	port	crates/horizon-client/src/mobs/equip.rs::wants_to_pick_up	
 PiglinBruteAi.createIdleLookBehaviors	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	gap: minor: looks at players only (LookAtPlayer); no look at piglins, random look or do-nothing pause
 PiglinBruteAi.createIdleMovementBehaviors	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	gap: minor: strolls anywhere; no visits to piglins and no return to its home point
-PiglinBruteAi.findNearestValidAttackTarget	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	gap: minor: targets nearest player or wither skeleton through the target goals; no anger memory first
-PiglinBruteAi.initCoreActivity	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	gap: minor: no door opening and no stop-anger-when-target-dead rule; panic-free float only
+PiglinBruteAi.findNearestValidAttackTarget	port	crates/horizon-client/src/mobs/piglin.rs::brute_find_nearest_valid_attack_target	live ANGRY_AT first ignoring line of sight, then nearest visible attackable player, then nearest visible nemesis (wither skeleton or wither)
+PiglinBruteAi.initCoreActivity	inline	crates/horizon-client/src/mobs/piglin.rs::ai_step	gap: minor: no door opening; panic-free float only; stop-anger-when-target-dead clears ANGRY_AT in ai_step
 PiglinBruteAi.initFightActivity	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	melee goal at priority 2; attacks as the MeleeAttack goal does
 PiglinBruteAi.initIdleActivity	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	idle behaviour as goals: stroll, look at player, targets
 PiglinBruteAi.initMemories	port	crates/horizon-client/src/mobs/finalize.rs::Ctx::mob	the spawn block is remembered as the brute's home and a home memory is set
-PiglinBruteAi.isNearestValidAttackTarget	missing		minor: the brute never drops a target for a nearer one; target goals keep theirs until it dies or is lost
+PiglinBruteAi.isNearestValidAttackTarget	port	crates/horizon-client/src/mobs/piglin.rs::brute_is_nearest_valid_attack_target	recomputes findNearestValidAttackTarget and BruteTarget.can_continue drops the current target when it is no longer the selected one
 PiglinBruteAi.maybePlayActivitySound	port	crates/horizon-client/src/mobs/piglin.rs::maybe_play_brute_sound	the level random is drawn every tick and the angry grunt plays under 0.0125 while the brute is fighting
 PiglinBruteAi.playActivitySound	port	crates/horizon-client/src/mobs/piglin.rs::play_brute_sound	entity.piglin_brute.angry when the fight activity starts
-PiglinBruteAi.setAngerTarget	missing		minor: no 600-tick anger memory; the target goals keep the target instead
-PiglinBruteAi.updateActivity	inline	crates/horizon-client/src/mobs/piglin.rs::register_brute	gap: minor: no fight and idle activity switch; the melee goal sets the aggressive flag
+PiglinBruteAi.setAngerTarget	port	crates/horizon-client/src/mobs/piglin.rs::brute_hurt	attackable targets are remembered as ANGRY_AT for BRUTE_ANGER=600 ticks; broadcast SetTarget also sets the brute memory in game/creatures.rs
+PiglinBruteAi.updateActivity	port	crates/horizon-client/src/mobs/piglin.rs::update_activity	first valid of fight and idle; a target enters fight and the activity change voices the brute growl
 StartAdmiringItemIfSeen.create	inline	crates/horizon-client/src/game/piglins.rs::Game::piglin_pickups	gap: player: a piglin takes a wanted item and admires it in hand; it does not stop to admire one it only sees on the ground
 StopAdmiringIfItemTooFarAway.create	inline	crates/horizon-client/src/mobs/piglin.rs::Memories::admire_seen	the 9 block test on NEAREST_VISIBLE_WANTED_ITEM (squared 81) while the off hand holds what is admired, folded into the admire memory tick
 StopAdmiringIfTiredOfTryingToReachItem.create	inline	crates/horizon-client/src/mobs/piglin.rs::Memories::admire_seen	the 200 tick TIME_TRYING_TO_REACH_ADMIRE_ITEM countdown that ends the admire, then DISABLE_WALK_TO_ADMIRE_ITEM for 200

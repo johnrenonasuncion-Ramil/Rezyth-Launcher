@@ -24,6 +24,8 @@ const CONVERSION: i32 = 300;
 /// `PiglinAi.CELEBRATION_TIME`: how long the `CELEBRATE_LOCATION` and
 /// `DANCING` memories last.
 const CELEBRATION: i32 = 300;
+/// `PiglinBruteAi.setAngerTarget`: `ANGRY_AT` is remembered for 600 ticks.
+pub const BRUTE_ANGER: i32 = 600;
 
 /// `Activity`: what a piglin's or hoglin's brain is busy with. `Admire`,
 /// `Celebrate` and `Ride` are a piglin's only; the others are both.
@@ -104,6 +106,10 @@ pub struct Memories {
     pub walk_off: i32,
     /// `ADMIRING_DISABLED`: the ticks left.
     pub admire_disabled: i32,
+    /// A piglin brute's `ANGRY_AT`: who it is angry at.
+    pub angry_at: Option<Who>,
+    /// A piglin brute's `ANGRY_AT` memory's ticks left.
+    pub anger: i32,
 }
 impl Memories {
     /// `StartAdmiringItemIfSeen.create(119)` (core activity) and the admire
@@ -907,9 +913,37 @@ fn piglin_hurt(
         m.ai.last_hurt_by = None;
     }
 }
-/// What a piglin or hoglin handles before its goals run: the retreats other
-/// mobs broadcast to it, the hit `wasHurtBy` reacts to and, for a piglin,
-/// its celebration.
+/// `PiglinBruteAi.wasHurtBy` and `PiglinAi.maybeRetaliate` for a brute: another
+/// piglin or brute changes nothing, and anything else it can attack without line
+/// of sight becomes its `ANGRY_AT` for 600 ticks. With `universal_anger` a
+/// player's hit hunts the nearest visible targetable player instead.
+fn brute_hurt(m: &mut Mob, w: &MobWorld, events: &mut Vec<MobEvent>, by: Who) {
+    if matches!(species_of(w, by), Some(Species::Piglin | Species::PiglinBrute)) {
+        return;
+    }
+    let Some(at) = w.target_info(by).map(|t| t.position) else {
+        return;
+    };
+    if !piglin_retaliates(m, w, by, at) {
+        return;
+    }
+    let target = if by == Who::Player
+        && w.universal_anger
+        && nearest_targetable_player(m, w).is_some()
+    {
+        Who::Player
+    } else {
+        by
+    };
+    if attackable(m, w, target, false) {
+        m.extra.piglin.angry_at = Some(target);
+        m.extra.piglin.anger = BRUTE_ANGER;
+        broadcast_anger(m, w, target, at, events);
+    }
+}
+/// What a piglin, brute or hoglin handles before its goals run: the retreats
+/// other mobs broadcast to it, the hit `wasHurtBy` reacts to and, for a
+/// piglin, its celebration.
 pub fn before_goals(m: &mut Mob, w: &MobWorld, lr: &mut LegacyRandom, events: &mut Vec<MobEvent>) {
     for (from, at) in std::mem::take(&mut m.extra.piglin.retreats) {
         retreat_from_nearest(m, w, lr, from, at);
@@ -920,6 +954,11 @@ pub fn before_goals(m: &mut Mob, w: &MobWorld, lr: &mut LegacyRandom, events: &m
         m.extra.piglin.hurt_seen = m.ai.last_hurt_by_time;
         if m.species() == Species::Hoglin {
             hoglin_hurt(m, w, lr, by);
+        } else if m.species() == Species::PiglinBrute {
+            brute_hurt(m, w, events, by);
+            // The brute has no separate HurtByTarget goal: its anger memory
+            // is the retaliation, so this hit is used up here.
+            m.ai.last_hurt_by = None;
         } else {
             piglin_hurt(m, w, lr, events, by);
         }
@@ -1305,18 +1344,70 @@ impl Goal for HuntHoglin {
         m.ai.target = None;
     }
 }
+/// `PiglinBruteAi.findNearestValidAttackTarget`: a remembered angry target
+/// that is still attackable wins even without line of sight; otherwise the
+/// nearest visible attackable player, then the nearest visible nemesis.
+fn brute_find_nearest_valid_attack_target(m: &mut Mob, w: &MobWorld) -> Option<Who> {
+    if m.extra.piglin.anger > 0
+        && let Some(angry) = m.extra.piglin.angry_at
+        && attackable(m, w, angry, false)
+    {
+        return Some(angry);
+    }
+    if m.can_target_player(w, m.attrs.follow_range, true) {
+        return Some(Who::Player);
+    }
+    if let Some(nemesis) = m.extra.piglin.nemesis
+        && attackable(m, w, nemesis, true)
+    {
+        return Some(nemesis);
+    }
+    None
+}
+/// `PiglinBruteAi.isNearestValidAttackTarget`: the current target is valid only
+/// while recomputing the choice still picks it.
+fn brute_is_nearest_valid_attack_target(m: &mut Mob, w: &MobWorld, target: Who) -> bool {
+    brute_find_nearest_valid_attack_target(m, w) == Some(target)
+}
+/// `StartAttacking` plus `StopAttackingIfTargetInvalid` for a brute: every
+/// target choice goes through `findNearestValidAttackTarget`, so a remembered
+/// anger target beats sighted targets and a stale target is dropped when a
+/// better one is chosen.
+#[derive(Clone, Debug, Default)]
+struct BruteTarget {
+    found: Option<Who>,
+}
+impl Goal for BruteTarget {
+    goal_clone!();
+    fn flags(&self) -> u8 {
+        TARGET
+    }
+    fn name(&self) -> &'static str {
+        "StartAttacking"
+    }
+    fn can_use(&mut self, m: &mut Mob, cx: &mut Cx) -> bool {
+        self.found = brute_find_nearest_valid_attack_target(m, cx.w);
+        self.found.is_some()
+    }
+    fn can_continue(&mut self, m: &mut Mob, cx: &mut Cx) -> bool {
+        m.ai
+            .target
+            .is_some_and(|target| brute_is_nearest_valid_attack_target(m, cx.w, target))
+    }
+    fn start(&mut self, m: &mut Mob, _: &mut Cx) {
+        m.ai.target = self.found;
+    }
+    fn stop(&mut self, m: &mut Mob, _: &mut Cx) {
+        m.ai.target = None;
+    }
+}
 pub fn register_brute(m: &mut Mob) {
     let g = &mut m.ai.goals;
     g.add(0, Float);
     g.add(2, MeleeAttack::new(1.0, true));
     g.add(5, Stroll::avoiding_water(0.6));
     g.add(6, LookAtPlayer::new(8.0));
-    let mut hurt = HurtByTarget::new().alert();
-    hurt.ignore = vec![Species::Piglin, Species::PiglinBrute];
-    m.ai.targets.add(1, hurt);
-    m.ai.targets.add(2, NearestTarget::player(true));
-    m.ai.targets
-        .add(3, NearestTarget::species(&[Species::WitherSkeleton], true));
+    m.ai.targets.add(1, BruteTarget::default());
 }
 pub fn register_hoglin(m: &mut Mob) {
     let g = &mut m.ai.goals;
@@ -1701,6 +1792,22 @@ pub fn ai_step(
     // `PiglinBrute.customServerAiStep`: `updateActivity`, then
     // `maybePlayActivitySound`, after the goals that pick the brute's target.
     if m.alive() && m.species() == Species::PiglinBrute {
+        // `StopBeingAngryIfTargetDead` drops a dead remembered target, then
+        // the 600-tick `ANGRY_AT` memory runs out.
+        let angry_dead = m
+            .extra
+            .piglin
+            .angry_at
+            .is_some_and(|who| w.target_info(who).is_none_or(|t| !t.alive));
+        if angry_dead {
+            m.extra.piglin.anger = 0;
+            m.extra.piglin.angry_at = None;
+        } else if m.extra.piglin.anger > 0 {
+            m.extra.piglin.anger -= 1;
+            if m.extra.piglin.anger == 0 {
+                m.extra.piglin.angry_at = None;
+            }
+        }
         update_activity(m, w, events);
         maybe_play_brute_sound(m, level_random, events);
     }
@@ -1777,8 +1884,12 @@ pub fn ai_step(
     } else {
         m.extra.counter2 = 0;
     }
-    // PiglinSpecificSensor (every 20 ticks): the nearest repelling block.
-    if m.species() == Species::Piglin && m.alive() && m.age.wrapping_add(m.id).is_multiple_of(20) {
+    // PiglinSpecificSensor (every 20 ticks): the nearest repelling block and
+    // the nearest visible nemesis, which a brute's target choice also reads.
+    if matches!(m.species(), Species::Piglin | Species::PiglinBrute)
+        && m.alive()
+        && m.age.wrapping_add(m.id).is_multiple_of(20)
+    {
         m.extra.repellent = find_piglin_repellent(m, w);
         piglin_sense(m, w);
     }
@@ -2134,6 +2245,121 @@ mod brute_sound_tests {
             assert_eq!(sounds(&events).len(), growls, "tick {tick}");
         }
         assert!(growls > 0, "the roll never hit");
+    }
+}
+
+#[cfg(test)]
+mod brute_target_tests {
+    use super::*;
+    use crate::mobs::sensor_scan_tests::kind;
+    use crate::mobs::world::{test_player, with_test_world};
+    use std::sync::Arc;
+
+    fn mob(id: u32, species: Species, at: Vec3) -> Mob {
+        let mut kind = kind();
+        Arc::make_mut(&mut kind).species = species;
+        Mob::new(id, kind, at, 0.0)
+    }
+
+    /// `PiglinBruteAi.findNearestValidAttackTarget`: a live `ANGRY_AT` wins
+    /// over a visible player, the visible player wins over the nemesis, and
+    /// `isNearestValidAttackTarget` rejects a target another choice replaces.
+    #[test]
+    fn a_brute_picks_anger_first_player_second_and_revalidates() {
+        let zombie = mob(2, Species::Zombie, Vec3::new(4.5, 64.0, 0.5));
+        let wither_skeleton = mob(3, Species::WitherSkeleton, Vec3::new(6.5, 64.0, 0.5));
+        with_test_world(
+            &[zombie.seen(None), wither_skeleton.seen(None)],
+            |world, _| {
+                let mut w = world.clone();
+                w.player = Some(test_player(Vec3::new(8.5, 64.0, 0.5)));
+                let mut brute = mob(1, Species::PiglinBrute, Vec3::new(0.5, 64.0, 0.5));
+                brute.extra.piglin.nemesis = Some(Who::Mob(3));
+
+                assert_eq!(
+                    brute_find_nearest_valid_attack_target(&mut brute, &w),
+                    Some(Who::Player)
+                );
+
+                brute.extra.piglin.angry_at = Some(Who::Mob(2));
+                brute.extra.piglin.anger = BRUTE_ANGER;
+                assert_eq!(
+                    brute_find_nearest_valid_attack_target(&mut brute, &w),
+                    Some(Who::Mob(2))
+                );
+                assert!(brute_is_nearest_valid_attack_target(&mut brute, &w, Who::Mob(2)));
+                assert!(!brute_is_nearest_valid_attack_target(&mut brute, &w, Who::Mob(3)));
+
+                brute.extra.piglin.anger = 0;
+                brute.extra.piglin.angry_at = None;
+                w.player = None;
+                assert_eq!(
+                    brute_find_nearest_valid_attack_target(&mut brute, &w),
+                    Some(Who::Mob(3))
+                );
+
+                let mut events = Vec::new();
+                let mut lr = LegacyRandom::new(0);
+                let mut cx = Cx {
+                    w: &w,
+                    lr: &mut lr,
+                    events: &mut events,
+                };
+                let mut goal = BruteTarget::default();
+                brute.ai.target = Some(Who::Mob(3));
+                assert!(goal.can_continue(&mut brute, &mut cx));
+                drop(cx);
+                w.player = Some(test_player(Vec3::new(8.5, 64.0, 0.5)));
+                let mut cx = Cx {
+                    w: &w,
+                    lr: &mut lr,
+                    events: &mut events,
+                };
+                assert!(!goal.can_continue(&mut brute, &mut cx));
+            },
+        );
+    }
+
+    /// `StopBeingAngryIfTargetDead` and the `ANGRY_AT` expiry: a dead angry
+    /// target clears immediately, and a live one lasts exactly 600 ticks.
+    #[test]
+    fn brute_anger_clears_when_its_target_dies_and_expires_after_600_ticks() {
+        let mut zombie = mob(2, Species::Zombie, Vec3::new(4.5, 64.0, 0.5));
+        let dead_zombie = {
+            let mut dead = zombie.seen(None);
+            dead.alive = false;
+            dead
+        };
+        let mut brute = mob(1, Species::PiglinBrute, Vec3::new(0.5, 64.0, 0.5));
+        brute.extra.flag2 = true;
+        brute.extra.piglin.angry_at = Some(Who::Mob(2));
+        brute.extra.piglin.anger = BRUTE_ANGER;
+
+        with_test_world(&[dead_zombie], |w, _| {
+            let mut events = Vec::new();
+            let mut lr = LegacyRandom::new(0);
+            ai_step(&mut brute, w, &mut lr, &mut events);
+            assert_eq!(brute.extra.piglin.anger, 0);
+            assert_eq!(brute.extra.piglin.angry_at, None);
+        });
+
+        let zombie = zombie.seen(None);
+        let mut brute = mob(1, Species::PiglinBrute, Vec3::new(0.5, 64.0, 0.5));
+        brute.extra.flag2 = true;
+        brute.extra.piglin.angry_at = Some(Who::Mob(2));
+        brute.extra.piglin.anger = BRUTE_ANGER;
+        with_test_world(&[zombie], |w, _| {
+            let mut events = Vec::new();
+            let mut lr = LegacyRandom::new(0);
+            for _ in 0..(BRUTE_ANGER - 1) {
+                ai_step(&mut brute, w, &mut lr, &mut events);
+            }
+            assert_eq!(brute.extra.piglin.anger, 1);
+            assert_eq!(brute.extra.piglin.angry_at, Some(Who::Mob(2)));
+            ai_step(&mut brute, w, &mut lr, &mut events);
+            assert_eq!(brute.extra.piglin.anger, 0);
+            assert_eq!(brute.extra.piglin.angry_at, None);
+        });
     }
 }
 

@@ -2319,6 +2319,12 @@ impl Game<'_> {
                 }
                 MobEvent::SetTarget { mob, target } => {
                     if let Some(m) = self.mobs.iter_mut().find(|m| m.id == mob) {
+                        // A broadcast anger target is the brute's 600-tick
+                        // `ANGRY_AT` memory, not just its current attack target.
+                        if m.species() == Species::PiglinBrute {
+                            m.extra.piglin.angry_at = Some(target);
+                            m.extra.piglin.anger = horizon_client::mobs::piglin::BRUTE_ANGER;
+                        }
                         m.ai.target = Some(target);
                     }
                 }
