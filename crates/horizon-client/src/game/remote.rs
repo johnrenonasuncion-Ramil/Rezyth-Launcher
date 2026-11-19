@@ -4653,11 +4653,7 @@ impl Game<'_> {
                     // The Maps tab's Automatic Death Waypoints (once per
                     // death: the screen guard above).
                     self.record_death_waypoint();
-                    self.close_dialogs();
-                    self.screen = Screen::Dead;
-                    self.ui.death_time = 0;
-                    self.ui.death_confirm = None;
-                    self.capture(false);
+                    self.show_death_screen();
                 }
             }
             C::PlayerCombatKill(p) => {
@@ -4678,11 +4674,7 @@ impl Game<'_> {
                     // hidden screen records here.
                     self.record_death_waypoint();
                     if self.remote.as_ref().is_none_or(|r| r.show_death_screen) {
-                        self.close_dialogs();
-                        self.screen = Screen::Dead;
-                        self.ui.death_time = 0;
-                        self.ui.death_confirm = None;
-                        self.capture(false);
+                        self.show_death_screen();
                     } else {
                         self.respawn_player()?;
                     }

@@ -708,6 +708,20 @@ impl Game<'_> {
             );
         }
     }
+    /// `ClientPacketListener.handlePlayerCombatKill`: open the death screen.
+    /// `AbstractContainerScreen.tick` closes a dead player's menu first, so a
+    /// chest or furnace open at death stops counting this player as an opener
+    /// instead of leaving its lid up. The inventory menu closes the same way.
+    pub(super) fn show_death_screen(&mut self) {
+        if matches!(self.screen, Screen::Inventory | Screen::Creative) {
+            self.close_container();
+        }
+        self.close_dialogs();
+        self.screen = Screen::Dead;
+        self.ui.death_time = 0;
+        self.ui.death_confirm = None;
+        self.capture(false);
+    }
     /// LocalPlayer.respawn: the player comes back (the death screen's
     /// button, or at once with `immediate_respawn`).
     pub(super) fn respawn_player(&mut self) -> Result<()> {

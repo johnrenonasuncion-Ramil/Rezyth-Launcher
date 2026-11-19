@@ -26,7 +26,7 @@ AbstractContainerScreen.onMouseClickAction	inline	crates/horizon-client/src/game
 AbstractContainerScreen.keyPressed	port	crates/horizon-client/src/game.rs::Game::inventory_hotkey	number keys, F and Q over a slot; keyPickItem bound to a keyboard key does not clone the hovered slot
 AbstractContainerScreen.checkHotbarKeyPressed	port	crates/horizon-client/src/game.rs::Game::inventory_hotkey	hotbar and off hand swaps while the hand is empty
 AbstractContainerScreen.removed	port	crates/horizon-client/src/game.rs::Game::close_container	carried stack and crafting grid go back to the inventory or are thrown
-AbstractContainerScreen.tick	missing		no closeContainer for a dead player: death only swaps to the death screen, so a chest or furnace open at death stays counted as open (lid up)
+AbstractContainerScreen.tick	port	crates/horizon-client/src/game/screens.rs::Game::show_death_screen	death closes an open container or inventory before the death screen, so the menu and its lid no longer stay open
 AbstractContainerScreen.quickCraftToSlots	port	crates/horizon-client/src/game.rs::Game::inventory_release	start, one add per slot, end
 AbstractContainerScreen.onClose	port	crates/horizon-client/src/game.rs::Game::close_container	closes the container and clears the bundle selection
 AbstractFurnaceScreen.init	inline	crates/horizon-client/src/game.rs::Game::draw_inventory	furnace arm centres the title
