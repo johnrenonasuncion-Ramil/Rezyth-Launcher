@@ -130,7 +130,7 @@ Shulker.getRenderPosition	port	crates/horizon-client/src/mobs/shulker.rs::telepo
 Shulker.setVariant	inline	crates/horizon-client/src/mobs/shulker.rs::register	colour comes from spawn data; NO_COLOR when unset
 Shulker.getColor	inline	crates/horizon-client/src/mobs/shulker.rs::texture	colour is read from extra.color for the texture
 Shulker.get	skip:other		component getter; Horizon reads extra.color directly
-Shulker.applyImplicitComponent	missing		a shulker spawned from a shulker box item ignores its colour: the implicit components are applied to a mob coming out of a bucket only (`entity_nbt::bucket_components`)
+Shulker.applyImplicitComponent	port	crates/horizon-client/src/entity_nbt.rs::apply_item_components	a spawn egg's `minecraft:shulker/color` dye names the shell's colour; an egg with no colour keeps NO_COLOR (16)
 Shulker.ShulkerDefenseAttackGoal.getTargetSearchArea	missing		no defense target goal: `mobs/shulker.rs::register` gives the shulker `HurtByTarget` with `alert` (a hurt shulker wakes the targetless ones around it) and a player search box 4 deep along the attach axis, nothing that defends another shulker
 Shulker.ShulkerNearestAttackGoal.getTargetSearchArea	inline	crates/horizon-client/src/mobs/shulker.rs::register	the 4-deep search box is the when filter in register
 Shulker.ShulkerPeekGoal.canContinueToUse	port	crates/horizon-client/src/mobs/shulker.rs::Peek::can_continue	
