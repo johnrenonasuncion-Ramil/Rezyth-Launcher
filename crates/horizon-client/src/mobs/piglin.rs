@@ -2308,15 +2308,16 @@ mod brute_target_tests {
 
                 let mut events = Vec::new();
                 let mut lr = LegacyRandom::new(0);
-                let mut cx = Cx {
-                    w: &w,
-                    lr: &mut lr,
-                    events: &mut events,
-                };
                 let mut goal = BruteTarget::default();
                 brute.ai.target = Some(Who::Mob(3));
-                assert!(goal.can_continue(&mut brute, &mut cx));
-                drop(cx);
+                {
+                    let mut cx = Cx {
+                        w: &w,
+                        lr: &mut lr,
+                        events: &mut events,
+                    };
+                    assert!(goal.can_continue(&mut brute, &mut cx));
+                }
                 w.player = Some(test_player(Vec3::new(8.5, 64.0, 0.5)));
                 let mut cx = Cx {
                     w: &w,
@@ -2332,7 +2333,7 @@ mod brute_target_tests {
     /// target clears immediately, and a live one lasts exactly 600 ticks.
     #[test]
     fn brute_anger_clears_when_its_target_dies_and_expires_after_600_ticks() {
-        let mut zombie = mob(2, Species::Zombie, Vec3::new(4.5, 64.0, 0.5));
+        let zombie = mob(2, Species::Zombie, Vec3::new(4.5, 64.0, 0.5));
         let dead_zombie = {
             let mut dead = zombie.seen(None);
             dead.alive = false;
