@@ -66,8 +66,12 @@ pub(super) enum BookScreen {
     },
 }
 /// The pages a book screen reads: a written book's components (so their
-/// click events stay), else a writable book's text.
-fn view_pages(data: Option<&StackData>) -> Vec<Text> {
+/// click events stay), else a writable book's text. `resolve` gets each
+/// component-valued page (`WrittenBookContent.resolvePage`).
+fn pages_with(
+    data: Option<&StackData>,
+    mut resolve: impl FnMut(&horizon_world::nbt::Tag) -> Option<Text>,
+) -> Vec<Text> {
     let Some(data) = data else { return Vec::new() };
     let Some(w) = &data.written else {
         return data.writable_pages.iter().map(Text::literal).collect();
@@ -81,12 +85,21 @@ fn view_pages(data: Option<&StackData>) -> Vec<Text> {
             // takes both; servers behind ViaVersion send the list form).
             Some(
                 tag @ (horizon_world::nbt::Tag::Compound(_) | horizon_world::nbt::Tag::List(_)),
-            ) => horizon_client::entity_nbt::name_text(tag),
+            ) => resolve(tag).unwrap_or_else(|| horizon_client::entity_nbt::name_text(tag)),
             _ => Text::literal(page),
         })
         .collect()
 }
 impl Game<'_> {
+    /// `WrittenBookContent.resolveForItem` and `LecternBlockEntity.resolveBook`:
+    /// a written book's component pages resolved for this player (selectors,
+    /// scores and NBT contents), still carrying their click events.
+    fn resolved_pages(&mut self, data: Option<&StackData>) -> Vec<Text> {
+        pages_with(data, |tag| {
+            let value = horizon_client::scoreboard::tag_to_json(tag);
+            self.resolve_component_value(value).ok()
+        })
+    }
     fn book_lines(&self, page: &str) -> Vec<Text> {
         self.page_lines(&Text::literal(page))
     }
@@ -212,7 +225,7 @@ impl Game<'_> {
     }
     /// The screen a book in hand opens: `BookEditScreen` for a book and
     /// quill, `BookViewScreen` for a written book.
-    fn book_screen(&self, stack: &ItemStack) -> Option<BookScreen> {
+    fn book_screen(&mut self, stack: &ItemStack) -> Option<BookScreen> {
         Some(match &*stack.item {
             "minecraft:writable_book" => {
                 let mut pages = stack
@@ -235,7 +248,7 @@ impl Game<'_> {
                 }
             }
             "minecraft:written_book" => BookScreen::View {
-                pages: view_pages(stack.data()),
+                pages: self.resolved_pages(stack.data()),
                 page: 0,
                 lectern: None,
             },
@@ -893,9 +906,12 @@ impl Game<'_> {
         let Some(BlockEntity::Lectern(l)) = self.world.block_entities.get(&key) else {
             return false;
         };
-        let Some(book) = &l.book else { return false };
-        let pages = view_pages(book.data());
-        let page = (l.page.max(0) as usize).min(pages.len().saturating_sub(1));
+        let (Some(book), page) = (&l.book, l.page) else {
+            return false;
+        };
+        let data = book.data().cloned();
+        let pages = self.resolved_pages(data.as_ref());
+        let page = (page.max(0) as usize).min(pages.len().saturating_sub(1));
         self.award_custom_stat("interact_with_lectern", 1);
         self.open_book(BookScreen::View {
             pages,
@@ -1041,13 +1057,14 @@ impl Game<'_> {
     }
     /// `LecternScreen.bookChanged`: the menu's book slot.
     pub(super) fn remote_lectern_book(&mut self, book: Option<ItemStack>) {
+        let resolved = self.resolved_pages(book.as_ref().and_then(ItemStack::data));
         if let Some(BookScreen::View {
             lectern: Some(_),
             pages,
             page,
         }) = self.book.as_mut()
         {
-            *pages = view_pages(book.as_ref().and_then(ItemStack::data));
+            *pages = resolved;
             *page = (*page).min(pages.len().saturating_sub(1));
         }
     }
@@ -1577,5 +1594,82 @@ pub(super) fn lectern_signal(world: &horizon_client::world::World, pos: BlockPos
             (f * 14.0).floor() as i32 + 1
         })),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::pages_with;
+    use crate::item_data::{StackData, WrittenBook};
+    use crate::text::{ClickEvent, Style, Text};
+    use horizon_world::nbt::Tag;
+
+    /// A written book whose pages are plain strings, each with the component
+    /// tag a server sent (`ComponentSerialization.CODEC` accepts both).
+    fn book(pages: &[&str], tags: Vec<Tag>) -> StackData {
+        StackData {
+            written: Some(WrittenBook {
+                title: "T".into(),
+                author: "A".into(),
+                generation: 0,
+                pages: pages.iter().map(|p| (*p).to_owned()).collect(),
+                page_tags: tags,
+            }),
+            ..StackData::default()
+        }
+    }
+
+    #[test]
+    fn a_written_book_page_resolves_and_keeps_its_click_event() {
+        // `WrittenBookContent.resolveForItem`: the component page goes
+        // through the source's resolver; a page the resolver refuses keeps
+        // the component's own text.
+        let click = Style {
+            click: Some(ClickEvent::ChangePage(2)),
+            ..Style::default()
+        };
+        let data = book(
+            &["plain", "@s", "fallback"],
+            vec![
+                Tag::String("plain".into()),
+                Tag::compound([("text", Tag::String("@s".into()))]),
+                Tag::compound([("text", Tag::String("fallback".into()))]),
+            ],
+        );
+        let mut seen = Vec::new();
+        let pages = pages_with(Some(&data), |tag| {
+            seen.push(tag.clone());
+            match tag {
+                Tag::Compound(c)
+                    if c.get(&horizon_world::nbt::JavaString::from("text"))
+                        .is_some_and(|t| t == &Tag::String("@s".into())) =>
+                {
+                    Some(Text::styled("Steve", click.clone()))
+                }
+                _ => None,
+            }
+        });
+        assert_eq!(pages.len(), 3);
+        assert_eq!(pages[0], Text::literal("plain"));
+        assert_eq!(pages[1], Text::styled("Steve", click));
+        assert_eq!(pages[2], Text::literal("fallback"));
+        // Only the component-valued pages reach the resolver: the plain
+        // string page never becomes a component.
+        assert_eq!(seen.len(), 2);
+    }
+
+    #[test]
+    fn a_writable_book_page_is_plain_text() {
+        let data = StackData {
+            writable_pages: vec!["a".into(), "b".into()],
+            ..StackData::default()
+        };
+        let mut resolved = false;
+        let pages = pages_with(Some(&data), |_| {
+            resolved = true;
+            None
+        });
+        assert_eq!(pages, vec![Text::literal("a"), Text::literal("b")]);
+        assert!(!resolved);
     }
 }

@@ -80,12 +80,12 @@ ResolvableProfile.Static.hashCode	skip:java		hash for collections
 Tool.Rule.minesAndDrops	port	crates/horizon-items/src/items.rs::Items::load_with	rule read from the item JSON: speed and correct_for_drops set to true
 TooltipDisplay.withHidden	port	crates/horizon-client/src/game/commands/items.rs::Game::apply_item_modifier	gap: minor: only the /item modify toggle_tooltips path; the loot-table toggle function is not ported, and the raid banner's hidden pattern is read in item_tooltip shows()
 WrittenBookContent.craftCopy	port	crates/horizon-client/src/crafting.rs::Special::assemble	book copy: generation plus one, pages kept
-WrittenBookContent.resolveForItem	missing		minor: selectors in a written book's text (@p and so on) are not resolved when the book reaches a player; the raw text shows
-WrittenBookContent.resolve	missing		minor: no selector resolution for written book pages; the raw text shows
+WrittenBookContent.resolveForItem	port	crates/horizon-client/src/game/books.rs::Game::resolved_pages	pages resolved when the book is opened (selectors, scores, NBT contents), with their click events kept; gap: minor: the resolved copy is not stored
+WrittenBookContent.resolve	port	crates/horizon-client/src/game/books.rs::Game::resolved_pages	same as resolveForItem: pages resolved for the reader on open; gap: minor: no resolved flag
 WrittenBookContent.markResolved	missing		minor: resolved flag is not kept, so a book is never marked as resolved
-WrittenBookContent.resolvePage	missing		minor: no per-page selector resolution, and no drop of pages over 32767 characters
+WrittenBookContent.resolvePage	inline	crates/horizon-client/src/game/books.rs::pages_with	per component-valued page, through resolve_component_value; gap: minor: no drop of pages over 32767 characters
 WrittenBookContent.isPageTooLarge	missing		minor: no check that a resolved page stays under the 32767 character limit
-WrittenBookContent.getPages	port	crates/horizon-client/src/game/books.rs::view_pages	gap: minor: returns the stored pages; the filtered-text choice (filterEnabled) is not modelled
+WrittenBookContent.getPages	port	crates/horizon-client/src/game/books.rs::pages_with	gap: minor: returns the stored pages; the filtered-text choice (filterEnabled) is not modelled
 WrittenBookContent.withReplacedPages	missing		minor: loot function set_written_book_pages is not in the loot modifiers, so a loot book gets no pages
 BookCloningRecipe.matches	port	crates/horizon-client/src/crafting.rs::Special::matches	BookCloning arm: one written book within the allowed generations, plus material
 BookCloningRecipe.assemble	port	crates/horizon-client/src/crafting.rs::Special::assemble	copies the book with generation plus one; material count sets the copies

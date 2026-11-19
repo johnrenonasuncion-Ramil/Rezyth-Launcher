@@ -65,6 +65,12 @@ impl Game<'_> {
         };
         let value: serde_json::Value =
             serde_json::from_str(json).map_err(|e| err("argument.component.invalid", &[&e]))?;
+        self.resolve_component_value(value)
+    }
+
+    /// `ComponentArgument.getResolvedComponent`: selectors and scores in a
+    /// component value resolved for the source.
+    pub(in crate::game) fn resolve_component_value(&mut self, value: serde_json::Value) -> R<Text> {
         if let Some(message) = invalid_selector(&value, &self.ui.registries) {
             return Err(err("argument.component.invalid", &[&message]));
         }

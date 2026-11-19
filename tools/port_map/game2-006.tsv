@@ -86,7 +86,7 @@ AbstractHurtingProjectile.canHitEntity	missing		same as `ShulkerBullet.canHitEnt
 WitherSkull.getBlockExplosionResistance	port	crates/horizon-client/src/game/explosion.rs::blast_resistance	a dangerous skull's blast caps a breakable block's resistance at 0.8; `#wither_immune` blocks keep theirs
 WitherSkull.onHit	port	crates/horizon-client/src/game/wither.rs::Game::wither_skull_hit	skull hit damage, wither effect, then the blast at the impact point
 AbstractWindCharge.makeBoundingBox	port	crates/horizon-client/src/projectiles.rs::ProjectileKind::size	gap: minor: gives the width only; the box sits 0.15 below the position in vanilla
-AbstractWindCharge.canHitEntity	missing		the wind charge's target list is `creatures.rs::wind_charge_hitboxes`, which collects the other live, unstuck wind charges as hittable boxes: nothing there drops a wind charge or an end crystal, so the filter `canHitEntity` makes is not applied
+AbstractWindCharge.canHitEntity	port	crates/horizon-client/src/game/creatures.rs::wind_charge_can_hit	the wind charge's own target list drops other wind charges and End crystals; `wind_charge_hitboxes` still lets a pearl, arrow or trident strike a wind charge
 AbstractWindCharge.onHitBlock	port	crates/horizon-client/src/game/wind.rs::Game::wind_charge_hit	a burst a quarter block out along the hit face
 WindCharge.deflect	port	crates/horizon-client/src/game/wind.rs::reverse	gap: minor: turns the charge at half speed; the noDeflectTicks delay is not modelled
 WindCharge.shouldRenderAtSqrDistance	skip:ui		distance culling for the wind charge model; Horizon culls with its own range check

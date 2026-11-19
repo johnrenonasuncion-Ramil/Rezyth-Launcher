@@ -168,6 +168,15 @@ pub(super) fn wind_charge_hit(id: u32) -> Option<usize> {
         .then(|| (id - WIND_CHARGE_IDS) as usize)
 }
 
+/// `AbstractWindCharge.canHitEntity`: a wind charge passes through another
+/// wind charge and through an End crystal; every other target is hit as usual.
+fn wind_charge_can_hit(who: Who) -> bool {
+    match who {
+        Who::Mob(id) => wind_charge_hit(id).is_none() && id < super::dragon::CRYSTAL_IDS,
+        Who::Player => true,
+    }
+}
+
 fn wind_charge_hitboxes(
     projectiles: &[Projectile],
     alive: &[bool],
@@ -3712,6 +3721,16 @@ impl Game<'_> {
             arrow_targets_guests.extend(guests.iter().copied());
             let mut targets_guests = targets.clone();
             targets_guests.extend(guests);
+            let wind_targets = targets
+                .iter()
+                .filter(|(who, _)| wind_charge_can_hit(*who))
+                .cloned()
+                .collect();
+            let wind_targets_guests = targets_guests
+                .iter()
+                .filter(|(who, _)| wind_charge_can_hit(*who))
+                .cloned()
+                .collect();
             let border = Some(self.border.bounds());
             let pw = ProjWorld {
                 w: &w,
@@ -3721,6 +3740,16 @@ impl Game<'_> {
             let pw_guests = ProjWorld {
                 w: &w,
                 targets: targets_guests,
+                border,
+            };
+            let pw_wind = ProjWorld {
+                w: &w,
+                targets: wind_targets,
+                border,
+            };
+            let pw_wind_guests = ProjWorld {
+                w: &w,
+                targets: wind_targets_guests,
                 border,
             };
             let guest_entities = self.lan_guest_entities();
@@ -3770,6 +3799,10 @@ impl Game<'_> {
                 if shooter.is_some() {
                     p.owner = shooter;
                 }
+                let wind = matches!(
+                    p.kind,
+                    ProjectileKind::WindCharge | ProjectileKind::BreezeWindCharge
+                );
                 let (keep, hit) = match (p.arrow.is_some(), mob_shot || pvp, winds.is_empty()) {
                     (true, false, true) => horizon_client::arrows::tick(p, &scene, &arrow_targets),
                     (true, true, true) => {
@@ -3784,7 +3817,9 @@ impl Game<'_> {
                         targets.extend(winds);
                         horizon_client::arrows::tick(p, &scene, &targets)
                     }
+                    (false, false, true) if wind => p.tick(&pw_wind),
                     (false, false, true) => p.tick(&pw),
+                    (false, true, true) if wind => p.tick(&pw_wind_guests),
                     (false, true, true) => p.tick(&pw_guests),
                     (false, pvp_shot, false) => {
                         let mut targets = if pvp_shot {
@@ -3827,10 +3862,6 @@ impl Game<'_> {
                 if let Some(a) = p.arrow.as_mut() {
                     arrow_events.extend(a.events.drain(..).map(|e| (p.position, e)));
                 }
-                let wind = matches!(
-                    p.kind,
-                    ProjectileKind::WindCharge | ProjectileKind::BreezeWindCharge
-                );
                 // Entity.deflection: a breeze turns every projectile but wind charges away.
                 if let Hit::Entity {
                     who: Who::Mob(id),
@@ -7312,7 +7343,8 @@ mod tests {
     use super::super::perspective::CameraType;
     use super::thrown_item_axes;
     use super::thrown_item_quad;
-    use super::{ProjectileKind, is_item_billboard};
+    use super::{ProjectileKind, WIND_CHARGE_IDS, is_item_billboard, wind_charge_can_hit};
+    use crate::mobs::Who;
 
     /// The component-wise lowest and highest corner of the quad.
     fn bounds(corners: &[glam::Vec3; 4]) -> (glam::Vec3, glam::Vec3) {
@@ -7387,6 +7419,20 @@ mod tests {
         assert!(up.abs_diff_eq(glam::Vec3::Y, 1e-5), "{up}");
         let (right, _) = thrown_item_axes(CameraType::ThirdPersonBack, 0.0, 0.0);
         assert!(right.abs_diff_eq(glam::Vec3::NEG_X, 1e-5), "{right}");
+    }
+
+    #[test]
+    fn a_wind_charge_passes_through_crystals_and_other_charges() {
+        // AbstractWindCharge.canHitEntity: no End crystal and no wind charge.
+        assert!(!wind_charge_can_hit(Who::Mob(
+            super::super::dragon::CRYSTAL_IDS
+        )));
+        let charge = WIND_CHARGE_IDS + 2;
+        assert!(!wind_charge_can_hit(Who::Mob(charge)));
+        // A dragon part is still a target, and so are the player and mobs.
+        assert!(wind_charge_can_hit(Who::Mob(super::super::dragon::SPECIAL)));
+        assert!(wind_charge_can_hit(Who::Player));
+        assert!(wind_charge_can_hit(Who::Mob(7)));
     }
 }
 
