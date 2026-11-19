@@ -1120,7 +1120,8 @@ impl Game<'_> {
                 };
                 let mut shot = Projectile::new(kind, at, None);
                 // ArrowItem/SpectralArrowItem.asProjectile: dispensed arrows
-                // may be picked up.
+                // may be picked up, and take the stack's can_break.
+                shot.apply_item_components(&one);
                 if let Some(a) = shot.arrow.as_mut() {
                     a.set_item(&one);
                     a.pickup = horizon_client::arrows::Pickup::Allowed;

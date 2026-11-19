@@ -111,7 +111,6 @@ impl Game<'_> {
     /// or a list) matches the block at `pos`. Predicates with `nbt` or
     /// `components` need the block entity's data and never match.
     pub(super) fn adventure_predicate(&self, component: &str, pos: [i32; 3]) -> bool {
-        use horizon_world::nbt::Tag;
         let Some(tag) = self
             .held()
             .and_then(|s| s.data())
@@ -119,6 +118,16 @@ impl Game<'_> {
         else {
             return false;
         };
+        self.adventure_predicate_matches(tag, pos)
+    }
+    /// `AdventureModePredicate.test`: a component value from a stack's
+    /// `can_break` or `can_place_on`, or a projectile's saved `can_break`.
+    pub(super) fn adventure_predicate_matches(
+        &self,
+        tag: &horizon_world::nbt::Tag,
+        pos: [i32; 3],
+    ) -> bool {
+        use horizon_world::nbt::Tag;
         let state = self.world.block(pos[0], pos[1], pos[2]);
         let name = &self.res.facts().get(state).name;
         let properties = self

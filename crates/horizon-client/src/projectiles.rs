@@ -232,6 +232,28 @@ pub struct Projectile {
     pub touching_water: bool,
     /// `Entity.noGravity` (`NoGravity` in its save): `getGravity` is 0.
     pub no_gravity: bool,
+    /// `Projectile.canBreak`: the `minecraft:can_break` component of the item
+    /// stack it was spawned from (`applyImplicitComponents`). An arrow takes
+    /// its ammo's predicate; without one it breaks nothing in adventure mode.
+    pub can_break: Option<horizon_world::nbt::Tag>,
+}
+/// `Projectile.canBreakBlockInAdventureMode`: whether a projectile's impact
+/// may break a block, given whether it has an owner at all, its shooter's
+/// game mode (`Some` only for a player owner), the level's default game mode,
+/// and whether the projectile's own `can_break` predicate matches the block.
+/// A player in any mode but adventure breaks freely; everyone else needs a
+/// matching predicate, and a projectile nobody owns only needs one when the
+/// world itself defaults to adventure.
+pub fn can_break_block_in_adventure_mode(
+    has_owner: bool,
+    owner_mode: Option<horizon_client::command::args::GameMode>,
+    default_mode: horizon_client::command::args::GameMode,
+    predicate_matches: bool,
+) -> bool {
+    use horizon_client::command::args::GameMode;
+    let constrained = (has_owner || default_mode == GameMode::Adventure)
+        && !owner_mode.is_some_and(|mode| mode != GameMode::Adventure);
+    !constrained || predicate_matches
 }
 /// What a projectile struck this tick.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -375,6 +397,7 @@ impl Projectile {
             needs_sync: false,
             touching_water: false,
             no_gravity: false,
+            can_break: None,
             arrow: kind_is_arrow.then(|| {
                 // Entity.random: seeded unpredictably, the position stands in.
                 Box::new(crate::arrows::ArrowState::new(
@@ -404,6 +427,14 @@ impl Projectile {
             a.random = random;
         }
         self
+    }
+    /// `Projectile.applyImplicitComponents`: a projectile built from an item
+    /// stack takes that stack's `minecraft:can_break` predicate.
+    pub fn apply_item_components(&mut self, stack: &crate::items::ItemStack) {
+        self.can_break = stack
+            .data()
+            .and_then(|d| d.other("minecraft:can_break"))
+            .cloned();
     }
     /// The shooter's bow enchantments; Flame spawns the arrow burning for 100
     /// seconds (`projectile_spawned` ignite), Piercing sets its pierce level.
@@ -1493,5 +1524,100 @@ mod trail_tests {
         let mut p = arrow(true);
         p.stuck = true;
         assert!(p.arrow_trail(true).is_empty());
+    }
+}
+
+#[cfg(test)]
+mod can_break_tests {
+    use super::{Projectile, ProjectileKind, can_break_block_in_adventure_mode};
+    use crate::items::ItemStack;
+    use horizon_client::command::args::GameMode;
+    use horizon_core::geometry::Vec3;
+    use horizon_world::nbt::Tag;
+
+    /// `Projectile.canBreakBlockInAdventureMode`: the truth table of the
+    /// owner check and the default game mode.
+    #[test]
+    fn a_projectile_breaks_by_its_own_predicate_only_where_vanilla_asks() {
+        for mode in [GameMode::Survival, GameMode::Creative, GameMode::Spectator] {
+            assert!(
+                can_break_block_in_adventure_mode(true, Some(mode), GameMode::Adventure, false),
+                "a player outside adventure breaks freely: {mode:?}"
+            );
+        }
+        assert!(!can_break_block_in_adventure_mode(
+            true,
+            Some(GameMode::Adventure),
+            GameMode::Creative,
+            false
+        ));
+        assert!(can_break_block_in_adventure_mode(
+            true,
+            Some(GameMode::Adventure),
+            GameMode::Creative,
+            true
+        ));
+        // A mob's projectile has an owner but no player mode, so only its own
+        // matching predicate breaks a block, whatever the world defaults to.
+        assert!(!can_break_block_in_adventure_mode(
+            true,
+            None,
+            GameMode::Creative,
+            false
+        ));
+        assert!(can_break_block_in_adventure_mode(
+            true,
+            None,
+            GameMode::Creative,
+            true
+        ));
+        // An ownerless projectile (a dispenser's) is free unless the world
+        // itself defaults to adventure.
+        assert!(can_break_block_in_adventure_mode(
+            false,
+            None,
+            GameMode::Creative,
+            false
+        ));
+        assert!(!can_break_block_in_adventure_mode(
+            false,
+            None,
+            GameMode::Adventure,
+            false
+        ));
+        assert!(can_break_block_in_adventure_mode(
+            false,
+            None,
+            GameMode::Adventure,
+            true
+        ));
+    }
+
+    /// `Projectile.applyImplicitComponents`: the arrow flies with the
+    /// `can_break` of the item stack it was shot from, and saves it.
+    #[test]
+    fn an_arrow_takes_the_can_break_of_its_ammo() {
+        let tag = Tag::compound([(
+            "blocks",
+            Tag::List(vec![Tag::String("minecraft:chorus_flower".into())]),
+        )]);
+        let mut stack = ItemStack::new("minecraft:arrow", 1);
+        stack.extra = Some(Box::new(crate::item_data::StackData {
+            other: vec![("minecraft:can_break".into(), tag.clone())],
+            ..crate::item_data::StackData::default()
+        }));
+        let kind = ProjectileKind::Arrow {
+            base_damage: 2.0,
+            critical: false,
+            effect: None,
+        };
+        let mut arrow = Projectile::new(kind.clone(), Vec3::ZERO, None);
+        assert!(arrow.can_break.is_none());
+        arrow.apply_item_components(&stack);
+        assert_eq!(arrow.can_break, Some(tag));
+        // A plain arrow carries no predicate.
+        let mut plain = Projectile::new(kind, Vec3::ZERO, None);
+        plain.apply_item_components(&ItemStack::new("minecraft:arrow", 1));
+        assert!(plain.can_break.is_none());
     }
 }

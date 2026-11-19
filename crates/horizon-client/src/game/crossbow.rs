@@ -365,6 +365,8 @@ impl Game<'_> {
                     Vec3::new(eye[0], eye[1] - 0.1, eye[2]),
                     Some(Who::Player),
                 );
+                // Projectile.applyImplicitComponents: the arrow's can_break.
+                arrow.apply_item_components(ammo);
                 if let Some(a) = arrow.arrow.as_mut() {
                     a.set_item(ammo);
                     a.set_owner(Some(Who::Player));

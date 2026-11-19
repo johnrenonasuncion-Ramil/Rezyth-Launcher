@@ -22,7 +22,7 @@ Entity.debugBlockIntersection	skip:debug		debug subscription for the entity bloc
 Entity.gameEvent	port	crates/horizon-client/src/game/sculk.rs::Game::post_entity_event	gap: minor: only players and mobs (Who) can be the source
 Entity.playMuffledStepSound	port	crates/horizon-client/src/motion.rs::MotionWorld::walking_step_sound	gap: minor: players only; mobs play the floor block's own step and never the muffled floor sound under snow, carpet or other combination blocks
 Entity.shouldPlayAmethystStepSound	port	crates/horizon-client/src/motion.rs::MotionWorld::walking_step_sound	gap: minor: only the player chimes on crystal blocks; mobs walking on amethyst stay silent
-Entity.isInClouds	missing		minor: a happy ghast above the cloud layer should heal a point a second like in rain; only rain and snow count
+Entity.isInClouds	inline	crates/horizon-client/src/mobs/happy_ghast.rs::ai_step	the cloud-height band under the open sky heals a happy ghast once a second, like rain
 Entity.updateSwimming	port	crates/horizon-world/src/swimming.rs::update	the player goes through update_player; mobs never swim in the player sense
 Entity.doWaterSplashEffect	port	crates/horizon-world/src/water_splash.rs::water_splash	sound, bubbles, splashes and the splash event; arrows, mobs and the player each supply a world
 Entity.spawnSprintParticle	port	crates/horizon-client/src/game/client_ambient.rs::Game::sprint_dust	gap: minor: players only; sprinting cats and ocelots raise no block dust

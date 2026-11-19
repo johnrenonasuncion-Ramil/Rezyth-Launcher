@@ -2350,6 +2350,10 @@ pub fn arrow_to_nbt(
         map.remove(&"LeftOwner".into());
         map.remove(&"inBlockState".into());
         map.remove(&"weapon".into());
+        map.remove(&"can_break".into());
+    }
+    if let Some(can_break) = &p.can_break {
+        put(&mut tag, "can_break", can_break.clone());
     }
     if let Some(weapon) = &a.fired_from_weapon {
         put(&mut tag, "weapon", item_to_nbt(weapon));
@@ -2402,6 +2406,7 @@ pub fn arrow_from_nbt(
     p.left_owner = flag(tag, "LeftOwner");
     p.owner_uuid = owner;
     p.no_gravity = flag(tag, "NoGravity");
+    p.can_break = tag.get("can_break").cloned();
     let a = p.arrow.as_mut()?;
     a.life = number(tag.get("life")).unwrap_or(0) as i16 as i32;
     a.shake = (number(tag.get("shake")).unwrap_or(0) as i8 as u8).into();
@@ -2475,9 +2480,13 @@ pub fn fireball_to_nbt(
 fn put_projectile(tag: &mut Tag, p: &Projectile, owner: Option<[i32; 4]>) {
     if let Tag::Compound(map) = tag {
         map.remove(&"LeftOwner".into());
+        map.remove(&"can_break".into());
     }
     if p.left_owner {
         put(tag, "LeftOwner", Tag::Byte(1));
+    }
+    if let Some(can_break) = &p.can_break {
+        put(tag, "can_break", can_break.clone());
     }
     // Entity.saveWithoutId writes NoGravity only when set.
     if p.no_gravity {
@@ -2611,6 +2620,7 @@ pub fn throwable_from_nbt(tag: &Tag, player: Option<[i32; 4]>) -> Option<Project
     p.left_owner = flag(tag, "LeftOwner");
     p.owner_uuid = owner;
     p.no_gravity = flag(tag, "NoGravity");
+    p.can_break = tag.get("can_break").cloned();
     Some(p)
 }
 
@@ -2645,6 +2655,7 @@ pub fn spit_or_bullet_from_nbt(tag: &Tag, player: Option<[i32; 4]>) -> Option<Pr
     p.left_owner = flag(tag, "LeftOwner");
     p.owner_uuid = owner;
     p.no_gravity = flag(tag, "NoGravity");
+    p.can_break = tag.get("can_break").cloned();
     Some(p)
 }
 
@@ -5813,6 +5824,42 @@ mod mod_thrown_nbt_tests {
         assert_eq!(kind(&saved).as_deref(), Some("minecraft:experience_bottle"));
         let item = saved.get("Item").and_then(item_from_nbt).unwrap();
         assert_eq!(&*item.item, "minecraft:experience_bottle");
+    }
+
+    #[test]
+    fn a_saved_arrow_keeps_the_can_break_of_its_ammo() {
+        // Projectile.addAdditionalSaveData / readAdditionalSaveData: an arrow
+        // shot from an item with a `can_break` component keeps the predicate
+        // across a save, and an arrow without one saves no key.
+        let predicate = Tag::compound([(
+            "blocks",
+            Tag::List(vec![Tag::String("minecraft:chorus_flower".into())]),
+        )]);
+        let mut arrow = Projectile::new(
+            ProjectileKind::Arrow {
+                base_damage: 2.0,
+                critical: false,
+                effect: None,
+            },
+            Vec3::new(0.5, 110.0, 0.5),
+            None,
+        );
+        arrow.can_break = Some(predicate.clone());
+        let saved = arrow_to_nbt(&arrow, [1; 4], None, None, None).unwrap();
+        assert_eq!(saved.get("can_break"), Some(&predicate));
+        let loaded = arrow_from_nbt(&saved, None, |_| None).unwrap().0;
+        assert_eq!(loaded.can_break, Some(predicate));
+        let plain = Projectile::new(
+            ProjectileKind::Arrow {
+                base_damage: 2.0,
+                critical: false,
+                effect: None,
+            },
+            Vec3::new(0.5, 110.0, 0.5),
+            None,
+        );
+        let saved = arrow_to_nbt(&plain, [1; 4], None, None, None).unwrap();
+        assert!(saved.get("can_break").is_none());
     }
 
     #[test]

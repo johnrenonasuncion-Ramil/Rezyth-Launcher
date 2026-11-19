@@ -4068,11 +4068,11 @@ impl Game<'_> {
     /// (pointed dripstone, sulfur spikes): an impact projectile
     /// (`#impact_projectiles`) breaks the block when `Projectile.mayInteract`
     /// and `Projectile.mayBreak` allow it, which takes the
-    /// `projectiles_can_break_blocks` rule and a shooter that may break blocks
-    /// (`canBreakBlockInAdventureMode`: never a mob, never an
-    /// adventure player). A pot is cracked first (flags 260), so it shatters.
+    /// `projectiles_can_break_blocks` rule and `canBreakBlockInAdventureMode`:
+    /// the shooter's mode, the level's default mode and the projectile's own
+    /// `can_break` predicate (no longer the holder's stack). A pot is cracked
+    /// first (flags 260), so it shatters.
     fn projectile_breaks_block(&mut self, p: &Projectile, pos: [i32; 3]) {
-        use horizon_client::command::args::GameMode;
         let impact = matches!(
             p.kind,
             ProjectileKind::Arrow { .. }
@@ -4086,14 +4086,29 @@ impl Game<'_> {
                 | ProjectileKind::WindCharge
                 | ProjectileKind::BreezeWindCharge
         );
-        let shooter_may_break = match p.owner {
-            Some(Who::Player) => {
-                self.mode != GameMode::Adventure
-                    || self.adventure_predicate("minecraft:can_break", pos)
-            }
-            Some(Who::Mob(_)) => false,
-            None => true,
+        // The shooter's mode: a guest's, or this game's player's; a mob or an
+        // ownerless projectile has none.
+        let owner_mode = match p.owner {
+            Some(Who::Player) => Some(match p.guest {
+                Some(conn) => self
+                    .lan
+                    .as_ref()
+                    .and_then(|host| host.hub.guests.iter().find(|g| g.conn == conn))
+                    .map_or(self.mode, |g| super::game_mode::mode_from_id(g.game_mode)),
+                None => self.mode,
+            }),
+            _ => None,
         };
+        let predicate_matches = p
+            .can_break
+            .as_ref()
+            .is_some_and(|tag| self.adventure_predicate_matches(tag, pos));
+        let shooter_may_break = horizon_client::projectiles::can_break_block_in_adventure_mode(
+            p.owner.is_some(),
+            owner_mode,
+            super::game_mode::mode_from_id(self.level.mode()),
+            predicate_matches,
+        );
         if !impact || !shooter_may_break || !self.ui.rules.bool("projectiles_can_break_blocks") {
             return;
         }

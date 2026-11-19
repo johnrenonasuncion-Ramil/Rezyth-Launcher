@@ -14075,6 +14075,8 @@ impl Game<'_> {
             p,
             Some(horizon_client::mobs::Who::Player),
         );
+        // Projectile.applyImplicitComponents: the arrow's own can_break.
+        arrow.apply_item_components(&ammo);
         // ProjectileWeaponItem.useAmmo: creative and Infinity draw without
         // using the ammo, so the arrow is CREATIVE_ONLY; else setOwner(player)
         // lets it be picked up.
