@@ -741,12 +741,7 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
         // the game manages, so turning one on or off here writes the same
         // `horizon-mods.txt` line.
         let switch = glue::toggle_target(game, &m.id).map(|on| {
-            let r = [
-                6.0 + row_w - 48.0,
-                ey + (item_h - 16.0) / 2.0,
-                46.0,
-                16.0,
-            ];
+            let r = [6.0 + row_w - 48.0, ey + (item_h - 16.0) / 2.0, 46.0, 16.0];
             (r, on)
         });
         let (x, y) = (6.0, ey + 4.0);
