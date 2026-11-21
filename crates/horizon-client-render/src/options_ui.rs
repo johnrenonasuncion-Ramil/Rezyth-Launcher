@@ -8922,13 +8922,15 @@ mod tests {
                 false,
             )
         };
-        for page in [Page::Horizon, Page::Extras] {
-            assert_eq!(
-                click(&mut ui, &mut s, Act::Push(page)),
-                vec![Event::ButtonClick]
-            );
-            assert_eq!(ui.page(), page);
-        }
+        // Options has no Horizon Settings button now: the cog beside Mod
+        // Menu's button opens the page (Action::HorizonSettings in game.rs).
+        // From it, Extras opens with a click, and Escape returns here below.
+        ui.push(Page::Horizon);
+        assert_eq!(
+            click(&mut ui, &mut s, Act::Push(Page::Extras)),
+            vec![Event::ButtonClick]
+        );
+        assert_eq!(ui.page(), Page::Extras);
         let (widgets, _, _, _) = ui.layout(&s, size.0, size.1);
         assert_eq!(
             widgets
