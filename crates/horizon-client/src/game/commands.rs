@@ -3134,13 +3134,14 @@ impl Game<'_> {
             _ => String::new(),
         };
         if let Some(host) = self.lan.as_ref() {
-            host.hub.broadcast(&C::ResourcePackPush(cfg::ResourcePackPush {
-                id,
-                url,
-                hash,
-                required: false,
-                prompt: None,
-            }));
+            host.hub
+                .broadcast(&C::ResourcePackPush(cfg::ResourcePackPush {
+                    id,
+                    url,
+                    hash,
+                    required: false,
+                    prompt: None,
+                }));
         }
         Ok(0)
     }
