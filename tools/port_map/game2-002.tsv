@@ -113,7 +113,7 @@ Ravager.hasLineOfSight	port	crates/horizon-client/src/mobs/goals.rs::Mob::sees	a
 Ravager.applyRoarKnockbackClient	inline	crates/horizon-client/src/mobs/ravager.rs::roar	the roar push is applied in roar
 Ravager.strongKnockback	inline	crates/horizon-client/src/mobs/ravager.rs::roar	the push of 4 along the direction is in roar
 Ravager.addRoarParticleEffects	inline	crates/horizon-client/src/mobs/ravager.rs::roar	the poof particles are emitted in roar
-Shulker.registerGoals	port	crates/horizon-client/src/mobs/shulker.rs::register	gap: minor: no defense target goal (priority 3)
+Shulker.registerGoals	port	crates/horizon-client/src/mobs/shulker.rs::register	look, attack, peek and random-look goals; hurt-by alert at 1, nearest player at 2, defense at 3
 Shulker.defineSynchedData	skip:other		attach face, peek and colour are Mob extra fields
 Shulker.readAdditionalSaveData	inline	crates/horizon-client/src/entity_nbt.rs::mob_from_nbt	AttachFace, Peek and Color are read there
 Shulker.addAdditionalSaveData	inline	crates/horizon-client/src/entity_nbt.rs::mob_to_nbt	AttachFace, Peek and Color are written there
@@ -131,7 +131,7 @@ Shulker.setVariant	inline	crates/horizon-client/src/mobs/shulker.rs::register	co
 Shulker.getColor	inline	crates/horizon-client/src/mobs/shulker.rs::texture	colour is read from extra.color for the texture
 Shulker.get	skip:other		component getter; Horizon reads extra.color directly
 Shulker.applyImplicitComponent	port	crates/horizon-client/src/entity_nbt.rs::apply_item_components	a spawn egg's `minecraft:shulker/color` dye names the shell's colour; an egg with no colour keeps NO_COLOR (16)
-Shulker.ShulkerDefenseAttackGoal.getTargetSearchArea	missing		no defense target goal: `mobs/shulker.rs::register` gives the shulker `HurtByTarget` with `alert` (a hurt shulker wakes the targetless ones around it) and a player search box 4 deep along the attach axis, nothing that defends another shulker
+Shulker.ShulkerDefenseAttackGoal.getTargetSearchArea	port	crates/horizon-client/src/mobs/shulker.rs::defense_target	a team shulker's priority-3 goal picks the nearest visible monster in a box 4 deep along the attach face
 Shulker.ShulkerNearestAttackGoal.getTargetSearchArea	inline	crates/horizon-client/src/mobs/shulker.rs::register	the 4-deep search box is the when filter in register
 Shulker.ShulkerPeekGoal.canContinueToUse	port	crates/horizon-client/src/mobs/shulker.rs::Peek::can_continue	
 Silverfish.registerGoals	port	crates/horizon-client/src/mobs/hostile.rs::register	

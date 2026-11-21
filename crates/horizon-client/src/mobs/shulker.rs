@@ -7,8 +7,8 @@ use super::{
     anim::{Poses, State},
     control::LookKind,
     goals::{
-        Cx, Goal, HurtByTarget, LOOK, LookAtPlayer, MOVE, NearestTarget, RandomLookAround,
-        goal_clone, reduced,
+        Cx, Goal, HurtByTarget, LOOK, LookAtPlayer, MOVE, NearestTarget, RandomLookAround, TARGET,
+        TargetState, goal_clone, reduced, target_continue,
     },
 };
 use crate::projectiles::{Projectile, ProjectileWorld, STEPS};
@@ -60,6 +60,9 @@ pub fn register(m: &mut Mob) {
             axis.abs() <= 4.0 + 0.5
         }),
     );
+    // ShulkerDefenseAttackGoal: a shulker on a team hunts the nearest enemy
+    // in a box 4 deep along its attach face.
+    m.ai.targets.add(3, ShulkerDefense::default());
 }
 fn face_step(face: u8) -> [i32; 3] {
     STEPS[face.min(5) as usize]
@@ -432,6 +435,76 @@ impl ProjectileWorld for Probe<'_, '_> {
 fn peaceful_off(_m: &Mob, w: &MobWorld) -> bool {
     w.difficulty.effective != 0.0
 }
+/// `Shulker.ShulkerDefenseAttackGoal.getTargetSearchArea`: the box is 4 deep
+/// along the attach face and the follow range across.
+fn in_defense_box(m: &Mob, pos: Vec3) -> bool {
+    let d = pos.subtract(m.position);
+    let axis = match m.extra.variant3 {
+        0 | 1 => d.y,
+        2 | 3 => d.z,
+        _ => d.x,
+    };
+    axis.abs() <= 4.0 + 0.5
+}
+/// `ShulkerDefenseAttackGoal`'s pick: the nearest visible `Enemy` (a monster)
+/// in the 4-deep box along the attach face.
+fn defense_target(m: &mut Mob, w: &MobWorld) -> Option<Who> {
+    let range = m.attrs.follow_range;
+    let pos = Vec3::new(m.position.x, m.eye_y(), m.position.z);
+    let id = m.id;
+    let candidates: Vec<(u32, Vec3)> = w
+        .nearby(pos, range, |s| {
+            s.id != id && s.hostile && !s.playing_dead && in_defense_box(m, s.position)
+        })
+        .map(|s| (s.id, s.position))
+        .collect();
+    for (cid, cpos) in candidates {
+        if m.distance_sqr(cpos) > range * range {
+            continue;
+        }
+        if m.sees(w, Who::Mob(cid)) {
+            return Some(Who::Mob(cid));
+        }
+    }
+    None
+}
+/// `Shulker.ShulkerDefenseAttackGoal` at target priority 3: only a shulker on
+/// a team defends the shulkers around it.
+#[derive(Clone, Debug, Default)]
+struct ShulkerDefense {
+    found: Option<Who>,
+    state: TargetState,
+}
+impl Goal for ShulkerDefense {
+    goal_clone!();
+    fn flags(&self) -> u8 {
+        TARGET
+    }
+    fn name(&self) -> &'static str {
+        "ShulkerDefenseAttackGoal"
+    }
+    fn can_use(&mut self, m: &mut Mob, cx: &mut Cx) -> bool {
+        // `canUse`: a teamless shulker defends nothing.
+        if cx.w.teams.of(Who::Mob(m.id)).is_none() {
+            return false;
+        }
+        if m.random.next_int_bound(reduced(10)).unwrap_or(1) != 0 {
+            return false;
+        }
+        self.found = defense_target(m, cx.w);
+        self.found.is_some()
+    }
+    fn can_continue(&mut self, m: &mut Mob, cx: &mut Cx) -> bool {
+        target_continue(&mut self.state, false, m, cx)
+    }
+    fn start(&mut self, m: &mut Mob, _: &mut Cx) {
+        m.ai.target = self.found;
+        self.state.reset();
+    }
+    fn stop(&mut self, m: &mut Mob, _: &mut Cx) {
+        m.ai.target = None;
+    }
+}
 /// `ShulkerAttackGoal`: open up and fire a bullet every one to five and a
 /// half seconds at a target within 20 blocks.
 #[derive(Clone, Debug)]
@@ -654,5 +727,63 @@ mod tests {
             "the head turns to the target, not back to the square body"
         );
         assert_eq!(m.body_yaw, 0.0);
+    }
+}
+
+#[cfg(test)]
+mod defense_tests {
+    use super::*;
+    use crate::mobs::sensor_scan_tests::kind;
+    use std::sync::Arc;
+
+    fn mob(id: u32, species: Species, category: &str, at: Vec3) -> Mob {
+        let mut kind = kind();
+        let k = Arc::make_mut(&mut kind);
+        k.species = species;
+        k.category = category.into();
+        Mob::new(id, kind, at, 0.0)
+    }
+
+    /// `ShulkerDefenseAttackGoal`: the nearest `Enemy` inside the 4-deep box
+    /// along the attach face is picked; a closer non-enemy and an enemy
+    /// beyond the box are ignored.
+    #[test]
+    fn a_shulker_targets_the_nearest_enemy_in_its_face_box() {
+        let mut shulker = mob(1, Species::Shulker, "monster", Vec3::new(0.5, 64.0, 0.5));
+        shulker.extra.variant3 = 0;
+        let close_cow = mob(2, Species::Cow, "creature", Vec3::new(0.5, 64.5, 0.5));
+        let zombie = mob(3, Species::Zombie, "monster", Vec3::new(0.5, 66.5, 0.5));
+        let high_zombie = mob(4, Species::Zombie, "monster", Vec3::new(0.5, 70.0, 0.5));
+        with_test_world(
+            &[
+                close_cow.seen(None),
+                zombie.seen(None),
+                high_zombie.seen(None),
+            ],
+            |w, _| {
+                assert_eq!(defense_target(&mut shulker, w), Some(Who::Mob(3)));
+            },
+        );
+    }
+
+    /// `ShulkerDefenseAttackGoal.canUse`: without a team the goal never runs.
+    #[test]
+    fn a_teamless_shulker_has_no_defense_target() {
+        let mut shulker = mob(1, Species::Shulker, "monster", Vec3::new(0.5, 64.0, 0.5));
+        shulker.extra.variant3 = 0;
+        let zombie = mob(3, Species::Zombie, "monster", Vec3::new(0.5, 64.5, 0.5));
+        with_test_world(&[zombie.seen(None)], |w, _| {
+            let mut events = Vec::new();
+            let mut lr = LegacyRandom::new(0);
+            let mut goal = ShulkerDefense::default();
+            for _ in 0..100 {
+                let mut cx = Cx {
+                    w,
+                    lr: &mut lr,
+                    events: &mut events,
+                };
+                assert!(!goal.can_use(&mut shulker, &mut cx));
+            }
+        });
     }
 }

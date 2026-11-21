@@ -1543,6 +1543,12 @@ impl Default for TargetState {
         }
     }
 }
+impl TargetState {
+    /// Forget the ticks the current target went unseen, as `start` does.
+    pub fn reset(&mut self) {
+        self.unseen = 0;
+    }
+}
 impl NearestTarget {
     pub fn new(prey: Prey, must_see: bool) -> Self {
         Self {
