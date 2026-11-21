@@ -150,7 +150,7 @@ pub fn pause_buttons(
         1 => {
             let (x0, y0) = pause_grid(w, h, extra);
             // Six icons, 20 px and 4 apart, centred: this game's five
-            // (vanilla's four and Horizon's Volt Settings, at 48 px in) move
+            // (vanilla's four and Horizon's Settings cog, at 48 px in) move
             // 12 px left and the Mods icon is last, 36 px in.
             let (x, y) = (x0 + 36.0 + 5.0 * 24.0, y0 + 98.0);
             PAUSE_ICON_X.store(x.to_bits(), Ordering::Relaxed);
@@ -1086,8 +1086,8 @@ mod tests {
     #[test]
     fn pause_buttons_make_room() {
         PAUSE_STYLE.store(1, Ordering::Relaxed);
-        // This game's row: five icons at 48 px in (Horizon's Volt Settings
-        // icon makes it five), y0 + 98.
+        // This game's row: five icons at 48 px in (Horizon's Settings icon
+        // makes it five), y0 + 98.
         let icons = pause_icons(
             [
                 (182.0, 124.0, "a"),

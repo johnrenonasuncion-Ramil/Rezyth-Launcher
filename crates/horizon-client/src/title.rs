@@ -372,8 +372,10 @@ pub enum Action {
     Language,
     /// AccessibilityOnboardingScreen's Music & Sounds button.
     Sounds,
-    /// The main menu's Volt Settings button.
+    /// The main menu's Volt Settings button (the startup menu's too).
     VoltSettings,
+    /// The main menu's cog: Horizon's settings, which links Rezyth's.
+    HorizonSettings,
     /// The title's bottom text (`PlainTextButton`): `CreditsAndAttributionScreen`.
     Credits,
     /// `Blaze3D.openUri`: a ConfirmLinkScreen's Open in Browser.
@@ -1846,8 +1848,8 @@ impl Title {
                         15.0,
                     ),
                     (
-                        "horizon.pages.volt",
-                        "Rezyth Settings...",
+                        "horizon.pages.settings",
+                        "Horizon Settings...",
                         9,
                         "icon/volt_settings",
                         20.0,
@@ -2488,7 +2490,7 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 "accessibility.onboarding.accessibility.button.narration",
                 "options.accessibility.tooltip",
             ),
-            9 => icon("horizon.pages.volt", "horizon.pages.volt.tooltip"),
+            9 => icon("horizon.pages.settings", "horizon.pages.settings.tooltip"),
             _ => Narratable::button(b.label.clone(), rect, b.enabled),
         };
         // TitleScreen.init adds the icon row after Minecraft Realms and before
@@ -3568,7 +3570,7 @@ Would you like to enable the Narrator or visit the Accessibility Settings?",
                 self.mode = Mode::Account;
                 Action::None
             }
-            (Mode::Main, Some(9)) => Action::VoltSettings,
+            (Mode::Main, Some(9)) => Action::HorizonSettings,
             (Mode::Account, Some(id)) => {
                 if account::click(id) {
                     self.mode = Mode::Main;
@@ -4866,7 +4868,7 @@ mod classic_tests {
                     match id {
                         6 => (Action::Language, true),
                         7 => (Action::Accessibility, true),
-                        9 => (Action::VoltSettings, true),
+                        9 => (Action::HorizonSettings, true),
                         _ => (Action::None, true),
                     }
                 );

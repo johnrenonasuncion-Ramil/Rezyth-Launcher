@@ -139,9 +139,9 @@ const ICON_LABELS: [&str; 5] = [
     "menu.sendFeedback",
     "gui.friends.open",
     "menu.playerReporting",
-    "horizon.pages.volt",
+    "horizon.pages.settings",
 ];
-/// Horizon's own Volt Settings icon, next to vanilla's four: its 20x20 sprite
+/// Horizon's Settings icon (the cog), next to vanilla's four: its 20x20 sprite
 /// is drawn over the whole button.
 const VOLT_ICON: &str = "gui/sprites/icon/volt_settings";
 /// Whether an icon button is active: `reportBugsButton.active =
@@ -337,7 +337,7 @@ impl Game<'_> {
                     "menu.sendFeedback",
                     "",
                     "menu.playerReporting",
-                    "horizon.pages.volt",
+                    "horizon.pages.settings",
                 ][i];
                 *n = if i == FRIENDS_ICON {
                     widgets::Narratable::named(t("gui.friends.open.narration"), n.rect, active)
@@ -403,8 +403,9 @@ impl Game<'_> {
             13 => self.confirm_trusted_link(feedback_link(), Screen::Paused),
             // PauseScreen: `new SocialInteractionsScreen(this)`.
             15 => self.open_social(true),
-            // Horizon's Volt Settings icon (the fifth in the row).
-            16 => self.open_options_at(false, horizon_client::options_ui::Page::VoltSettings),
+            // Horizon's Settings icon (the fifth in the row); Rezyth's
+            // settings hang off Horizon's page.
+            16 => self.open_options_at(false, horizon_client::options_ui::Page::Horizon),
             30 => self.open_split_settings(),
             // addCustomDialogButtons: DialogConnectionAccess.openDialog of the
             // additions dialog, from the pause menu.
@@ -452,7 +453,7 @@ impl Game<'_> {
         .find(|b| b.5 && ui::hovered(self.cursor, b.0, b.1, b.2, 20.0))
         .map(|b| b.4)
         .or_else(|| {
-            // The report bugs, feedback, player reporting and Volt Settings
+            // The report bugs, feedback, player reporting and Settings
             // icons (ids 12, 13, 15 and 16).
             [0, 1, 3, 4]
                 .into_iter()
@@ -936,7 +937,7 @@ mod tests {
         use super::{FRIENDS_ICON, icon_active};
         // PauseScreen.createPauseMenu: the bug and feedback buttons are live,
         // friends follows its list, player reporting opens the social screen,
-        // and Horizon's Volt Settings icon is always live.
+        // and Horizon's Settings icon is always live.
         assert!(icon_active(0, false) && icon_active(1, false) && icon_active(3, false));
         assert!(icon_active(4, false) && icon_active(4, true));
         assert!(icon_active(FRIENDS_ICON, true) && !icon_active(FRIENDS_ICON, false));

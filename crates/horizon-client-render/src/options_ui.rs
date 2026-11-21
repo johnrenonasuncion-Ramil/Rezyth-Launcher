@@ -3404,7 +3404,9 @@ impl OptionsUi {
                                 Page::SplitSetup
                             },
                         ),
-                        None,
+                        // The cog beside Mod Menu's button opens this page, so
+                        // Rezyth's settings hang off it in turn.
+                        Some(open("horizon.pages.open.volt_settings", Page::VoltSettings)),
                     ),
                     // No AI hides the AI Agent page and everything AI.
                     {
@@ -4422,7 +4424,10 @@ impl OptionsUi {
                     // Everywhere for the layers and Main Hand; `skin_page` adds the name and skin.
                     ("options.skinCustomisation", Some(Page::Skin)),
                     ("options.sounds", Some(Page::Sound)),
-                    ("options.video", Some(Page::Video)),
+                    // Video Settings opens Horizon's graphics screen (the
+                    // simple one), which holds every video setting beside
+                    // Horizon's own.
+                    ("options.video", Some(Page::Graphics)),
                     ("options.controls", Some(Page::Controls)),
                     (
                         "options.language",
@@ -4434,12 +4439,12 @@ impl OptionsUi {
                         (!self.split_guest).then_some(Page::Packs),
                     ),
                     ("options.accessibility", Some(Page::Accessibility)),
-                    // Vanilla's Telemetry Data and Credits slots: Horizon's
-                    // settings and its mods, as a mod adds its button here.
-                    // Credits & Attribution (WinScreen's credits) follows them.
-                    ("horizon.pages.open.horizon_settings", Some(Page::Horizon)),
+                    // Vanilla's Telemetry Data slot: Rezyth's settings (the
+                    // cog beside Mod Menu's button opens Horizon's settings,
+                    // which links back here), and Credits & Attribution
+                    // (WinScreen's credits) after it. Horizon's settings and
+                    // its mods are the cog's and Mod Menu's own screens.
                     ("horizon.pages.open.volt_settings", Some(Page::VoltSettings)),
-                    ("horizon.pages.open.mods", Some(Page::Mods)),
                     ("options.credits_and_attribution", Some(Page::Credits)),
                 ];
                 let rows = entries.len().div_ceil(2) as f32;
@@ -8270,16 +8275,8 @@ mod tests {
         let mut s = Settings::default();
         let mut ui = OptionsUi::default();
         let size = (480.0, 240.0);
-        assert!(ui.layout(&s, size.0, size.1).0.iter().any(|w| {
-            matches!(
-                w.kind,
-                WKind::Button {
-                    active: true,
-                    act: Act::Push(Page::Mods),
-                    ..
-                }
-            )
-        }));
+        // Mod Menu's own button and the pause menu's icon open this page now;
+        // Options has no Mods button (horizon_settings_hang_off_options…).
         ui.show(Page::Mods);
         let empty = ui.layout(&s, size.0, size.1).0;
         assert!(empty.iter().any(|w| {
@@ -9734,13 +9731,18 @@ mod tests {
                 })
                 .collect()
         };
-        // Vanilla's Options buttons, Horizon's own in the Telemetry and Credits slots, then
-        // Credits & Attribution (WinScreen's credits).
+        // Vanilla's Options buttons, Rezyth's settings in the Telemetry slot,
+        // then Credits & Attribution (WinScreen's credits). Horizon's settings
+        // and its mods have no buttons here: the cog beside Mod Menu's button
+        // opens Horizon's, and Mod Menu opens the mods.
         let main = pushes(&mut ui);
         assert_eq!(
-            &main[main.len() - 4..],
-            [Page::Horizon, Page::VoltSettings, Page::Mods, Page::Credits]
+            &main[main.len() - 2..],
+            [Page::VoltSettings, Page::Credits]
         );
+        assert!(!main.contains(&Page::Horizon) && !main.contains(&Page::Mods));
+        // The Video Settings button opens Horizon's graphics screen.
+        assert!(main.contains(&Page::Graphics) && !main.contains(&Page::Video));
         ui.push(Page::Horizon);
         assert_eq!(
             pushes(&mut ui),
@@ -9752,6 +9754,7 @@ mod tests {
                 Page::Extras,
                 Page::Mods,
                 Page::SplitSetup,
+                Page::VoltSettings,
                 Page::Agent,
             ]
         );

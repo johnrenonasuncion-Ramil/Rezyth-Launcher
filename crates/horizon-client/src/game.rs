@@ -12205,6 +12205,9 @@ impl Game<'_> {
             Action::VoltSettings => {
                 self.open_options_at(true, horizon_client::options_ui::Page::VoltSettings)
             }
+            Action::HorizonSettings => {
+                self.open_options_at(true, horizon_client::options_ui::Page::Horizon)
+            }
             Action::Credits => {
                 self.open_options_at(true, horizon_client::options_ui::Page::Credits)
             }

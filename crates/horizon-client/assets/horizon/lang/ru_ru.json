@@ -47,6 +47,7 @@
   "horizon.pages.open.controller": "Настройки контроллера...",
   "horizon.pages.open.extras": "Дополнения...",
   "horizon.pages.open.mods": "Моды...",
+  "horizon.pages.open.volt_settings": "Настройки Rezyth...",
   "horizon.pages.open.agent": "ИИ-агент...",
   "horizon.pages.open.horizon_graphics": "Графика Horizon...",
   "horizon.pages.open.controller_binds": "Назначения кнопок...",

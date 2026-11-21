@@ -50,6 +50,7 @@
   "horizon.pages.open.controller": "Controller-Einstellungen …",
   "horizon.pages.open.extras": "Extras …",
   "horizon.pages.open.mods": "Mods …",
+  "horizon.pages.open.volt_settings": "Rezyth-Einstellungen …",
   "horizon.pages.open.agent": "KI-Agent …",
   "horizon.pages.open.horizon_graphics": "Horizon-Grafik …",
   "horizon.pages.open.controller_binds": "Controller-Belegung …",
