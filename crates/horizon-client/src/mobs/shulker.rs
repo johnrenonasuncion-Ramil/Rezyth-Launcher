@@ -734,6 +734,7 @@ mod tests {
 mod defense_tests {
     use super::*;
     use crate::mobs::sensor_scan_tests::kind;
+    use crate::mobs::world::with_test_world;
     use std::sync::Arc;
 
     fn mob(id: u32, species: Species, category: &str, at: Vec3) -> Mob {

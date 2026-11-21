@@ -32,7 +32,10 @@ use horizon_client::{
     text::{self, Style, Text},
 };
 use horizon_core::{geometry::Vec3, random::RandomSource};
-use horizon_protocol::packets::play::{self, Clientbound as C};
+use horizon_protocol::packets::{
+    configuration as cfg,
+    play::{self, Clientbound as C},
+};
 use horizon_world::registry::BlockStateId;
 
 pub(super) type R<T> = Result<T, CommandError>;
@@ -1056,6 +1059,9 @@ impl Game<'_> {
                 self.system_message(Text::translate("commands.seed.success", &[value]));
                 Ok(self.level.seed as i32)
             }
+            "serverpack.push" => self.cmd_serverpack_push(ctx),
+            "serverpack.pop" => self.cmd_serverpack_pop(ctx),
+            "spawn_armor_trims" => self.cmd_spawn_armor_trims(ctx),
             "spawnpoint" => self.cmd_spawnpoint(ctx),
             "setworldspawn" => self.cmd_setworldspawn(ctx),
             "clear" => self.cmd_clear(ctx),
@@ -3110,6 +3116,187 @@ impl Game<'_> {
             self.native_difficulty_changed(from, to);
         }
     }
+    /// `ServerPackCommand.pushPack`: every connection is sent the push with
+    /// `required` false and no prompt, the id defaulting to the URL's name
+    /// UUID.
+    fn cmd_serverpack_push(&mut self, ctx: &Context) -> R<i32> {
+        let Some(Arg::Str(url)) = ctx.get("url").cloned() else {
+            return Ok(0);
+        };
+        let id = match ctx.get("uuid") {
+            Some(Arg::Str(s)) => {
+                horizon_client::command::selector::java_uuid(s).unwrap_or_else(|| name_uuid(&url))
+            }
+            _ => name_uuid(&url),
+        };
+        let hash = match ctx.get("hash") {
+            Some(Arg::Str(s)) => s.clone(),
+            _ => String::new(),
+        };
+        if let Some(host) = self.lan.as_ref() {
+            host.hub.broadcast(&C::ResourcePackPush(cfg::ResourcePackPush {
+                id,
+                url,
+                hash,
+                required: false,
+                prompt: None,
+            }));
+        }
+        Ok(0)
+    }
+    /// `ServerPackCommand.popPack`: every connection is told to drop the pack.
+    fn cmd_serverpack_pop(&mut self, ctx: &Context) -> R<i32> {
+        let Some(Arg::Str(uuid)) = ctx.get("uuid").cloned() else {
+            return Ok(0);
+        };
+        let Some(id) = horizon_client::command::selector::java_uuid(&uuid) else {
+            return Ok(0);
+        };
+        if let Some(host) = self.lan.as_ref() {
+            host.hub
+                .broadcast(&C::ResourcePackPop(cfg::ResourcePackPop { id: Some(id) }));
+        }
+        Ok(0)
+    }
+    /// `SpawnArmorTrimsCommand.VANILLA_TRIM_PATTERNS`, in its order.
+    const TRIM_PATTERNS: [&str; 18] = [
+        "sentry",
+        "dune",
+        "coast",
+        "wild",
+        "ward",
+        "eye",
+        "vex",
+        "tide",
+        "snout",
+        "rib",
+        "spire",
+        "wayfinder",
+        "shaper",
+        "silence",
+        "raiser",
+        "host",
+        "flow",
+        "bolt",
+    ];
+    /// `SpawnArmorTrimsCommand.VANILLA_TRIM_MATERIALS`, in its order.
+    const TRIM_MATERIALS: [&str; 11] = [
+        "quartz",
+        "iron",
+        "netherite",
+        "redstone",
+        "copper",
+        "gold",
+        "emerald",
+        "diamond",
+        "lapis",
+        "amethyst",
+        "resin",
+    ];
+    /// `SpawnArmorTrimsCommand.spawnArmorTrims`: a grid of armor stands, one
+    /// per trim, five blocks ahead of the player.
+    fn cmd_spawn_armor_trims(&mut self, ctx: &Context) -> R<i32> {
+        // `source.getPlayerOrException`: only a player's source may run this.
+        let player_source = match self.command_source {
+            None => self.player.is_some() || self.lan_acting.is_some(),
+            Some(s) => matches!(s.entity, Some(Target::Player)),
+        };
+        if !player_source {
+            return Err(err("permissions.requires.player", &[]));
+        }
+        let patterns: Vec<&str> = match ctx.get("pattern") {
+            Some(Arg::Resource(id)) => {
+                let short = id.trim_start_matches("minecraft:");
+                let Some(known) = Self::TRIM_PATTERNS.iter().find(|p| **p == short) else {
+                    // `SpawnArmorTrimsCommand.ERROR_INVALID_PATTERN` holds a
+                    // literal, not a translation key.
+                    return Err(CommandError::new(Text::literal("Invalid pattern")));
+                };
+                vec![*known]
+            }
+            _ => Self::TRIM_PATTERNS.to_vec(),
+        };
+        // `findEquippableItemsWithAssets`: humanoid armour in registry order.
+        let items = self.items();
+        let equippable: Vec<String> = items
+            .registry_order
+            .iter()
+            .filter(|id| {
+                items.get(id).is_some_and(|i| {
+                    matches!(
+                        i.equip_slot.as_deref(),
+                        Some("head" | "chest" | "legs" | "feet")
+                    ) && i.equip_asset.is_some()
+                })
+            })
+            .map(|id| id.to_string())
+            .collect();
+        let pos = self.source_position();
+        let yaw = self.source_rotation()[0];
+        // `Direction.fromYRot`: 0 south (+Z), 1 west (-X), 2 north (-Z),
+        // 3 east (+X).
+        let facing = match ((yaw / 90.0 + 0.5).floor() as i32) & 3 {
+            0 => [0, 0, 1],
+            1 => [-1, 0, 0],
+            2 => [0, 0, -1],
+            _ => [1, 0, 0],
+        };
+        let origin = [
+            pos[0].floor() as i32 + facing[0] * 5,
+            pos[1].floor() as i32,
+            pos[2].floor() as i32 + facing[2] * 5,
+        ];
+        for (m, material) in Self::TRIM_MATERIALS.iter().enumerate() {
+            for (p, pattern) in patterns.iter().enumerate() {
+                for (i, item) in equippable.iter().enumerate() {
+                    let x = f64::from(origin[0]) + 0.5 - i as f64 * 3.0;
+                    let y = f64::from(origin[1]) + 0.5 + m as f64 * 3.0;
+                    let z = f64::from(origin[2]) + 0.5 + p as f64 * 10.0;
+                    let Ok(Some(Target::Stand(id))) =
+                        self.summon_with_nbt("minecraft:armor_stand", [x, y, z], "{}")
+                    else {
+                        continue;
+                    };
+                    let slot = match self.items().get(item).and_then(|i| i.equip_slot.as_deref()) {
+                        Some("head") => 5,
+                        Some("chest") => 4,
+                        Some("legs") => 3,
+                        Some("feet") => 2,
+                        _ => 0,
+                    };
+                    let mut stack = ItemStack::new(item, 1);
+                    stack.data_mut().trim = Some((
+                        std::sync::Arc::from(format!("minecraft:{material}")),
+                        std::sync::Arc::from(format!("minecraft:{pattern}")),
+                    ));
+                    let Some(a) = self.armor_stands.iter_mut().find(|a| a.id == id) else {
+                        continue;
+                    };
+                    a.yaw = 180.0;
+                    a.no_gravity = true;
+                    a.equipment[slot] = Some(stack);
+                    if i == 0 {
+                        a.custom_name = Some(
+                            Text::translate(&format!("trim_pattern.minecraft.{pattern}"), &[])
+                                .append(" & ")
+                                .append(Text::translate(
+                                    &format!("trim_material.minecraft.{material}"),
+                                    &[],
+                                )),
+                        );
+                        a.name_visible = true;
+                    } else {
+                        a.invisible = true;
+                    }
+                }
+            }
+        }
+        // Vanilla sends this message as a literal, not a translation key.
+        self.feedback(Text::literal(
+            "Armorstands with trimmed armor spawned around you",
+        ));
+        Ok(1)
+    }
     fn cmd_spawnpoint(&mut self, ctx: &Context) -> R<i32> {
         let targets = if ctx.get("targets").is_some() {
             self.entities(ctx, "targets", true)?
@@ -3837,6 +4024,14 @@ pub(super) fn block_input_matches(
         && b.properties
             .iter()
             .all(|(k, v)| s.properties.get(k) == Some(v))
+}
+
+/// `UUID.nameUUIDFromBytes(value)`: MD5, version 3, IETF variant.
+fn name_uuid(value: &str) -> u128 {
+    let mut h = horizon_protocol::crypto::md5(value.as_bytes());
+    h[6] = (h[6] & 0x0f) | 0x30;
+    h[8] = (h[8] & 0x3f) | 0x80;
+    u128::from_be_bytes(h)
 }
 
 /// The names `native_difficulty_changed` hears for a change from `from` to

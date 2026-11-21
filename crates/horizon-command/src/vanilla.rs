@@ -330,6 +330,30 @@ fn registered_with_features(dev: bool, minecart_improvements: bool) -> Dispatche
     let version = d.literal(root, "version");
     d.executes(version, "version");
 
+    // serverpack push <url> [<uuid>] [<hash>] | pop <uuid>
+    // (ServerPackCommand.register: game masters only).
+    let sp = d.literal(root, "serverpack");
+    d.requires(sp, GAMEMASTERS);
+    let push = d.literal(sp, "push");
+    let url = d.argument(push, "url", ArgType::Str);
+    d.executes(url, "serverpack.push");
+    let uuid = d.argument(url, "uuid", ArgType::Uuid);
+    d.executes(uuid, "serverpack.push");
+    let hash = d.argument(uuid, "hash", ArgType::Word);
+    d.executes(hash, "serverpack.push");
+    let pop = d.literal(sp, "pop");
+    let uuid = d.argument(pop, "uuid", ArgType::Uuid);
+    d.executes(uuid, "serverpack.pop");
+
+    // spawn_armor_trims *_lag_my_game | <pattern>
+    // (SpawnArmorTrimsCommand.register: game masters only).
+    let trims = d.literal(root, "spawn_armor_trims");
+    d.requires(trims, GAMEMASTERS);
+    let all = d.literal(trims, "*_lag_my_game");
+    d.executes(all, "spawn_armor_trims");
+    let pattern = d.argument(trims, "pattern", ArgType::ResKey("minecraft:trim_pattern"));
+    d.executes(pattern, "spawn_armor_trims");
+
     // spawnpoint [<targets>] [<pos>] [<rotation>]
     let sp = d.literal(root, "spawnpoint");
     d.requires(sp, GAMEMASTERS);

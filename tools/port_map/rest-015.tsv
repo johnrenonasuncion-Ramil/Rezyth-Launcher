@@ -136,20 +136,20 @@ ScoreboardCommand.setRenderType	port	crates/horizon-client/src/scoreboard_cmd.rs
 ScoreboardCommand.removeObjective	port	crates/horizon-client/src/scoreboard_cmd.rs::scoreboard	objectives remove branch
 ScoreboardCommand.addObjective	port	crates/horizon-client/src/scoreboard_cmd.rs::scoreboard	objectives add branch
 SeedCommand.register	port	crates/horizon-command/src/vanilla.rs::registered	seed literal; the seed text is the seed arm of execute_command
-ServerPackCommand.register	missing		minor: no /serverpack literal
-ServerPackCommand.sendToAllConnections	missing		minor: no pack packets are sent to connected clients by any command
-ServerPackCommand.pushPack	missing		minor: no push; ResourcePackPush exists only in horizon-protocol
-ServerPackCommand.popPack	missing		minor: no pop; ResourcePackPop exists only in horizon-protocol
+ServerPackCommand.register	port	crates/horizon-command/src/vanilla.rs::registered	serverpack literal with push <url> [<uuid>] [<hash>] and pop <uuid>, game masters only
+ServerPackCommand.sendToAllConnections	port	crates/horizon-client/src/game/commands.rs::Game::cmd_serverpack_push	the hub broadcasts the push or pop to every placed connection
+ServerPackCommand.pushPack	port	crates/horizon-client/src/game/commands.rs::Game::cmd_serverpack_push	required false and no prompt; the id defaults to the URL's name UUID (MD5 v3)
+ServerPackCommand.popPack	port	crates/horizon-client/src/game/commands.rs::Game::cmd_serverpack_pop	pop of the named pack id
 SetBlockCommand.register	port	crates/horizon-command/src/vanilla.rs::registered	setblock literal with destroy, keep, replace and strict
 SetBlockCommand.setBlock	port	crates/horizon-client/src/game/commands.rs::Game::cmd_setblock	destroy, keep, replace, strict and block entity NBT
 SetPlayerIdleTimeoutCommand.register	port	crates/horizon-client/src/game/dedicated.rs::Game::console_command	the console arm sets the idle timeout, already in the dedicated-only command tree
 SetPlayerIdleTimeoutCommand.setIdleTimeout	missing		minor: no in-game idle timeout change
 SetSpawnCommand.setSpawn	port	crates/horizon-client/src/game/commands.rs::Game::cmd_spawnpoint	forced spawn per target, overworld spawn or respawn anchor by dimension
 SetWorldSpawnCommand.setSpawn	port	crates/horizon-client/src/game/commands.rs::Game::cmd_setworldspawn	world spawn with angle and the fallback respawn update
-SpawnArmorTrimsCommand.register	missing		minor: no /spawn_armor_trims literal (test command for trim patterns)
-SpawnArmorTrimsCommand.spawnArmorTrim	missing		minor: no armor stands are spawned for trim patterns
-SpawnArmorTrimsCommand.spawnArmorTrims	missing		minor: no armor stands are spawned for trim patterns
-SpawnArmorTrimsCommand.findEquippableItemsWithAssets	missing		minor: no scan of equippable armor items for trims
+SpawnArmorTrimsCommand.register	port	crates/horizon-command/src/vanilla.rs::registered	spawn_armor_trims literal with *_lag_my_game and pattern (trim_pattern key), game masters only
+SpawnArmorTrimsCommand.spawnArmorTrim	port	crates/horizon-client/src/game/commands.rs::Game::cmd_spawn_armor_trims	one pattern's grid; an unknown key is vanilla's literal "Invalid pattern" error
+SpawnArmorTrimsCommand.spawnArmorTrims	port	crates/horizon-client/src/game/commands.rs::Game::cmd_spawn_armor_trims	grid origin player block pos + facing*5, x -3 per item, y +3 per material, z +10 per pattern; yaw 180, no gravity, trim in the equip slot, first item named and visible, others invisible
+SpawnArmorTrimsCommand.findEquippableItemsWithAssets	port	crates/horizon-client/src/game/commands.rs::Game::cmd_spawn_armor_trims	the item registry order filtered to humanoid-armour slots with an asset
 SpreadPlayersCommand.spreadPlayers	port	crates/horizon-client/src/game/commands/world_cmds.rs::Game::cmd_spreadplayers	spreads targets around the centre with spread distance, max range and max height
 SpreadPlayersCommand.getNumberOfTeams	inline	crates/horizon-client/src/game/commands/world_cmds.rs::Game::cmd_spreadplayers	team count via team_of in respectTeams mode
 SpreadPlayersCommand.spreadPositions	inline	crates/horizon-client/src/game/commands/world_cmds.rs::Game::cmd_spreadplayers	collision loop with the 10000-iteration cap, clamp and safe-spot check
