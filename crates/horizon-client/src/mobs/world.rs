@@ -15,6 +15,27 @@ use horizon_world::{
     registry::BlockStateId,
 };
 
+/// What `push_entities` pushes: who, where, whether it rides a vehicle
+/// (`Entity.isPassenger`) and whether it shares the pusher's root vehicle
+/// (`isPassengerOfSameVehicle`).
+pub(super) type PushTarget = (Who, Vec3, bool, bool);
+thread_local! {
+    static PUSH_TARGETS: std::cell::RefCell<Vec<PushTarget>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+/// This thread's list for `push_entities`, empty: a crowd would otherwise
+/// allocate one for every mob on every tick. Taken out, so a call that
+/// reaches it again meanwhile gets its own.
+pub(super) fn take_push_targets() -> Vec<PushTarget> {
+    let mut targets = PUSH_TARGETS.with(|t| std::mem::take(&mut *t.borrow_mut()));
+    targets.clear();
+    targets
+}
+/// Keep `targets` for the next [`take_push_targets`].
+pub(super) fn give_push_targets(targets: Vec<PushTarget>) {
+    PUSH_TARGETS.with(|t| *t.borrow_mut() = targets);
+}
+
 /// Where a target entity is this tick.
 #[derive(Clone, Copy, Debug)]
 pub struct TargetInfo {
@@ -534,5 +555,25 @@ pub(crate) fn test_player(position: Vec3) -> super::PlayerView {
         sleep_timer: 0,
         passenger: false,
         vehicle: None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn push_targets_are_taken_empty_and_come_back_reused() {
+        let mut targets = take_push_targets();
+        assert!(targets.is_empty());
+        // The capacity survives, so a crowd's second tick allocates nothing.
+        targets.reserve(64);
+        let capacity = targets.capacity();
+        targets.push((Who::Player, Vec3::ZERO, false, false));
+        give_push_targets(targets);
+        let again = take_push_targets();
+        assert!(again.is_empty());
+        assert_eq!(again.capacity(), capacity);
+        give_push_targets(again);
     }
 }

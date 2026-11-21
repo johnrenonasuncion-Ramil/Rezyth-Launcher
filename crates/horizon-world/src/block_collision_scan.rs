@@ -230,11 +230,10 @@ impl<'w, 'c, W: BlockCollisionWorld> BlockCollisionScan<'w, 'c, W> {
                     self.cursor[2] += 1;
                 }
             }
-            let kind = relative
-                .into_iter()
-                .zip(self.sizes)
-                .filter(|(p, size)| *p == 0 || *p == size - 1)
-                .count();
+            // How many of the cell's three coordinates lie on the box's outer layer.
+            let kind = usize::from(relative[0] == 0 || relative[0] == width - 1)
+                + usize::from(relative[1] == 0 || relative[1] == height - 1)
+                + usize::from(relative[2] == 0 || relative[2] == depth - 1);
             if kind == 3 {
                 continue;
             }
