@@ -737,8 +737,20 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
                 0xff00_0000,
             );
         }
+        // Options > Mods' switch, at the right of the row: the same mod rows
+        // the game manages, so turning one on or off here writes the same
+        // `horizon-mods.txt` line.
+        let switch = glue::toggle_target(game, &m.id).map(|on| {
+            let r = [
+                6.0 + row_w - 48.0,
+                ey + (item_h - 16.0) / 2.0,
+                46.0,
+                16.0,
+            ];
+            (r, on)
+        });
         let (x, y) = (6.0, ey + 4.0);
-        let cw = row_w - 4.0;
+        let cw = row_w - 4.0 - if switch.is_some() { 50.0 } else { 0.0 };
         icon(game, batch, s, m, x, y, size);
         let full_w = width(game, &m.name);
         let name = if full_w > cw - size - 3.0 {
@@ -803,8 +815,22 @@ fn list_page(game: &Game<'_>, batch: &mut HudBatch, s: &mut State) {
                 size,
             );
         }
+        // The switch over the row's right end, after the row's own hit so it
+        // takes the click (`hit_at` reads the newest hit first).
+        if let Some((r, on)) = switch {
+            let label = Text::literal(mm::tr(ru, if on { "enabled" } else { "disabled" }));
+            button(game, batch, r, &label, true);
+            if inside(cursor, r) {
+                tip = Some(vec![mm::tr(ru, "toggle_mod").to_owned()]);
+            }
+        }
         if let Some(hr) = intersect([6.0, ey, row_w, item_h], list) {
             s.hits.push((hr, Hit::Row(i)));
+        }
+        if let Some((r, _)) = switch
+            && let Some(hr) = intersect(r, list)
+        {
+            s.hits.push((hr, Hit::Toggle(i)));
         }
     }
     batch.clip_since(

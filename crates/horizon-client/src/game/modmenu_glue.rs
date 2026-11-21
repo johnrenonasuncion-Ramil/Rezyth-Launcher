@@ -71,6 +71,8 @@ pub(super) enum Hit {
     Done,
     /// A row of the list, by its place in `rows`.
     Row(usize),
+    /// The on/off switch at the right of a row, by its place in `rows`.
+    Toggle(usize),
     /// A link of the description list, by its place in `links`.
     DescLink(usize),
     Option(usize),
@@ -91,6 +93,8 @@ pub(super) enum Action {
     Paste,
     Copy(String),
     Credits,
+    /// Turn installed mod `id` on or off (Options > Mods' switch).
+    ToggleMod(String),
 }
 
 /// What `ModsScreen.init` fixes until the next init (a resize or reopening):
@@ -272,6 +276,36 @@ fn bound(game: &Game<'_>) -> String {
     game.native_mod_key(mm::ID, "open_menu", "key.keyboard.unknown")
 }
 
+/// Whether the list's switch can turn mod `id` on or off, and whether it is
+/// on now: Options > Mods' switch over the same game row. None for entries
+/// that are not mods the game manages (Minecraft, Horizon) and dev mods,
+/// which are always on.
+pub(super) fn toggle_target(game: &Game<'_>, id: &str) -> Option<bool> {
+    switch_target(&game.settings.mods, id)
+}
+
+/// [`toggle_target`]'s answer for a list, without the game around it.
+fn switch_target(list: &horizon_client::mod_list::ModList, id: &str) -> Option<bool> {
+    let i = list.installed.iter().position(|m| m.id == id)?;
+    let m = list.installed.get(i)?;
+    (!m.dev && !m.id.is_empty()).then_some(list.is_on(i))
+}
+
+/// Turn mod `id` on or off, as Options > Mods' switch does: the same
+/// `ModList::toggle`, then the settings file is written (`horizon-mods.txt`).
+/// A native mod's line says `false` when off, so the launcher's next build
+/// leaves it out.
+fn toggle_mod(game: &mut Game<'_>, id: &str) {
+    let list = &mut game.settings.mods;
+    let Some(i) = list.installed.iter().position(|m| m.id == id) else {
+        return;
+    };
+    list.toggle(i);
+    game.settings.save(&Game::options_path());
+    // The title's and the pause menu's count read the list again.
+    with(|s| s.count = None);
+}
+
 // ---- the mods -----------------------------------------------------------------------
 
 /// "Name 1.0.1" as the game lists a mod: the name and the version.
@@ -377,8 +411,8 @@ fn meta(game: &Game<'_>, id: &str, ru: bool) -> Meta {
 }
 
 /// The mods Mod Menu lists: Minecraft and Horizon, every native mod built
-/// into this game and every content mod turned on, each with what the
-/// catalog knows of it.
+/// into this game and every installed content mod, off ones included so
+/// their row can turn them back on, each with what the catalog knows of it.
 pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
     let catalog: HashMap<String, horizon_mods::index::Project> =
         std::fs::read_to_string(Game::game_dir().join(CACHE))
@@ -417,15 +451,12 @@ pub(super) fn load_mods(game: &Game<'_>, ru: bool) -> Vec<Mod> {
         .iter()
         .map(|(id, v)| (id.clone(), v.clone(), true))
         .collect();
-    for (i, row) in installed.iter().enumerate() {
+    for row in installed {
         if ids.iter().any(|(id, _, _)| *id == row.id) || row.problem.is_some() {
             continue;
         }
-        let native = row.native.is_some();
-        if native || game.settings.mods.is_on(i) {
-            let (_, version) = split_title(&row.title);
-            ids.push((row.id.clone(), version, native));
-        }
+        let (_, version) = split_title(&row.title);
+        ids.push((row.id.clone(), version, row.native.is_some()));
     }
     // The Mod Menu itself, built in (it was a mod): listed like one, as Mod
     // Menu lists itself, its own options behind Configure. Its old data
@@ -967,6 +998,7 @@ fn act(game: &mut Game<'_>, action: Action) {
             let from_title = with(|s| s.open == Some(Origin::Title)).unwrap_or(false);
             game.open_options_at(from_title, horizon_client::options_ui::Page::Credits);
         }
+        Action::ToggleMod(id) => toggle_mod(game, &id),
         Action::Configure(target) => {
             let from_title = with(|s| s.open == Some(Origin::Title)).unwrap_or(false);
             match target {
@@ -1183,6 +1215,16 @@ pub(super) fn pressed(
             Some(Hit::Done) if left => {
                 s.pending.push(Action::Click);
                 s.pending.push(Action::Close);
+            }
+            Some(Hit::Toggle(i)) if left => {
+                let Some(&mi) = s.rows.get(i) else {
+                    return true;
+                };
+                let id = s.mods[mi].id.clone();
+                if toggle_target(game, &id).is_some() {
+                    s.pending.push(Action::Click);
+                    s.pending.push(Action::ToggleMod(id));
+                }
             }
             Some(Hit::Row(i)) => {
                 let Some(&mi) = s.rows.get(i) else {
@@ -1464,4 +1506,44 @@ pub(super) fn title_typed(game: &mut Game<'_>, typed: Option<&str>, backspace: b
         s.refilter();
     });
     true
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use horizon_client::mod_list::{Installed, ModList, NativePage};
+
+    fn row(id: &str, dev: bool, native: bool) -> Installed {
+        Installed {
+            id: id.into(),
+            title: id.into(),
+            description: String::new(),
+            problem: None,
+            dev,
+            native: native.then(NativePage::default),
+        }
+    }
+
+    #[test]
+    fn the_list_switch_is_the_mods_pages_switch() {
+        let mut list = ModList {
+            installed: vec![
+                row("content", false, false),
+                row("native", false, true),
+                row("dev", true, false),
+            ],
+            ..ModList::default()
+        };
+        // A content mod starts off and a native one on; a dev mod is always
+        // on and gets no switch, nor does an entry the game does not manage.
+        assert_eq!(switch_target(&list, "content"), Some(false));
+        assert_eq!(switch_target(&list, "native"), Some(true));
+        assert_eq!(switch_target(&list, "dev"), None);
+        assert_eq!(switch_target(&list, "minecraft"), None);
+        // `ModList::toggle` (the button's action) moves it both ways.
+        list.toggle(0);
+        list.toggle(1);
+        assert_eq!(switch_target(&list, "content"), Some(true));
+        assert_eq!(switch_target(&list, "native"), Some(false));
+    }
 }
