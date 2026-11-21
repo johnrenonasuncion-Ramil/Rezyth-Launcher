@@ -9736,10 +9736,7 @@ mod tests {
         // and its mods have no buttons here: the cog beside Mod Menu's button
         // opens Horizon's, and Mod Menu opens the mods.
         let main = pushes(&mut ui);
-        assert_eq!(
-            &main[main.len() - 2..],
-            [Page::VoltSettings, Page::Credits]
-        );
+        assert_eq!(&main[main.len() - 2..], [Page::VoltSettings, Page::Credits]);
         assert!(!main.contains(&Page::Horizon) && !main.contains(&Page::Mods));
         // The Video Settings button opens Horizon's graphics screen.
         assert!(main.contains(&Page::Graphics) && !main.contains(&Page::Video));
